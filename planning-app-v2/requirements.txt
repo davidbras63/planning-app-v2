@@ -1,5 +1,0 @@
-streamlit
-pandas
-supabase
-streamlit-clerk
-altair
