@@ -16,8 +16,8 @@ export async function POST(req: Request) {
 
       console.log("Tentative d'insertion pour:", email);
 
-      // 1. Insertion dans 'user_statut' en premier pour respecter la clé étrangère
-      const { error: errorStatut } = await supabase.from('user_statut').insert([
+      // 1. Insertion dans 'user_status' (avec un S)
+      const { error: errorStatut } = await supabase.from('user_status').insert([
         {
           user_id: id,
           status: 'trial',
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         return new Response(JSON.stringify(errorStatut), { status: 500 });
       }
 
-      // 2. Insertion dans 'profiles' ensuite
+      // 2. Insertion dans 'profiles'
       const { error: errorProfile } = await supabase.from('profiles').insert([
         {
           user_id: id,
