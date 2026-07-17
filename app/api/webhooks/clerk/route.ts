@@ -5,23 +5,25 @@ export async function POST(req: Request) {
   console.log("Webhook reçu, type:", eventType);
 
   if (eventType === 'user.created') {
-    const { id, email_addresses } = payload.data;
+    const { id, email_addresses, first_name, last_name } = payload.data;
     const email = email_addresses[0].email_address;
-    
+    const fullName = `${first_name || ''} ${last_name || ''}`.trim();
+
     console.log("Tentative d'insertion pour:", email);
 
-    const { error } = await supabase.from('users').insert({
+    // On insère dans 'profiles' avec les bons noms de colonnes
+    const { error } = await supabase.from('profiles').insert({
       user_id: id,
       email: email,
-      trial_started_at: new Date().toISOString(),
-      stripe_status: 'trial'
+      name: fullName,
+      subscription_status: 'trial'
     });
 
     if (error) {
       console.error("Erreur Supabase:", error);
       return new Response('Erreur lors de l\'insertion', { status: 500 });
     }
-    
+
     console.log("Utilisateur créé avec succès !");
   }
 
