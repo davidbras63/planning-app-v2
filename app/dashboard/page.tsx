@@ -113,7 +113,7 @@ export default function Dashboard() {
                           </Flex>
                         ))}
                       </Stack>
-                    </Collapse>
+                    </CollapseAny>
                   </Box>
                 ))}
               </Card>
