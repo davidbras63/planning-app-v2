@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Container, Stack, Title, Divider } from '@mantine/core';
 import ChapterCreator from '@/components/ChapterCreator';
 import PlanningView from '@/components/PlanningView';
+const ChapterCreatorAny = ChapterCreator as any;
 
 export default function PlanningPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -26,7 +27,7 @@ export default function PlanningPage() {
           {/* 1. EN HAUT : Création de chapitre sur TOUTE la largeur */}
           <div style={{ width: '100%' }}>
             <Title order={3} size="h4" mb="sm" c="dimmed">Gestion des cours</Title>
-            <ChapterCreator onChapterCreated={() => setRefreshKey(k => k + 1)} />
+            <ChapterCreatorAny onChapterCreated={() => setRefreshKey(k => k + 1)} />
           </div>
 
           <Divider my="md" color="var(--mantine-color-dark-4)" />
