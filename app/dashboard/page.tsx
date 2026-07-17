@@ -7,6 +7,7 @@ import { useUser } from '@clerk/nextjs';
 import { Trash2, ChevronRight, ChevronDown, RotateCcw, AlertCircle, Calendar, Folder, GitMerge } from 'lucide-react';
 import { tenterReintegration } from '@/logic/reintegration';
 import { Container, Stack, Title, Card, Flex, ActionIcon, Text, Collapse, Table, Button, Group, Box } from '@mantine/core';
+const CollapseAny = Collapse as any;
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -103,7 +104,7 @@ export default function Dashboard() {
                       </Group>
                       <ActionIcon variant="subtle" color="red.4" size="sm" onClick={() => deleteItem('subjects', sub.id)}><Trash2 size={16} /></ActionIcon>
                     </Flex>
-                    <(Collapse as any) in={!!expanded[sub.id]}>
+                    <CollapseAny in={!!expanded[sub.id]}>
                       <Stack gap={6} mt="xs" ml="xl">
                         {sub.chapters?.map((chap: any) => (
                           <Flex key={chap.id} justify="space-between" align="center" p="xs" style={{ backgroundColor: 'var(--mantine-color-dark-9)', borderRadius: 'var(--mantine-radius-xs)' }}>
