@@ -45,7 +45,7 @@ export default function LandingPage() {
         </Stack>
 
         {/* EXPLICATION DU FONCTIONNEMENT */}
-        <Grid gutter="xl">
+        <Grid gutter={{ base: 'xl'}}>
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder shadow="sm" p="lg" h="100%">
               <Title order={3} mb="md">Comment ça marche ?</Title>
