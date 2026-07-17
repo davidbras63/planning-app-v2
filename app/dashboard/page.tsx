@@ -103,7 +103,7 @@ export default function Dashboard() {
                       </Group>
                       <ActionIcon variant="subtle" color="red.4" size="sm" onClick={() => deleteItem('subjects', sub.id)}><Trash2 size={16} /></ActionIcon>
                     </Flex>
-                    <Collapse in={!!expanded[sub.id] as any}>
+                    <Collapse in={!!expanded[sub.id] as unknown as boolean}>
                       <Stack gap={6} mt="xs" ml="xl">
                         {sub.chapters?.map((chap: any) => (
                           <Flex key={chap.id} justify="space-between" align="center" p="xs" style={{ backgroundColor: 'var(--mantine-color-dark-9)', borderRadius: 'var(--mantine-radius-xs)' }}>
