@@ -28,13 +28,16 @@ export async function POST(req: Request) {
       }
 
       // 2. Upsert dans 'profiles' (maintenant indépendant du premier)
-      const { error: errorProfile } = await supabase.from('profiles').upsert([
-        {
-          user_id: id,
-          email: email,
-          name: fullName
-        }
-      ]);
+      const { error: errorProfile } = await supabase
+	  .from('profiles')
+	  .upsert(
+		{
+		  user_id: id, // L'ID venant de Clerk
+		  email: email,
+		  name: fullName
+		},
+		{ onConflict: 'user_id' } // C'est ça qui utilise ta nouvelle règle "Unique"
+	  );
 
       if (errorProfile) {
         console.error("ERREUR UPSERT PROFIL:", errorProfile);
