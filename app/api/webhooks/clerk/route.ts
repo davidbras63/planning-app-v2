@@ -26,9 +26,9 @@ export async function POST(req: Request) {
     ]);
 
     if (error) {
-      console.error("Erreur Supabase:", error);
-      return new Response('Erreur lors de l\'insertion', { status: 500 });
-    }
+	  console.error("ERREUR SUPABASE TOTALE :", JSON.stringify(error, null, 2));
+	  return new Response(JSON.stringify(error), { status: 500 });
+	}
 
     console.log("Utilisateur créé avec succès !");
   }
