@@ -1,30 +1,40 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group } from '@mantine/core';
 import { CreditCard, Clock } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+
 const GridAny = Grid as any;
+
+// Composant isolé pour gérer l'alerte de recherche
+function AuthAlertHandler() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('auth_alert') === 'true') {
+      alert("Connectez-vous avant d'accéder à cette page !");
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams]);
+
+  return null;
+}
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Système d'alerte : écoute si le middleware nous envoie un message
-  useEffect(() => {
-    if (searchParams.get('auth_alert') === 'true') {
-      alert("Connectez-vous avant d'accéder à cette page !");
-      // Nettoie l'URL pour ne pas réafficher l'alerte au rechargement
-      window.history.replaceState({}, '', '/');
-    }
-  }, [searchParams]);
 
   if (!isLoaded) return null;
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '60px 20px' }}>
+      {/* On encapsule le handler d'alerte dans Suspense pour corriger l'erreur de build */}
+      <Suspense fallback={null}>
+        <AuthAlertHandler />
+      </Suspense>
+
       <Container size="lg">
         {/* HERO */}
         <Stack align="center" gap="md" mb={80} style={{ textAlign: 'center' }}>

@@ -1,6 +1,7 @@
 // app/dashboard/page.tsx
 "use client";
 
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useUser } from '@clerk/nextjs';
@@ -10,6 +11,7 @@ import { Container, Stack, Title, Card, Flex, ActionIcon, Text, Collapse, Table,
 const CollapseAny = Collapse as any;
 
 export default function Dashboard() {
+  	
   const { user } = useUser();
   const [data, setData] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({});
