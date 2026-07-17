@@ -7,28 +7,24 @@ export async function POST(req: Request) {
     const payload = await req.json();
     const eventType = payload.type;
 
-    console.log("Webhook reçu, type:", eventType);
-
     if (eventType === 'user.created') {
       const { id, email_addresses, first_name, last_name } = payload.data;
       const email = email_addresses[0].email_address;
       const fullName = `${first_name || ''} ${last_name || ''}`.trim();
 
-      console.log("Tentative d'insertion pour:", email);
-
-      // 1. Insertion dans 'user_status' (avec un S)
+      // 1. Insertion dans 'user_status' (avec les noms exacts de tes colonnes)
       const { error: errorStatut } = await supabase.from('user_status').insert([
         {
           user_id: id,
           status: 'trial',
-          trial_start: new Date().toISOString(),
-          subscription_expired: false,
-          created: new Date().toISOString()
+          trial_started_at: new Date().toISOString(), // Corrigé ici
+          subscription_expires_at: null, // Corrigé ici
+          created_at: new Date().toISOString() // Corrigé ici
         }
       ]);
 
       if (errorStatut) {
-        console.error("ERREUR INSERTION STATUT:", JSON.stringify(errorStatut, null, 2));
+        console.error("ERREUR INSERTION STATUT:", errorStatut);
         return new Response(JSON.stringify(errorStatut), { status: 500 });
       }
 
@@ -42,16 +38,13 @@ export async function POST(req: Request) {
       ]);
 
       if (errorProfile) {
-        console.error("ERREUR INSERTION PROFIL:", JSON.stringify(errorProfile, null, 2));
+        console.error("ERREUR INSERTION PROFIL:", errorProfile);
         return new Response(JSON.stringify(errorProfile), { status: 500 });
       }
-
-      console.log("Utilisateur et statut créés avec succès !");
     }
 
     return new Response('OK', { status: 200 });
   } catch (err) {
-    console.error("ERREUR SERVEUR GLOBALE:", err);
     return new Response('Internal Server Error', { status: 500 });
   }
 }
