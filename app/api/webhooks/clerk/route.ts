@@ -14,12 +14,14 @@ export async function POST(req: Request) {
     console.log("Tentative d'insertion pour:", email);
 
     // On insère dans 'profiles' avec les bons noms de colonnes
-    const { error } = await supabase.from('profiles').insert({
-      user_id: id,
+    const { data, error } = await supabase.from('profiles').insert([
+	 { 
+	  user_id: id,
       email: email,
       name: fullName,
-      subscription_status: 'trial'
-    });
+	  subscription_status: 'trial'
+	 } 
+    ]);
 
     if (error) {
       console.error("Erreur Supabase:", error);
