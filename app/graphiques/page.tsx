@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
                     </ResponsiveContainer>
                   ) : (
                     <Center style={{ height: '100%', border: '1px dashed var(--mantine-color-dark-4)', borderRadius: 'var(--mantine-radius-sm)' }}>
-                      <Text size="xs" c="dimmed" italic>Aucune note enregistrée</Text>
+                      <Text size="xs" c="dimmed" fs="italic">Aucune note enregistrée</Text>
                     </Center>
                   )}
                 </Box>
