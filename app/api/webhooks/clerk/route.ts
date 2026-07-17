@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabaseClient';
+
 export async function POST(req: Request) {
   const payload = await req.json();
   const eventType = payload.type;
