@@ -12,24 +12,23 @@ export async function POST(req: Request) {
       const email = email_addresses[0].email_address;
       const fullName = `${first_name || ''} ${last_name || ''}`.trim();
 
-      // 1. Insertion dans 'user_status' (avec les noms exacts de tes colonnes)
-      const { error: errorStatut } = await supabase.from('user_status').insert([
+      // 1. Upsert dans 'user_status'
+      const { error: errorStatut } = await supabase.from('user_status').upsert([
         {
           user_id: id,
           status: 'trial',
-          trial_started_at: new Date().toISOString(), // Corrigé ici
-          subscription_expires_at: null, // Corrigé ici
-          created_at: new Date().toISOString() // Corrigé ici
+          trial_started_at: new Date().toISOString(),
+          subscription_expires_at: null,
+          created_at: new Date().toISOString()
         }
       ]);
 
       if (errorStatut) {
-        console.error("ERREUR INSERTION STATUT:", errorStatut);
-        return new Response(JSON.stringify(errorStatut), { status: 500 });
+        console.error("ERREUR UPSERT STATUT:", errorStatut);
       }
 
-      // 2. Insertion dans 'profiles'
-      const { error: errorProfile } = await supabase.from('profiles').insert([
+      // 2. Upsert dans 'profiles' (maintenant indépendant du premier)
+      const { error: errorProfile } = await supabase.from('profiles').upsert([
         {
           user_id: id,
           email: email,
@@ -38,13 +37,16 @@ export async function POST(req: Request) {
       ]);
 
       if (errorProfile) {
-        console.error("ERREUR INSERTION PROFIL:", errorProfile);
+        console.error("ERREUR UPSERT PROFIL:", errorProfile);
         return new Response(JSON.stringify(errorProfile), { status: 500 });
       }
+
+      console.log("Traitement terminé pour:", email);
     }
 
     return new Response('OK', { status: 200 });
   } catch (err) {
+    console.error("ERREUR GLOBALE:", err);
     return new Response('Internal Server Error', { status: 500 });
   }
 }
