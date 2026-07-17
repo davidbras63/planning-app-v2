@@ -5,6 +5,7 @@ import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group } from '@mantine/core';
 import { CreditCard, Clock } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+const GridAny = Grid as any;
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
@@ -45,7 +46,7 @@ export default function LandingPage() {
         </Stack>
 
         {/* EXPLICATION DU FONCTIONNEMENT */}
-        <Grid gutter={{ base: 'xl'}}>
+        <GridAny gutter="xl">
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder shadow="sm" p="lg" h="100%">
               <Title order={3} mb="md">Comment ça marche ?</Title>
@@ -75,7 +76,7 @@ export default function LandingPage() {
               </Card>
             </Card>
           </Grid.Col>
-        </Grid>
+        </GridAny>
 
         {/* SECTION PAIEMENT / STRIPE */}
         <Card withBorder mt={80} p="xl" bg="dark" c="white">
