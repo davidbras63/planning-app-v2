@@ -16,26 +16,42 @@ export async function POST(req: Request) {
 
       console.log("Tentative d'insertion pour:", email);
 
-      const { data, error } = await supabase.from('profiles').insert([
+      // 1. Insertion dans 'user_statut' en premier pour respecter la clé étrangère
+      const { error: errorStatut } = await supabase.from('user_statut').insert([
         {
           user_id: id,
-          email: email,
-          name: fullName,
-          subscription_status: 'trial'
+          status: 'trial',
+          trial_start: new Date().toISOString(),
+          subscription_expired: false,
+          created: new Date().toISOString()
         }
       ]);
 
-      if (error) {
-        console.error("ERREUR SUPABASE:", JSON.stringify(error, null, 2));
-        return new Response(JSON.stringify(error), { status: 500 });
+      if (errorStatut) {
+        console.error("ERREUR INSERTION STATUT:", JSON.stringify(errorStatut, null, 2));
+        return new Response(JSON.stringify(errorStatut), { status: 500 });
       }
 
-      console.log("Utilisateur créé avec succès !");
+      // 2. Insertion dans 'profiles' ensuite
+      const { error: errorProfile } = await supabase.from('profiles').insert([
+        {
+          user_id: id,
+          email: email,
+          name: fullName
+        }
+      ]);
+
+      if (errorProfile) {
+        console.error("ERREUR INSERTION PROFIL:", JSON.stringify(errorProfile, null, 2));
+        return new Response(JSON.stringify(errorProfile), { status: 500 });
+      }
+
+      console.log("Utilisateur et statut créés avec succès !");
     }
 
     return new Response('OK', { status: 200 });
   } catch (err) {
-    console.error("ERREUR SERVEUR:", err);
+    console.error("ERREUR SERVEUR GLOBALE:", err);
     return new Response('Internal Server Error', { status: 500 });
   }
 }
