@@ -1,27 +1,38 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
 export default function TrialGuard({ children }: { children: React.ReactNode }) {
+  const { isLoaded } = useUser();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Tant qu'on n'est pas côté client, on affiche juste les enfants sans aucune logique.
+  // Cela empêche Vercel de planter pendant le build.
+  if (!isClient) {
+    return <>{children}</>;
+  }
+
+  // Ici, on est sûrs d'être dans le navigateur, on peut mettre la logique en sécurité
+  return <TrialGuardContent>{children}</TrialGuardContent>;
+}
+
+// Composant séparé pour gérer la logique une fois qu'on est côté client
+function TrialGuardContent({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // Si Clerk n'a pas fini de charger, on ne fait rien
     if (!isLoaded) return;
-
     const protectedRoutes = ['/dashboard', '/planning', '/graphiques', '/settings'];
-
-    // 1. Protection contre les non-connectés
     if (!user && protectedRoutes.includes(pathname)) {
       router.push('/');
     }
-
-    // 2. Note pour la suite : C'est ici que tu ajouteras l'appel Supabase 
-    // pour vérifier si le statut est 'trial_expired'.
-    
   }, [isLoaded, user, pathname, router]);
 
   return <>{children}</>;
