@@ -1,41 +1,39 @@
-import '@mantine/core/styles.css';
-import { ClerkProvider } from '@clerk/nextjs';
-import { MantineProvider, AppShell, AppShellNavbar, AppShellMain, createTheme } from '@mantine/core';
-import './globals.css';
-import Sidebar from '../components/Sidebar';
-import TrialGuard from '../components/TrialGuard'; // <-- Import ici
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
+import { createClient } from '@supabase/supabase-js'; // Assure-toi d'importer ton client
 
-const theme = createTheme({
-  primaryColor: 'indigo',
-  defaultRadius: 'md',
-});
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider>
-      <html lang="fr">
-        <body>
-          <MantineProvider theme={theme} forceColorScheme="dark">
-            <TrialGuard> {/* <-- Entoure ton AppShell avec le gardien */}
-              <AppShell
-                navbar={{
-                  width: { base: 80, sm: 260 },
-                  breakpoint: 'sm',
-                }}
-                padding="md"
-              >
-                <AppShellNavbar>
-                  <Sidebar />
-                </AppShellNavbar>
-                <AppShellMain>
-                  {children}
-                </AppShellMain>
-              </AppShell>
-            </TrialGuard>
-          </MantineProvider>
-        </body>
-      </html>
-    </ClerkProvider>
-  );
+export default function TrialGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const [isAllowed, setIsAllowed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      supabase.from('user_status')
+        .select('status')
+        .eq('user_id', user.id)
+        .single()
+        .then(({ data }) => {
+          // Si le statut est expiré, on envoie vers /subscription
+          if (data?.status === 'trial_expired') {
+            router.push('/subscription'); 
+          } else {
+            setIsAllowed(true);
+          }
+          setLoading(false);
+        });
+    } else if (isLoaded && !user) {
+      setLoading(false);
+    }
+  }, [isLoaded, user, router]);
+
+  if (loading) return <div>Chargement...</div>;
+
+  return <>{children}</>;
 }
 
