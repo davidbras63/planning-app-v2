@@ -1,18 +1,18 @@
-'use client';
-import TrialGuard from '@/components/TrialGuard';
-import { MantineProvider } from '@mantine/core'; // Assure-toi que Mantine est là
-import '@mantine/core/styles.css'; 
 import Sidebar from '@/components/Sidebar';
+import TrialGuard from '@/components/TrialGuard';
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <MantineProvider> {/* On remet Mantine ici pour que Sidebar s'affiche bien */}
-      <TrialGuard>
-        <div style={{ display: 'flex' }}>
-          <Sidebar />
-          <main style={{ flex: 1 }}>{children}</main>
-        </div>
-      </TrialGuard>
-    </MantineProvider>
+    <div style={{ display: 'flex' }}>
+      {/* La Sidebar reste toujours affichée, peu importe l'état de connexion */}
+      <Sidebar />
+      
+      {/* Le TrialGuard ne gère que le contenu de droite (main) */}
+      <main style={{ flex: 1 }}>
+        <TrialGuard>
+          {children}
+        </TrialGuard>
+      </main>
+    </div>
   );
 }
