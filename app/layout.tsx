@@ -1,8 +1,11 @@
 import '@mantine/core/styles.css';
 import { ColorSchemeScript, MantineProvider, AppShell } from '@mantine/core';
 import { ClerkProvider } from '@clerk/nextjs';
-import Sidebar from '@/components/Sidebar';
 import './globals.css';
+import dynamic from 'next/dynamic'; // <-- Ajoute cette ligne
+
+// Importe la Sidebar de manière dynamique pour qu'elle ne soit pas rendue côté serveur
+const Sidebar = dynamic(() => import('@/components/Sidebar'), { ssr: false });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
