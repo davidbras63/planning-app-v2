@@ -22,7 +22,8 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const { signOut } = useClerk();
   const { user } = useUser();
-
+  if (!user) return null; 
+  // ----------------------------------
   const handleCreateFolder = async () => {
     if (!user) { alert("Connectez-vous !"); return; }
     const name = prompt("Nom du nouveau dossier :");
@@ -49,7 +50,7 @@ export default function Sidebar() {
   };
 
   return (
-    <Box style={{ width: isOpen ? 260 : 80, height: '100vh', position: 'fixed', left: 0, top: 0, backgroundColor: '#141517', borderRight: '1px solid #373A40', transition: 'width 0.2s', zIndex: 1000, overflowY: 'auto' }} p="md">
+    <Box style={{ width: '100%', height: '100%', backgroundColor: '#141517' }} p="md">
       <Stack h="100%" justify="space-between">
         <Stack gap="xs">
           <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
