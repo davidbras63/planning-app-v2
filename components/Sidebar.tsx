@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from 'react';
 import { Box, Stack, ActionIcon, Flex, Divider } from '@mantine/core';
 import {
@@ -16,7 +17,6 @@ import {
 import Link from 'next/link';
 import { useClerk, useUser } from '@clerk/nextjs';
 import { supabase } from '@/lib/supabaseClient';
-import Timer from './Timer';
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
@@ -75,8 +75,6 @@ export default function Sidebar() {
         </Stack>
 
         <Stack>
-          <Timer />
-          <Divider />
           <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={() => signOut()}>
             <LogOut size={20} /> {isOpen && "Déconnexion"}
           </Box>
