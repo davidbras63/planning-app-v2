@@ -4,10 +4,10 @@ const nextConfig = {
     // Cela désactive la vérification TypeScript pendant le build
     ignoreBuildErrors: true,
   },
-  eslint: {
+  //eslint: {
     // Cela désactive la vérification ESLint pendant le build
-    ignoreDuringBuilds: true,
-  },
+    //ignoreDuringBuilds: true,
+  //},
 }
 
 module.exports = nextConfig
