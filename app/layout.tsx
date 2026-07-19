@@ -1,21 +1,32 @@
-import { ClerkProvider } from '@clerk/nextjs';
-import { MantineProvider, createTheme } from '@mantine/core';
 import '@mantine/core/styles.css';
-
-// Définis ton thème ici ou importe-le si tu l'as dans un fichier séparé
-const theme = createTheme({});
+import { ColorSchemeScript, MantineProvider, AppShell } from '@mantine/core';
+import { ClerkProvider } from '@clerk/nextjs';
+import Sidebar from '@/components/Sidebar';
+import './globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="fr">
+        <head>
+          <ColorSchemeScript />
+        </head>
         <body>
-          <MantineProvider theme={theme}>
-            {children}
+          <MantineProvider defaultColorScheme="dark">
+            <AppShell
+              navbar={{ width: 300, breakpoint: 'sm' }}
+              padding="md"
+            >
+              <AppShell.Navbar>
+                <Sidebar />
+              </AppShell.Navbar>
+              <AppShell.Main>
+                {children}
+              </AppShell.Main>
+            </AppShell>
           </MantineProvider>
         </body>
       </html>
     </ClerkProvider>
   );
 }
-
