@@ -8,6 +8,7 @@ import { Calculator, Save } from 'lucide-react';
 import { actionRecalculer } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);

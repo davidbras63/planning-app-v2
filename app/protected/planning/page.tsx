@@ -7,6 +7,7 @@ import ChapterCreator from '@/components/ChapterCreator';
 import PlanningView from '@/components/PlanningView';
 const ChapterCreatorAny = ChapterCreator as any;
 
+export const dynamic = 'force-dynamic';
 export default function PlanningPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 

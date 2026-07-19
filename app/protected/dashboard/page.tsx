@@ -1,18 +1,17 @@
 // app/dashboard/page.tsx
 "use client";
-
-
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useUser } from '@clerk/nextjs';
 import { Trash2, ChevronRight, ChevronDown, RotateCcw, AlertCircle, Calendar, Folder, GitMerge } from 'lucide-react';
 import { tenterReintegration } from '@/logic/reintegration';
 import { Container, Stack, Title, Card, Flex, ActionIcon, Text, Collapse, Table, Button, Group, Box } from '@mantine/core';
-const CollapseAny = Collapse as any;
 
+export const dynamic = 'force-dynamic';
 export default function Dashboard() {
   	
   const { user } = useUser();
+  if (!user) return null;
   const [data, setData] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({});
   const [rattrapages, setRattrapages] = useState<any[]>([]);
@@ -45,7 +44,9 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadAll();
+   if (user && user.id) { 
+	loadAll();
+   }	
   }, [user]);
 
   const deleteItem = async (table: string, id: string) => {

@@ -1,4 +1,3 @@
-// app/layout.tsx
 import '@mantine/core/styles.css';
 import './globals.css';
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
@@ -8,14 +7,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider>
       <html lang="fr">
-        <head><ColorSchemeScript /></head>
+        <head>
+          <ColorSchemeScript />
+        </head>
         <body>
           <MantineProvider defaultColorScheme="dark">
-             {/* Plus d'AppShell ici, juste le contenu */}
-             {children}
+            {children}
           </MantineProvider>
         </body>
       </html>
     </ClerkProvider>
   );
 }
+

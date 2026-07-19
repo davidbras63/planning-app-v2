@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Container, Title, SimpleGrid, Card, Text, Stack, Box, Center } from '@mantine/core';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+export const dynamic = 'force-dynamic';
 export default function AnalyticsPage() {
   const [data, setData] = useState<any[]>([]);
   const [seuil, setSeuil] = useState<number>(10); // Valeur par défaut de secours

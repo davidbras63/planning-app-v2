@@ -1,4 +1,5 @@
 // app/(protected)/layout.tsx
+'use client';
 import { AppShell } from '@mantine/core';
 import SidebarWrapper from '@/components/SidebarWrapper';
 
