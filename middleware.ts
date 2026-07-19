@@ -39,9 +39,14 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Exclut les fichiers statiques et les images de la vérification middleware
+    /*
+     * Exclut les fichiers statiques, images et fichiers systèmes :
+     * - _next/static (fichiers JS/CSS générés)
+     * - _next/image (optimisation d'images)
+     * - favicon.ico (icône du site)
+     * - Extensions de fichiers (.svg, .png, etc.)
+     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    '/(api|trpc)(.*)',
   ],
 };
 
