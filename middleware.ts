@@ -30,7 +30,7 @@ export default clerkMiddleware(async (auth, req) => {
 
     // 3. Logique de blocage : si l'essai est expiré et qu'on n'est pas déjà sur la page de paiement
     if (expiresAt && now > expiresAt && !req.nextUrl.pathname.startsWith('/paiement')) {
-      return NextResponse.redirect(new URL('/paiement', req.url));
+      return NextResponse.redirect(new URL('/protected/subscription', req.url));
     }
   }
 
