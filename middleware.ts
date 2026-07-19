@@ -29,8 +29,8 @@ export default clerkMiddleware(async (auth, req) => {
     const expiresAt = userStatus?.subscription_expires_at ? new Date(userStatus.subscription_expires_at) : null;
 
     // 3. Logique de blocage : si l'essai est expiré et qu'on n'est pas déjà sur la page de paiement
-    if (expiresAt && now > expiresAt && !req.nextUrl.pathname.startsWith('/protected/subscription')) {
-      return NextResponse.redirect(new URL('/protected/subscription', req.url));
+    if (expiresAt && now > expiresAt && !req.nextUrl.pathname.startsWith('/subscription')) {
+      return NextResponse.redirect(new URL('/subscription', req.url));
     }
   }
 
@@ -47,6 +47,7 @@ export const config = {
      * - Extensions de fichiers (.svg, .png, etc.)
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+
   ],
 };
 
