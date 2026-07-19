@@ -1,3 +1,4 @@
+"use server";
 import { supabase } from '@/lib/supabaseClient';
 
 // Fonction pour formater la date en YYYY-MM-DD sans décalage horaire
