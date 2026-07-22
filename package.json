@@ -16,7 +16,6 @@
     "@mantine/core": "^9.4.1",
     "@mantine/hooks": "^9.4.1",
     "@neondatabase/serverless": "^1.1.0",
-    "@supabase/supabase-js": "^2.39.8",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.23.0",
