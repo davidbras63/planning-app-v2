@@ -1,6 +1,6 @@
 console.log("LOG DE VERIFICATION : LE FICHIER ROUTE.TS EST BIEN CHARGE");
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin as supabase } from '@/lib/supabaseClient';
 
 export async function POST(req: Request) {
   try {

@@ -1,18 +1,20 @@
 'use client';
 import { AppShell } from '@mantine/core';
-import SidebarWrapper from '@/components/SidebarWrapper';
+import Sidebar from '@/components/Sidebar';
 import { useDisclosure } from '@mantine/hooks';
+import TrialGuard from '@/components/TrialGuard'; // Vérifie que c'est le bon chemin
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
 
   return (
-    <AppShell
+  <TrialGuard>
+    <AppShell 
       header={{ height: 60 }}
-      navbar={{ 
-        width: 300, 
+      navbar={{
+        width: 300,
         breakpoint: 'sm',
-        collapsed: { mobile: !opened } 
+        collapsed: { mobile: !opened }
       }}
       padding="md"
     >
@@ -21,12 +23,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       </AppShell.Header>
       
       <AppShell.Navbar>
-        <SidebarWrapper />
+        <Sidebar />
       </AppShell.Navbar>
       
       <AppShell.Main>
         {children}
       </AppShell.Main>
     </AppShell>
-  );
+  </TrialGuard>
+ );
 }

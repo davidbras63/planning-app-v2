@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group } from '@mantine/core';
-import { CreditCard, Clock } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const GridAny = Grid as any;
@@ -30,7 +30,6 @@ export default function LandingPage() {
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '60px 20px' }}>
-      {/* On encapsule le handler d'alerte dans Suspense pour corriger l'erreur de build */}
       <Suspense fallback={null}>
         <AuthAlertHandler />
       </Suspense>
@@ -46,19 +45,19 @@ export default function LandingPage() {
           <div style={{ marginTop: '20px' }}>
             {!isSignedIn ? (
               <Group gap="md">
-                <SignUpButton mode="modal"><Button size="lg" color="indigo">Démarrer l'essai (30 min offertes)</Button></SignUpButton>
+                <SignUpButton mode="modal"><Button size="lg" color="indigo">Démarrer l'essai (3 jours offerts)</Button></SignUpButton>
                 <SignInButton mode="modal"><Button size="lg" variant="default">Se connecter</Button></SignInButton>
               </Group>
             ) : (
-              <Button size="lg" color="indigo" onClick={() => router.push('/dashboard')}>Accéder à mon espace</Button>
+              <Button size="lg" color="indigo" onClick={() => router.push('/protected/dashboard')}>Accéder à mon espace</Button>
             )}
           </div>
         </Stack>
 
         {/* EXPLICATION DU FONCTIONNEMENT */}
-        <GridAny gutter="xl">
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card withBorder shadow="sm" p="lg" h="100%">
+        <GridAny gutter="xl" justify="center">
+          <Grid.Col span={{ base: 12, md: 8 }}>
+            <Card withBorder shadow="sm" p="lg">
               <Title order={3} mb="md">Comment ça marche ?</Title>
               <Stack gap="sm">
                 <Text><b>1. Planifie sans surcharger :</b> Définis ton rythme. Tu règles tes seuils de réintégration et ton nombre de cours max : l'app gère la charge pour toi.</Text>
@@ -66,22 +65,10 @@ export default function LandingPage() {
                 <Text><b>3. Détection automatique :</b> Si tu es sous ton seuil, le chapitre bascule en "Réintégration". Le tableau de bord le met en priorité haute.</Text>
                 <Text><b>4. Analyse tes courbes :</b> Visualise tes progrès via des graphiques dynamiques : tes erreurs deviennent tes points de progression.</Text>
               </Stack>
-            </Card>
-          </Grid.Col>
-
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card withBorder shadow="sm" p="lg" h="100%" bg="indigo.5" c="white">
-              <Group mb="md">
-                <Clock size={30} />
-                <Title order={3} c="white">La règle des 30 minutes</Title>
-              </Group>
-              <Text size="lg" fw={500} mb="md">Commence gratuitement et instantanément.</Text>
-              <Text mb="md">
-                Tu as 30 minutes pour tout tester : créer tes chapitres, organiser ton planning et voir la puissance de l'outil.
-              </Text>
-              <Card bg="indigo.9" p="md" radius="sm">
-                <Text size="sm" c="indigo.1">
-                  <b>Pas de pression :</b> Si tu n'as pas fini au bout de 30 minutes, ton travail est <b>conservé en mémoire pendant 48 heures</b>. Le temps pour toi de décider de passer en Premium avant que les données ne soient supprimées.
+              
+              <Card mt="xl" bg="indigo.9" p="md" radius="sm">
+                <Text c="white">
+                  <b>Essai gratuit :</b> Tu as 3 jours pour tout tester. Ton travail est conservé en mémoire pendant cette période, te laissant le temps de décider de passer en Premium.
                 </Text>
               </Card>
             </Card>
