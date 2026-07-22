@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getSettings } from "@/app/actions/settingsActions";
 import SettingsView from "@/components/SettingsView";
