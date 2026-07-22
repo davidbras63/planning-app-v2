@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { TextInput, Select, DateInput, Button, Stack } from '@mantine/core';
 import { createChapterAction } from '@/app/actions/createChapterAction';
 
-export function ChapterCreator({ matieres }: { matieres: any[] }) {
+export defaut function ChapterCreator({ matieres }: { matieres: any[] }) {
     // J'ai ajouté 'cadencier' ici pour qu'il soit envoyé à l'action serveur
     const [formData, setFormData] = useState({ 
         matiereId: '', 
