@@ -6,7 +6,7 @@ import { Calendar } from 'lucide-react';
 // Importation de tes actions serveurs
 import { actionDecalerChapitre } from '@/app/actions/planningLogic';
 import { updateEcheanceAction } from '@/app/actions/planningUpdates';
-import { recalculerCadencierAction } from '@/app/actions/recalculerCadencier';
+import { recalculerCadencierComplet } from '@/app/actions/recalculerCadencier';
 
 export default function PlanningView({ chapitres, refreshData }: { chapitres: any[], refreshData: () => Promise<void> }) {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -42,7 +42,7 @@ export default function PlanningView({ chapitres, refreshData }: { chapitres: an
   };
 
   const handleFullRecalcul = async () => {
-    await recalculerCadencierAction();
+    await recalculerCadencierComplet();
     await refreshData();
   };
 
