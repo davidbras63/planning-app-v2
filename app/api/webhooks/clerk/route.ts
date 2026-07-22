@@ -14,11 +14,12 @@ export async function POST(req: Request) {
       // On insère l'utilisateur dans ta table 'users' officielle
       await db.insert(users)
         .values({
-          clerkId: id,
+          clerk_id: id,
           email: email,
+		  created_at: new Date(),
         })
         .onConflictDoNothing({ // Évite les erreurs si l'utilisateur existe déjà
-          target: users.clerkId
+          target: users.clerk_id
         });
     }
 
