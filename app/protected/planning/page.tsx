@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getPlanningData } from "@/app/actions/planningActions";
+import { getPlanningData } from "@/app/actions/planningLogic";
 import { revalidatePath } from "next/cache";
 import PlanningView from "@/components/PlanningView";
 import { Container, Stack, Title, Divider } from '@mantine/core';

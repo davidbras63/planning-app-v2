@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from 'react';
-import { TextInput, Select, DateInput, Button, Stack } from '@mantine/core';
-import { createChapterAction } from '@/app/actions/createChapterAction';
+// 1. Importe les composants de base depuis @mantine/core
+import { TextInput, Select, Button, Stack } from '@mantine/core';
+
+// 2. Importe spécifiquement DateInput depuis @mantine/dates
+import { DateInput } from '@mantine/dates';
+
+// 3. Garde ton import pour l'action serveur
+import { CreateChapterAction } from '@/app/actions/createChapterAction';
+
 
 export default function ChapterCreator({ matieres }: { matieres: any[] }) {
     // J'ai ajouté 'cadencier' ici pour qu'il soit envoyé à l'action serveur
