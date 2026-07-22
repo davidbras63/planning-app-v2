@@ -1,32 +1,24 @@
 'use client';
-import { useUser } from '@clerk/nextjs';
-import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { checkAccessAction } from '@/app/actions/checkAccess';
 
 export default function TrialGuard({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useUser();
-  const router = useRouter();
-  const pathname = usePathname();
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Si Clerk n'a pas fini de charger, on ne fait rien, on laisse charger
-    if (!isLoaded) return;
-
-    // Si l'utilisateur n'est PAS connecté, on le renvoie à la connexion
-    // SAUF s'il est déjà sur la page de connexion
-    if (!isSignedIn && pathname !== '/sign-in') {
-      router.push('/sign-in');
+    async function verify() {
+      try {
+        const { hasAccess } = await checkAccessAction();
+        setIsAllowed(hasAccess);
+      } catch (error) {
+        setIsAllowed(false);
+      }
     }
-  }, [isLoaded, isSignedIn, pathname, router]);
+    verify();
+  }, []);
 
-  // Si Clerk charge, on affiche un message d'attente (évite le vide)
-  if (!isLoaded) return <div>Chargement...</div>;
+  if (isAllowed === null) return <div>Chargement sécurisé...</div>;
+  if (!isAllowed) return <div>Accès refusé. Veuillez contacter le support.</div>;
 
-  // Si l'utilisateur est connecté, on affiche le contenu
-  if (isSignedIn) {
-    return <>{children}</>;
-  }
-
-  // Si non connecté, on ne retourne rien (ou une page vide) en attendant la redirection
-  return null;
+  return <>{children}</>;
 }

@@ -1,56 +1,67 @@
 "use client";
 
-import { useState } from 'react';
-import { Box, Stack, ActionIcon, Flex, Divider } from '@mantine/core';
+import { useState, useEffect } from 'react';
+import { Box, Stack, ActionIcon, Flex, Divider, Text } from '@mantine/core';
 import {
-  LayoutDashboard,
-  Calendar,
-  BarChart3,
-  Settings,
-  ExternalLink,
-  LogOut,
-  FolderPlus,
-  BookOpenCheck,
-  Home,
-  ChevronLeft
+  LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
+  LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Cloud, Plus
 } from 'lucide-react';
 import Link from 'next/link';
-import { useClerk, useUser } from '@clerk/nextjs';
-import { supabase } from '@/lib/supabaseClient';
+import { useClerk } from '@clerk/nextjs';
+import { 
+  actionCreateMatiere, 
+  actionGetMatieres, 
+  actionCreateChapitre, 
+  actionGetLinks, 
+  actionSaveLink 
+} from '@/app/actions/sidebarActions';
+
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
+  const [links, setLinks] = useState<any[]>([]);
   const { signOut } = useClerk();
-  const { user } = useUser();
-  if (!user) return null; 
-  // ----------------------------------
+
+  // Chargement initial des liens persistants
+  useEffect(() => {
+    const loadLinks = async () => {
+      const data = await actionGetLinks();
+      setLinks(data);
+    };
+    loadLinks();
+  }, []);
+
+  // Handlers pour les actions
   const handleCreateFolder = async () => {
-    if (!user) { alert("Connectez-vous !"); return; }
     const name = prompt("Nom du nouveau dossier :");
-    if (!name) return;
-    const { error } = await supabase.from('folders').insert([{ name, user_id: user.id }]);
-    if (error) alert("Erreur : " + error.message);
-    else { alert("Dossier créé !"); window.location.reload(); }
+    if (name) { await actionCreateFolder(name); window.location.reload(); }
   };
 
   const handleCreateSubject = async () => {
-    if (!user) { alert("Connectez-vous !"); return; }
-    const { data: folders } = await supabase.from('folders').select('id, name').eq('user_id', user.id);
-    if (!folders || folders.length === 0) { alert("Crée d'abord un dossier !"); return; }
-    const name = prompt("Nom de la nouvelle matière :");
+    const foldersList = await actionGetFolders();
+    if (foldersList.length === 0) { alert("Crée d'abord un dossier !"); return; }
+    
+    const name = prompt("Nom de la matière :");
     if (!name) return;
-    const list = folders.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
-    const choice = prompt(`Dans quel dossier ? Saisis le numéro :\n${list}`);
-    if (!choice) return;
-    const idx = parseInt(choice) - 1;
-    if (isNaN(idx) || !folders[idx]) return;
-    const { error } = await supabase.from('subjects').insert([{ name, folder_id: folders[idx].id }]);
-    if (error) alert("Erreur : " + error.message);
-    else { alert("Matière créée !"); window.location.reload(); }
+    
+    const list = foldersList.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+    const choice = prompt(`Dans quel dossier ? (numéro) :\n${list}`);
+    
+    const idx = parseInt(choice || "") - 1;
+    if (foldersList[idx]) {
+      await actionCreateSubject(name, foldersList[idx].id);
+      window.location.reload();
+    }
+  };
+
+  const handleAddLink = async () => {
+    const title = prompt("Titre du lien :");
+    const url = prompt("URL (ex: https://...) :");
+    if (title && url) { await actionSaveLink(title, url); window.location.reload(); }
   };
 
   return (
-    <Box style={{ width: '100%', height: '100%', backgroundColor: '#141517' }} p="md">
+    <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', overflow: 'hidden' }} p="md">
       <Stack h="100%" justify="space-between">
         <Stack gap="xs">
           <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
@@ -58,28 +69,32 @@ export default function Sidebar() {
             <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>
           </Flex>
 
-          <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#909296' }}><LayoutDashboard size={20} />{isOpen && <span>Dashboard</span>}</Link>
-          <Link href="/planning" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#909296' }}><Calendar size={20} />{isOpen && <span>Planning</span>}</Link>
-          <Link href="/graphiques" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#909296' }}><BarChart3 size={20} />{isOpen && <span>Graphiques</span>}</Link>
-          <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '8px', textDecoration: 'none', color: '#909296' }}><Settings size={20} />{isOpen && <span>Paramètres</span>}</Link>
+          <Link href="/protected/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><LayoutDashboard size={20} />{isOpen && "Dashboard"}</Link>
+          <Link href="/protected/planning" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
+          <Link href="/protected/graphiques" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
+          <Link href="/protected/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
           <Divider my="sm" />
-          <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}>
-            <FolderPlus size={20} /> {isOpen && "Créer Dossier"}
-          </Box>
-          <Box style={{ cursor: 'pointer', color: '#fab005', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateSubject}>
-            <BookOpenCheck size={20} /> {isOpen && "Créer Matière"}
-          </Box>
+          <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}><FolderPlus size={20} /> {isOpen && "Créer Dossier"}</Box>
+          <Box style={{ cursor: 'pointer', color: '#fab005', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateSubject}><BookOpenCheck size={20} /> {isOpen && "Créer Matière"}</Box>
+          
           <Divider my="sm" />
-          <Box style={{ color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }}><ExternalLink size={20} /> {isOpen && "Lien 1"}</Box>
-          <Box style={{ color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }}><ExternalLink size={20} /> {isOpen && "Lien 2"}</Box>
+          <Text size="xs" color="#5c5f66" p="xs">{isOpen && "MES LIENS"}</Text>
+          {links.map((link) => (
+             <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
+               <ExternalLink size={18} /> {isOpen && link.title}
+             </a>
+          ))}
+          <Box style={{ cursor: 'pointer', color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleAddLink}><Plus size={20} /> {isOpen && "Ajouter Lien"}</Box>
+
+          <Divider my="sm" />
+          <a href="mailto:contact@email.com" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Mail size={20} /> {isOpen && "Contact"}</a>
+          <Box style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#e64980' }}><Cloud size={20} /> {isOpen && "Cloud (Premium)"}</Box>
         </Stack>
 
-        <Stack>
-          <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={() => signOut()}>
-            <LogOut size={20} /> {isOpen && "Déconnexion"}
-          </Box>
-        </Stack>
+        <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={() => signOut()}>
+          <LogOut size={20} /> {isOpen && "Déconnexion"}
+        </Box>
       </Stack>
     </Box>
   );
