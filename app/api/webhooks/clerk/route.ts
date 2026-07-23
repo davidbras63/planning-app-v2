@@ -17,17 +17,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing data" }, { status: 400 });
       }
 
-      // La requête insère explicitement clerkId et email. 
-      // Elle ignore volontairement id (géré par la DB) et createdAt (géré par la DB).
+      // On définit strictement les données
+	  const userToInsert = {
+        clerkId: clerkId,
+        email: email,
+};
+
+	  console.log("DEBUG: Objet envoyé à la base :", userToInsert);
+
+      // On insère uniquement cet objet
       await db.insert(users)
-        .values({
-          clerkId: clerkId,
-          email: email,
-        })
-        .onConflictDoUpdate({
-          target: users.clerkId		  // C'est ici que tu passes la colonne, PAS une fonction.
-		  set: { email: email }
-        });
+       .values(userToInsert)
+       .onConflictDoUpdate({
+          target: users.clerkId,
+          set: { 
+            email: email 
+          },
+       });
+
     }
 
     return NextResponse.json({ success: true });
