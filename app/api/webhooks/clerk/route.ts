@@ -11,16 +11,14 @@ export async function POST(req: Request) {
       const { id, email_addresses } = payload.data;
       const email = email_addresses[0].email_address;
 
-      // On insère l'utilisateur en omettant 'id' pour laisser 
-      // la base de données générer la clé primaire automatiquement
       await db.insert(users)
         .values({
-          clerk_id: id, // Identifiant Clerk
-          email: email, // Email utilisateur
-          created_at: new Date(), // Timestamp actuel
+          clerkId: id,
+          email: email,
+          createdAt: new Date(),
         })
-        .onConflictDoNothing({ 
-          target: users.clerk_id // Évite les doublons basés sur l'ID Clerk
+        .onConflictDoNothing({
+          target: users.clerkId
         });
     }
 
