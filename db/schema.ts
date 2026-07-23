@@ -38,10 +38,11 @@ export const individual_notes = pgTable("individual_notes", {
 });
 
 export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  // Ajoute l'instruction .generatedAlwaysAs() pour forcer Drizzle à ne JAMAIS l'inclure
+  id: uuid("id").defaultRandom().primaryKey().generatedAlwaysAsIdentity(), 
+  clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  clerkId: text("clerk_id").notNull(),
 });
 
 export const settings = pgTable("settings", {
