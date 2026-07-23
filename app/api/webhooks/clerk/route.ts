@@ -8,23 +8,31 @@ export async function POST(req: Request) {
     const eventType = payload.type;
 
     if (eventType === 'user.created') {
-      const { id, email_addresses } = payload.data;
-      const email = email_addresses[0].email_address;
+      const { data } = payload;
+      
+      const clerkId = data.id;
+      const email = data.email_addresses?.[0]?.email_address;
 
+      if (!clerkId || !email) {
+        return NextResponse.json({ error: "Missing data" }, { status: 400 });
+      }
+
+      // La requête insère explicitement clerkId et email. 
+      // Elle ignore volontairement id (géré par la DB) et createdAt (géré par la DB).
       await db.insert(users)
         .values({
-          clerkId: id,
+          clerkId: clerkId,
           email: email,
-          createdAt: new Date(),
         })
         .onConflictDoNothing({
-          target: users.clerkId
+          target: users.clerkId // C'est ici que tu passes la colonne, PAS une fonction.
         });
     }
 
     return NextResponse.json({ success: true });
+    
   } catch (error) {
-    console.error("Erreur Webhook Clerk : ", error);
+    console.error("Erreur Webhook :", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
