@@ -24,8 +24,9 @@ export async function POST(req: Request) {
           clerkId: clerkId,
           email: email,
         })
-        .onConflictDoNothing({
-          target: users.clerkId // C'est ici que tu passes la colonne, PAS une fonction.
+        .onConflictDoUpdate({
+          target: users.clerkId		  // C'est ici que tu passes la colonne, PAS une fonction.
+		  set: { email: email }
         });
     }
 
