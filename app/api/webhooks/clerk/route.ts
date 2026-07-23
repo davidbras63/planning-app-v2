@@ -1,4 +1,4 @@
-import { db } from "@/db"; 
+import { db } from "@/db";
 import { users } from "@/db/schema";
 import { NextResponse } from "next/server";
 
@@ -11,21 +11,22 @@ export async function POST(req: Request) {
       const { id, email_addresses } = payload.data;
       const email = email_addresses[0].email_address;
 
-      // On insère l'utilisateur dans ta table 'users' officielle
+      // On insère l'utilisateur en omettant 'id' pour laisser 
+      // la base de données générer la clé primaire automatiquement
       await db.insert(users)
         .values({
-          clerk_id: id,
-          email: email,
-		  created_at: new Date(),
+          clerk_id: id, // Identifiant Clerk
+          email: email, // Email utilisateur
+          created_at: new Date(), // Timestamp actuel
         })
-        .onConflictDoNothing({ // Évite les erreurs si l'utilisateur existe déjà
-          target: users.clerk_id
+        .onConflictDoNothing({ 
+          target: users.clerk_id // Évite les doublons basés sur l'ID Clerk
         });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Erreur Webhook Clerk :", error);
+    console.error("Erreur Webhook Clerk : ", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
