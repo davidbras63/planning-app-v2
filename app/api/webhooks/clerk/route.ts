@@ -32,7 +32,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
     
   } catch (error) {
-    console.error("Erreur Webhook détaillée :", error);
+    console.log("--- DÉBUT ERREUR ---");
+    console.log(error);
+    console.log("--- FIN ERREUR ---");
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
