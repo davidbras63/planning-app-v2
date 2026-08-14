@@ -1,76 +1,87 @@
-import { pgTable, text, uuid, timestamp, integer } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm"; // AJOUTE CETTE LIGNE
+import { pgTable, serial, integer, timestamp, text, numeric, jsonb, unique, uniqueIndex, boolean } from "drizzle-orm/pg-core"
+import { relations } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 
 
-export const links = pgTable("links", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").notNull(),
-  title: text("title").notNull(),
-  url: text("url").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+export const echeances = pgTable("echeances", {
+    id: serial("id").primaryKey().notNull(),
+    chapitreId: integer("chapitre_id"),
+    date: timestamp("date", { withTimezone: true, mode: 'string' }),
+    nom: text("nom"),
+    clerkId: text("clerk_id"),
+    stepName: text("step_name"),
+    cycleDay: integer("cycle_day"),
+	completed: boolean("completed").default(false),
 });
 
 
+export const folders = pgTable("folders", {
+  id: serial().primaryKey().notNull(),
+  name: text("name").notNull(),
+  clerkId: text("clerk_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+})
+
 export const matieres = pgTable("matieres", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  nom: text("nom").notNull(),
-  userId: uuid("user_id").references(() => users.id),
+	id: serial().primaryKey().notNull(),
+	clerkId: text("clerk_id"),
+	folderId: integer("folderId").references(() => folders.id),
+	nom: text().notNull(),
 });
 
 export const chapitres = pgTable("chapitres", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  titre: text("titre").notNull(),
-  matiereId: uuid("matiere_id").references(() => matieres.id),
-});
-
-export const echeances = pgTable("echeances", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  date: timestamp("date").notNull(),
-  chapitreId: uuid("chapitre_id").references(() => chapitres.id),
-  cycleDay: integer("cycle_day"),
-  status: text("status").default("normal"), // "normal" ou "reintegre"
-});
-
-export const individual_notes = pgTable("individual_notes", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  contenu: text("contenu"),
-  chapitreId: uuid("chapitre_id").references(() => chapitres.id),
-});
-
-export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  clerkId: text("clerk_id").notNull().unique(),
-  email: text("email").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+	id: serial().primaryKey().notNull(),
+	matiereId: integer("matiere_id"),
+	titre: text().notNull(),
+	moyenne: numeric({ precision: 5, scale:  2 }).default('0'),
+	nbreQcm: integer("nbre_qcm").default(0),
+	dateExamen: timestamp("date_examen", { withTimezone: true, mode: "string" }),
+	clerkId: text("clerk_id"),
 });
 
 export const settings = pgTable("settings", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").notNull(),
-  key: text("key").notNull(),
-  value: text("value").notNull(),
+  id: serial("id").primaryKey().notNull(),
+  clerkId: text("clerk_id").notNull(),
+  folderId: integer("folder_id").notNull().references(() => folders.id),
+  cadencier: jsonb("cadencier"),
+  seuilBasNote: jsonb("seuil_bas_note"),
+  seuilHautNote: jsonb("seuil_haut_note"),
+  maxCoursParJour: integer("max_cours_par_jour").default(5),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).default(sql`CURRENT_TIMESTAMP`),
+}, (table) => {
+  return {
+    // Empêche d'avoir en double les paramètres pour un même utilisateur dans le même dossier
+    userFolderUnique: unique("settings_user_folder_unique").on(table.clerkId, table.folderId),
+  };
 });
 
-// Relations
-export const chapitresRelations = relations(chapitres, ({ many }) => ({
-  notes: many(individual_notes),
-  echeances: many(echeances),
-}));
 
-export const individualNotesRelations = relations(individual_notes, ({ one }) => ({
-  chapitre: one(chapitres, {
-    fields: [individual_notes.chapitreId],
-    references: [chapitres.id],
-  }),
-}));
+export const links = pgTable("links", {
+  id: serial().primaryKey().notNull(),
+  clerkId: text("clerk_id"),
+  label: text("label"),
+  url: text("url"),
+});
 
-export const echeancesRelations = relations(echeances, ({ one }) => ({
-  chapitre: one(chapitres, {
-    fields: [echeances.chapitreId],
-    references: [chapitres.id],
-  }),
-}));
+export const individualNotes = pgTable('individual_notes', {
+    id: serial('id').primaryKey().notNull(),
+    clerkId: text('clerk_id'),
+    content: text('content'),
+    echeanceId: text('echeance_id'), 
+    chapitreId: text('chapitre_id'), // <-- Le lien vers le chapitre
+    moyenne: numeric('moyenne', { precision: 5, scale: 2 }).default('0'), // <-- La moyenne stockée par échéance
+	isIgnored: boolean('is_ignored').default(false), // <-- Nouveau champ pour ignorer l'affichage du rattrapage
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+});
 
-export const matieresRelations = relations(matieres, ({ many }) => ({
-  chapitres: many(chapitres),
-}));
+
+export const users = pgTable("users", {
+	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "users_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
+	clerkId: text("clerk_id").notNull().unique(),
+	email: text("email").unique(),
+	status: text("status").default('trial'),
+	periodEnd: timestamp("period_end", { mode: 'string' }),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+ });
+ 
+;

@@ -1,102 +1,155 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Box, Stack, ActionIcon, Flex, Divider, Text } from '@mantine/core';
+import { useState, useEffect,useMemo } from 'react';
+import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, Button } from '@mantine/core';
+import { useParams } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
   LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Cloud, Plus
 } from 'lucide-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
-import { 
-  actionCreateMatiere, 
-  actionGetMatieres, 
-  actionCreateChapitre, 
-  actionGetLinks, 
-  actionSaveLink 
+import {
+  actionCreateMatiere,
+  actionGetFolders,
+  actionGetLinks,
+  actionSaveLink,
+  actionCreateFolder  
 } from '@/app/actions/sidebarActions';
 
-
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(true);
-  const [links, setLinks] = useState<any[]>([]);
-  const { signOut } = useClerk();
+    const [isOpen, setIsOpen] = useState(true);
+    const [links, setLinks] = useState<any[]>([]);
+    const [folders, setFolders] = useState<any[]>([]);
+    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+    const [matiereName, setMatiereName] = useState("");
+    const [folderName, setFolderName] = useState("");
+    const [openedFolder, setOpenedFolder] = useState(false);
+    const [openedSubject, setOpenedSubject] = useState(false);
+    
+    const { signOut } = useClerk();
+    const params = useParams();
+    const urlFolderId = params?.folderId as string | null;
+    const currentFolderId = useMemo(() => {
+		return urlFolderId || (folders.length > 0 ? folders[0].value : null);
+	}, [urlFolderId, folders]);
 
-  // Chargement initial des liens persistants
-  useEffect(() => {
-    const loadLinks = async () => {
-      const data = await actionGetLinks();
-      setLinks(data);
+    useEffect(() => {
+        let isMounted = true;
+        const loadData = async () => {
+            const dataLinks = await actionGetLinks();
+            const dataFolders = await actionGetFolders();
+           
+            if (isMounted) {
+                setLinks(dataLinks || []);
+                if (dataFolders && dataFolders.length > 0) {
+                    const formattedFolders = dataFolders.map((f: any) => ({ value: String(f.id), label: f.nom || f.name }));
+                    setFolders(formattedFolders);
+                    // On retire le setSelectedFolderId d'ici pour stopper le re-rendu en cascade chaotique
+                }
+            }
+        };
+        loadData();
+        return () => { isMounted = false; };
+    }, []);
+
+    const handleCreateFolder = () => setOpenedFolder(true);
+    const handleCreateSubject = () => setOpenedSubject(true);
+
+    const handleAddLink = async () => {
+        const title = prompt("Titre du lien :");
+        const url = prompt("URL (ex: https://...) :");
+        if (title && url) { 
+            await actionSaveLink(title, url); 
+            window.location.reload(); 
+        }
     };
-    loadLinks();
-  }, []);
 
-  // Handlers pour les actions
-  const handleCreateFolder = async () => {
-    const name = prompt("Nom du nouveau dossier :");
-    if (name) { await actionCreateFolder(name); window.location.reload(); }
-  };
+    return (
+        <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', display: 'flex', flexDirection: 'column' }} p="md">
+            <Stack h="100%" justify="space-between" style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1 }} className="custom-scroll">
+                <Stack gap="xs">
+                    <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
+                        {isOpen && <Link href="/" style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}><Home size={18} /> Accueil</Link>}
+                        <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>
+                    </Flex>
 
-  const handleCreateSubject = async () => {
-    const foldersList = await actionGetFolders();
-    if (foldersList.length === 0) { alert("Crée d'abord un dossier !"); return; }
-    
-    const name = prompt("Nom de la matière :");
-    if (!name) return;
-    
-    const list = foldersList.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
-    const choice = prompt(`Dans quel dossier ? (numéro) :\n${list}`);
-    
-    const idx = parseInt(choice || "") - 1;
-    if (foldersList[idx]) {
-      await actionCreateSubject(name, foldersList[idx].id);
-      window.location.reload();
-    }
-  };
+                    <Link href={currentFolderId ? `/protected/dashboard/${currentFolderId}` : "/protected/dashboard"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><LayoutDashboard size={20} />{isOpen && "Dashboard"}</Link>
+					<Link href={currentFolderId ? `/protected/planning/${currentFolderId}` : "/protected/planning"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
+					<Link href={currentFolderId ? `/protected/graphiques/${currentFolderId}` : "/protected/graphiques"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
+					<Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
-  const handleAddLink = async () => {
-    const title = prompt("Titre du lien :");
-    const url = prompt("URL (ex: https://...) :");
-    if (title && url) { await actionSaveLink(title, url); window.location.reload(); }
-  };
+                    <Divider my="sm" />
+                    <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}><FolderPlus size={20} /> {isOpen && "Créer Dossier"}</Box>
+                    <Box style={{ cursor: 'pointer', color: '#fab005', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateSubject}><BookOpenCheck size={20} /> {isOpen && "Créer Matière"}</Box>
+                   
+                    <Divider my="sm" />
+                    <Text size="xs" color="#5c5f66" p="xs">{isOpen && "MES LIENS"}</Text>
+                    {links.map((link) => (
+                       <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
+                         <ExternalLink size={18} /> {isOpen && link.title}
+                       </a>
+                    ))}
+                    <Box style={{ cursor: 'pointer', color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleAddLink}><Plus size={20} /> {isOpen && "Ajouter Lien"}</Box>
 
-  return (
-    <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', overflow: 'hidden' }} p="md">
-      <Stack h="100%" justify="space-between">
-        <Stack gap="xs">
-          <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
-            {isOpen && <Link href="/" style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}><Home size={18} /> Accueil</Link>}
-            <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>
-          </Flex>
+                    <Divider my="sm" />
+                    <a href="mailto:contact@email.com" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Mail size={20} /> {isOpen && "Contact"}</a>
+                    <Box style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#e64980' }}><Cloud size={20} /> {isOpen && "Cloud (Premium)"}</Box>
+                </Stack>
 
-          <Link href="/protected/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><LayoutDashboard size={20} />{isOpen && "Dashboard"}</Link>
-          <Link href="/protected/planning" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
-          <Link href="/protected/graphiques" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
-          <Link href="/protected/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
+                <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', marginTop: '20px' }} onClick={() => signOut()}>
+                    <LogOut size={20} /> {isOpen && "Déconnexion"}
+                </Box>
+            </Stack>
+           
+            <Modal opened={openedFolder} onClose={() => setOpenedFolder(false)} title="Nouveau Dossier">
+                <Stack gap="md">
+                    <TextInput 
+                        label="Nom du dossier" 
+                        placeholder="Nom"
+                        value={folderName}
+                        onChange={(e) => setFolderName(e.currentTarget.value)}
+                    />
+                    <Button onClick={async () => {
+                        if (!folderName) {
+                            alert("Mets un nom pour le dossier !");
+                            return;
+                        }
+                        await actionCreateFolder(folderName);
+                        window.location.reload();
+                    }}>
+                        Créer le dossier
+                    </Button>
+                </Stack>
+            </Modal>
 
-          <Divider my="sm" />
-          <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}><FolderPlus size={20} /> {isOpen && "Créer Dossier"}</Box>
-          <Box style={{ cursor: 'pointer', color: '#fab005', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateSubject}><BookOpenCheck size={20} /> {isOpen && "Créer Matière"}</Box>
-          
-          <Divider my="sm" />
-          <Text size="xs" color="#5c5f66" p="xs">{isOpen && "MES LIENS"}</Text>
-          {links.map((link) => (
-             <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
-               <ExternalLink size={18} /> {isOpen && link.title}
-             </a>
-          ))}
-          <Box style={{ cursor: 'pointer', color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleAddLink}><Plus size={20} /> {isOpen && "Ajouter Lien"}</Box>
-
-          <Divider my="sm" />
-          <a href="mailto:contact@email.com" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}><Mail size={20} /> {isOpen && "Contact"}</a>
-          <Box style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#e64980' }}><Cloud size={20} /> {isOpen && "Cloud (Premium)"}</Box>
-        </Stack>
-
-        <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={() => signOut()}>
-          <LogOut size={20} /> {isOpen && "Déconnexion"}
+            <Modal opened={openedSubject} onClose={() => setOpenedSubject(false)} title="Nouvelle Matière">
+                <Stack gap="md">
+                    <Select 
+                        label="Dossier cible"
+                        placeholder="Sélectionne un dossier"
+                        data={folders}
+                        value={selectedFolderId}
+                        onChange={setSelectedFolderId}
+                    />
+                    <TextInput 
+                        label="Nom de la matière" 
+                        placeholder="Nom"
+                        value={matiereName}
+                        onChange={(e) => setMatiereName(e.currentTarget.value)}
+                    />
+                    <Button onClick={async () => {
+                        if (!selectedFolderId || !matiereName) {
+                            alert("Sélectionne un dossier et mets un nom !");
+                            return;
+                        }
+                        await actionCreateMatiere(matiereName, selectedFolderId);
+                        window.location.reload();
+                    }}>
+                        Créer la matière
+                    </Button>
+                </Stack>
+            </Modal>
         </Box>
-      </Stack>
-    </Box>
-  );
+    );
 }
-
