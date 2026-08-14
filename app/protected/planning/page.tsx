@@ -1,56 +1,45 @@
 import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { folders } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { getPlanningData } from "@/app/actions/planningLogic";
-import { revalidatePath } from "next/cache";
-import PlanningView from "@/components/PlanningView";
-import { Container, Stack, Title, Divider } from '@mantine/core';
-import ChapterCreator from '@/components/ChapterCreator';
+import Link from "next/link";
+import { ensureUserInitialized } from "@/app/actions/actions";
 
-// Action serveur pour rafraîchir la page côté serveur
-async function refreshAction() {
-  "use server";
-  revalidatePath("/protected/planning");
-}
+export default async function DashboardPage() {
+    const { userId } = await auth();
+    if (!userId) {
+        redirect('/sign-in');
+    }
 
-export default async function PlanningPage() {
-  const { userId } = auth();
-  if (!userId) redirect("/sign-in");
+    await ensureUserInitialized(userId);
 
-  // Récupération des données côté serveur
-  const chapitres = await getPlanningData(userId);
+    // Récupère TOUS les dossiers de l'utilisateur
+    const userFolders = await db
+        .select({ id: folders.id, name: folders.name })
+        .from(folders)
+        .where(eq(folders.clerkId, userId));
 
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'flex-start',
-      paddingLeft: '280px', 
-      paddingRight: '24px',
-      paddingTop: '24px',
-      width: '100%',
-      minHeight: '100vh',
-      boxSizing: 'border-box'
-    }}>
-      <div style={{ flex: 1, width: '100%', maxWidth: '100%' }}>
-        <Stack gap="xl" style={{ width: '100%' }}>
-          
-          {/* 1. Création de chapitre */}
-          <div style={{ width: '100%' }}>
-            <Title order={3} size="h4" mb="sm" c="dimmed">Gestion des cours</Title>
-            <ChapterCreator />
-          </div>
-
-          <Divider my="md" color="var(--mantine-color-dark-4)" />
-
-          {/* 2. Vue Planning (Composant Client) */}
-          <div style={{ width: '100%' }}>
-            <PlanningView 
-              chapitres={chapitres} 
-              refreshData={refreshAction} 
-            />
-          </div>
-
-        </Stack>
-      </div>
-    </div>
-  );
+    return (
+        <div style={{ padding: '40px', textAlign: 'center', color: 'white' }}>
+            <h2>Tableau de bord</h2>
+            <p>Veuillez sélectionner un dossier pour commencer :</p>
+            
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                {userFolders.length > 0 ? (
+                    userFolders.map((folder) => (
+                        <Link 
+                            key={folder.id} 
+                            href={`/protected/dashboard/${folder.id}`}
+                            style={{ padding: '10px 20px', background: '#333', color: 'white', borderRadius: '5px', textDecoration: 'none' }}
+                        >
+                            {folder.name}
+                        </Link>
+                    ))
+                ) : (
+                    <p>Aucun dossier trouvé. Veuillez en créer un.</p>
+                )}
+            </div>
+        </div>
+    );
 }

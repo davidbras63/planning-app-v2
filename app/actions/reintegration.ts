@@ -1,64 +1,184 @@
-"use server";
+'use server';
 
 import { db } from "@/db";
-import { echeances, settings } from "@/db/schema";
-import { eq, count, between, and, gte } from "drizzle-orm";
+import { echeances, settings, individualNotes, chapitres } from "@/db/schema";
+import { eq, count, sql, and } from "drizzle-orm";
+import { revalidatePath } from 'next/cache';
 
-// Helper pour formater
-const formatDate = (date: Date) => date.toISOString().split('T')[0];
+const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 export async function actionTenterReintegration(
-  userId: string, 
-  revisionId: string, 
-  nextDueDate: Date, // Date du cycle suivant (J+n)
-  examDate: Date // Date butoir de l'examen
+    clerkId: string,
+    chapitreId: string,
+    frontEndEcheanceId: string,
+    nextDueDate: any,
+    examDateInput: any
 ) {
-  // 1. Récupérer les réglages
-  const userSettings = await db.select().from(settings).where(eq(settings.userId, userId)).get();
-  const maxCoursParJour = userSettings?.maxDays ?? 5;
+    const chapIdNum = Number(chapitreId);
+    const echIdNum = frontEndEcheanceId ? Number(frontEndEcheanceId) : null;
 
-  // 2. Préparation des variables de recherche
-  let dateTest = new Date();
-  dateTest.setDate(dateTest.getDate() + 1); // Demain
-  
-  // Date interdite (J+2 du J suivant)
-  const dateInterdite = new Date(nextDueDate);
-  dateInterdite.setDate(dateInterdite.getDate() + 2);
+    try {
+        const userSettings = (await db.select().from(settings).where(eq(settings.clerkId, clerkId)).limit(1))[0];
+        const maxCoursParJour = userSettings?.maxDays ?? 5;
 
-  // 3. Boucle de recherche avec tes contraintes
-  while (dateTest <= examDate) {
-    
-    // Contrainte A : Sauter les dimanches (0)
-    if (dateTest.getDay() === 0) {
-      dateTest.setDate(dateTest.getDate() + 1);
-      continue;
+        let stepNameOriginal = "GO R";
+        let originalCycleDay = 0;
+
+        const echeanceOrigine = echIdNum ? await db.query.echeances.findFirst({
+            where: eq(echeances.id, echIdNum)
+        }) : null;
+
+        if (echeanceOrigine) {
+            if (echeanceOrigine.stepName) {
+                stepNameOriginal = echeanceOrigine.stepName.includes("R") 
+                    ? echeanceOrigine.stepName 
+                    : `${echeanceOrigine.stepName} R`;
+            }
+            if (echeanceOrigine.cycleDay !== undefined && echeanceOrigine.cycleDay !== null) {
+                originalCycleDay = echeanceOrigine.cycleDay;
+            }
+        }
+
+        // Recherche de l'échéance suivante pour interdire la veille directe
+        let dateSuivanteMax: Date | null = null;
+        if (echeanceOrigine && echeanceOrigine.date) {
+            const prochaineEcheance = await db.query.echeances.findFirst({
+                where: and(
+                    eq(echeances.chapitreId, chapIdNum),
+                    sql`${echeances.date} > ${echeanceOrigine.date}`
+                ),
+                orderBy: [echeances.date]
+            });
+            if (prochaineEcheance && prochaineEcheance.date) {
+                dateSuivanteMax = new Date(prochaineEcheance.date);
+                dateSuivanteMax.setDate(dateSuivanteMax.getDate() - 1); // Ex: si J3 le mercredi, maxLimit est le mardi (exclu)
+            }
+        }
+
+        let examLimitDate: Date | null = examDateInput ? new Date(examDateInput) : null;
+        if (!examLimitDate || isNaN(examLimitDate.getTime())) {
+            const chap = await db.query.chapitres.findFirst({ where: eq(chapitres.id, chapIdNum) });
+            if (chap?.dateExamen) examLimitDate = new Date(chap.dateExamen);
+        }
+
+        if (!examLimitDate) return { success: false, message: "Date examen manquante." };
+        examLimitDate.setDate(examLimitDate.getDate() - 3);
+        const maxLimitStr = formatDate(examLimitDate);
+
+        let minDateTest = new Date(); 
+        if (echeanceOrigine && echeanceOrigine.date) {
+            const dateOrigine = new Date(echeanceOrigine.date);
+            dateOrigine.setDate(dateOrigine.getDate() + 1);
+            if (dateOrigine > minDateTest) {
+                minDateTest = dateOrigine;
+            }
+        }
+
+        let dateTest = new Date(minDateTest);
+        let dateTestStr = formatDate(dateTest);
+
+        while (dateTestStr <= maxLimitStr) {
+            // BLOQUAGE STRICT DE LA VEILLE : si la date test atteint ou dépasse la limite avant le cours suivant, on stoppe
+            if (dateSuivanteMax && dateTest >= dateSuivanteMax) {
+                break; 
+            }
+
+            const dejaProgramme = await db.query.echeances.findFirst({
+                where: and(
+                    eq(echeances.chapitreId, chapIdNum),
+                    sql`${echeances.date} >= ${dateTestStr + ' 00:00:00'}::timestamp AND ${echeances.date} <= ${dateTestStr + ' 23:59:59'}::timestamp`
+                )
+            });
+
+            const charge = await db.select({ count: count() }).from(echeances).where(
+                sql`${echeances.date} >= ${dateTestStr + ' 00:00:00'}::timestamp AND ${echeances.date} <= ${dateTestStr + ' 23:59:59'}::timestamp`
+            );
+
+            if (!dejaProgramme && (charge[0]?.count ?? 0) < maxCoursParJour) {
+                await db.insert(echeances).values({
+                    chapitreId: chapIdNum,
+                    date: sql`${dateTestStr}::date`,
+                    stepName: stepNameOriginal,
+                    cycleDay: originalCycleDay,
+                });
+
+                revalidatePath("/protected/dashboard/1");
+                revalidatePath("/protected/planning");
+
+                return { success: true, data: String(dateTestStr) };
+            }
+
+            dateTest.setDate(dateTest.getDate() + 1);
+            dateTestStr = formatDate(dateTest);
+        }
+
+        // Si aucune place n'est trouvée (ou si bloqué par la règle de la veille), on renvoie le message pour déclencher ton calendrier de forçage
+        return { success: false, message: "Aucune place trouvée. Voulez-vous forcer la réintégration ?" };
+    } catch (err) {
+        console.error("Erreur réintégration :", err);
+        return { success: false, message: "Erreur serveur." };
     }
+}
 
-    // Contrainte B : Sauter J+2 du J suivant
-    if (formatDate(dateTest) === formatDate(dateInterdite)) {
-      dateTest.setDate(dateTest.getDate() + 1);
-      continue;
+export async function actionForcerReintegration(chapitreId: string, frontEndEcheanceId: string, forcedDate: Date) {
+    try {
+        const chapIdNum = Number(chapitreId);
+        const echIdNum = frontEndEcheanceId ? Number(frontEndEcheanceId) : null;
+
+        let stepNameOriginal = "GO R";
+        let originalCycleDay = 0;
+
+        if (echIdNum) {
+            const echeanceOrigine = await db.query.echeances.findFirst({
+                where: eq(echeances.id, echIdNum)
+            });
+
+            if (echeanceOrigine) {
+                if (echeanceOrigine.stepName) {
+                    stepNameOriginal = echeanceOrigine.stepName.includes("R") 
+                        ? echeanceOrigine.stepName 
+                        : `${echeanceOrigine.stepName} R`;
+                }
+                if (echeanceOrigine.cycleDay !== undefined && echeanceOrigine.cycleDay !== null) {
+                    originalCycleDay = echeanceOrigine.cycleDay;
+                }
+            }
+        }
+
+        const forcedDateStr = formatDate(new Date(forcedDate));
+
+        await db.insert(echeances).values({
+            chapitreId: chapIdNum,
+            date: sql`${forcedDateStr}::date`,
+            stepName: stepNameOriginal,
+            cycleDay: originalCycleDay,
+        });
+
+        revalidatePath("/protected/dashboard/1");
+        revalidatePath("/protected/planning");
+
+        return { success: true, data: String(forcedDateStr) };
+    } catch (err) {
+        console.error("Erreur force réintégration :", err);
+        return { success: false, message: "Erreur serveur lors du forçage." };
     }
+}
 
-    // Vérifier la charge du jour
-    const [chargeDuJour] = await db
-      .select({ count: count() })
-      .from(echeances)
-      .where(eq(echeances.date, dateTest));
+export async function actionIgnorerRattrapage(id: string) {
+    "use server";
+    try {
+        await db.update(individualNotes)
+            .set({ isIgnored: true })
+            .where(eq(individualNotes.id, Number(id)));
 
-    if ((chargeDuJour?.count ?? 0) < maxCoursParJour) {
-      // TROUVÉ ! On applique la réintégration automatiquement
-      await db.update(echeances)
-        .set({ date: dateTest, status: 'reintegre' })
-        .where(eq(echeances.id, revisionId));
-        
-      return { success: true, date: dateTest };
+        return { success: true };
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        return { success: false, message: "Erreur serveur" };
     }
-
-    // Sinon, jour suivant
-    dateTest.setDate(dateTest.getDate() + 1);
-  }
-
-  // 4. Si on sort de la boucle, c'est qu'aucune place n'a été trouvée
-  return { success: false, needsForce: true, message: "Pas de créneau disponible avant l'examen." };
 }

@@ -1,20 +1,34 @@
 'use server'
+
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/db'; // Ton instance de db
+import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function checkAccessAction() {
-  const { userId } = await auth();
-  
-  if (!userId) return { hasAccess: false };
+    const { userId: clerkId } = await auth(); 
 
-  // On cherche l'utilisateur dans ta table 'users' déclarée dans ton schéma
-  const result = await db.select().from(users).where(eq(users.clerkId, userId));
-  
-  // Ici, tu peux ajouter ta condition métier (ex: vérif d'un champ abonnement)
-  // Pour l'instant, si l'utilisateur est trouvé dans la table, on autorise
-  const userExists = result.length > 0;
-  
-  return { hasAccess: userExists };
+    if (!clerkId) {
+        return { hasAccess: false };
+    }
+
+    const result = await db.select().from(users).where(eq(users.clerkId, clerkId));
+    
+    if (result.length === 0) {
+        return { hasAccess: false };
+    }
+
+    const user = result[0];
+
+    // Vérification stricte de la période d'essai ou du statut actif
+    const now = new Date();
+    const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
+    const isTrialActive = user.status === 'trial' && periodEnd && periodEnd > now;
+    const isPaidActive = user.status === 'active'; 
+
+    if (!isTrialActive && !isPaidActive) {
+        return { hasAccess: false };
+    }
+
+    return { hasAccess: true };
 }

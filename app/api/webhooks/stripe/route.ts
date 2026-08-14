@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const payload = await req.json();
 
     if (payload.type === 'checkout.session.completed') {
-      const userId = payload.data.object.client_reference_id;
+      const clerkId = payload.data.object.client_reference_id;
 
       // Mise à jour de l'utilisateur avec son statut d'abonnement
       // Note : Il faudra ajouter ces colonnes dans ton schéma 'users'
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
           status: 'active', 
           subscriptionExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
         })
-        .where(eq(users.clerkId, userId));
+        .where(eq(users.clerkId, clerkId));
     }
 
     return NextResponse.json({ received: true });

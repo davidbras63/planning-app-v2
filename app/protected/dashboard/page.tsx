@@ -1,100 +1,45 @@
-"use client";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/db";
+import { folders } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ensureUserInitialized } from "@/app/actions/actions";
 
-import { useEffect, useState, useTransition } from 'react';
-import { useUser } from '@clerk/nextjs';
-import { Trash2, ChevronRight, ChevronDown, RotateCcw, Folder, AlertCircle, Calendar } from 'lucide-react';
-import { Container, Stack, Title, Card, Flex, ActionIcon, Text, Collapse, Table, Button, Group, Box } from '@mantine/core';
-import { getDashboardData, deleteDashboardItem, forceEcheancePlacement } from '@/app/actions/dashboardActions';
-import { actionTenterReintegration } from '@/app/actions/reintegration';
-
-export default function Dashboard() {
-  const { user } = useUser();
-  const [data, setData] = useState<any[]>([]);
-  const [rattrapages, setRattrapages] = useState<any[]>([]);
-  const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({});
-  const [isPending, startTransition] = useTransition();
-
-  const loadAll = async () => {
-    if (!user) return;
-    startTransition(async () => {
-      const result = await getDashboardData(user.id);
-      setData(result.folders);
-      setRattrapages(result.rattrapages);
-    });
-  };
-
-  useEffect(() => {
-    if (user) loadAll();
-  }, [user]);
-
-  const handleDelete = async (table: 'matieres' | 'chapitres' | 'echeances', id: string) => {
-    if (!confirm("Supprimer définitivement cet élément ?")) return;
-    await deleteDashboardItem(table, id);
-    loadAll();
-  };
-
-  const handleReintegrer = async (echeance: any) => {
-    if (!user) return;
-    const res = await actionTenterReintegration(user.id, echeance.id, echeance.chapitreId, echeance.cycleDay, echeance.date);
-    if (res.success) {
-      alert("Réintégration réussie !");
-      loadAll();
-    } else {
-      const date = prompt("Pas de place trouvée. Date forcée (YYYY-MM-DD) :");
-      if (date) {
-        await forceEcheancePlacement(echeance.id, new Date(date), echeance.cycleDay);
-        loadAll();
-      }
+export default async function DashboardPage() {
+    const { userId } = await auth();
+    if (!userId) {
+        redirect('/sign-in');
     }
-  };
 
-  if (!user) return null;
+    await ensureUserInitialized(userId);
 
-  return (
-    <Container fluid p="xl">
-      <Stack gap="xl">
-        <Box>
-          <Title order={2} size="h3" fw={700} mb="md"><Folder size={22} /> Gestion des Matières</Title>
-          <Stack gap="md">
-            {data.map((matiere) => (
-              <Card key={matiere.id} withBorder p="md">
-                <Flex justify="space-between" align="center">
-                  <Text fw={700} size="lg">{matiere.nom}</Text>
-                  <ActionIcon color="red" onClick={() => handleDelete('matieres', matiere.id)}><Trash2 size={18} /></ActionIcon>
-                </Flex>
-                {matiere.chapitres?.map((chap: any) => (
-                  <Box key={chap.id} mt="xs">
-                    <Flex align="center" onClick={() => setExpanded({...expanded, [chap.id]: !expanded[chap.id]})}>
-                      {expanded[chap.id] ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
-                      <Text ml={5}>{chap.titre}</Text>
-                    </Flex>
-                  </Box>
-                ))}
-              </Card>
-            ))}
-          </Stack>
-        </Box>
+    // Récupère TOUS les dossiers de l'utilisateur
+    const userFolders = await db
+        .select({ id: folders.id, name: folders.name })
+        .from(folders)
+        .where(eq(folders.clerkId, userId));
 
-        <Box>
-          <Title order={2} size="h3" fw={700} c="orange.5" mb="md"><AlertCircle size={22} /> Tableau de Rattrapage</Title>
-          <Table>
-            <Table.Thead>
-              <Table.Tr><Table.Th>Chapitre</Table.Th><Table.Th>Date</Table.Th><Table.Th>Actions</Table.Th></Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rattrapages.map((r: any) => (
-                <Table.Tr key={r.echeances.id}>
-                  <Table.Td>{r.chapitres?.titre}</Table.Td>
-                  <Table.Td>{new Date(r.echeances.date).toLocaleDateString()}</Table.Td>
-                  <Table.Td>
-                    <Button size="xs" onClick={() => handleReintegrer(r.echeances)}>Réintégrer</Button>
-                  </Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Box>
-      </Stack>
-    </Container>
-  );
+    return (
+        <div style={{ padding: '40px', textAlign: 'center', color: 'white' }}>
+            <h2>Tableau de bord</h2>
+            <p>Veuillez sélectionner un dossier pour commencer :</p>
+            
+            <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                {userFolders.length > 0 ? (
+                    userFolders.map((folder) => (
+                        <Link 
+                            key={folder.id} 
+                            href={`/protected/dashboard/${folder.id}`}
+                            style={{ padding: '10px 20px', background: '#333', color: 'white', borderRadius: '5px', textDecoration: 'none' }}
+                        >
+                            {folder.name}
+                        </Link>
+                    ))
+                ) : (
+                    <p>Aucun dossier trouvé. Veuillez en créer un.</p>
+                )}
+            </div>
+        </div>
+    );
 }
