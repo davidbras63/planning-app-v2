@@ -73,7 +73,7 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
 
 		1. Vérifier ou modifier votre cadencier de révision.
 		2. Régler vos seuils de notes basses.
-		3. Renseigner votre nombre de cours maximum par jour (limite de saturation quotidienne pour éviter la surcharge).
+		3. Renseigner votre nombre de cours maximum par jour (la limite de saturation quotidienne : si une journée atteint ce quota, le système bloque la réintégration automatique pour éviter la surcharge et cherche le jour suivant).
 
 		Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
 			return;
