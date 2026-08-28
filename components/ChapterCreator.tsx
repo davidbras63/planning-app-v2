@@ -69,9 +69,15 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
         }
 
         if (cadencier.length === 0) {
-            alert("Erreur : Vous n'avez pas encore paramétré votre profil. Veuillez aller dans l'onglet Paramètres pour :1. Vérifier ou modifier votre cadencier de révision (le rythme par rapport aux J).\2. Régler vos seuils de notes basses.\3. Renseigner votre nombre de cours maximum par jour (la limite de saturation quotidienne : si une journée atteint ce quota, le système bloque la réintégration automatique pour éviter la surcharge et cherche le jour suivant).\n\nUne fois vos réglages enregistrés, vous pourrez créer votre chapitre.");
-            return;
-        }
+			alert(`Vous n'avez pas encore paramétré votre profil. Veuillez aller dans l'onglet Paramètres pour :
+
+		1. Vérifier ou modifier votre cadencier de révision.
+		2. Régler vos seuils de notes basses.
+		3. Renseigner votre nombre de cours maximum par jour (limite de saturation quotidienne pour éviter la surcharge).
+
+		Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
+			return;
+		}
 
         try {
             setLoading(true);
