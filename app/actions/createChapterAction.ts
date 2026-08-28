@@ -52,8 +52,11 @@ export async function createChapterAction(input: any) {
     }
 
     if (cadencier.length === 0) {
-      cadencier = [0, 1, 3, 7, 14, 30];
-    }
+		return { 
+			success: false, 
+			error: "Vous n'avez pas encore paramétré votre profil. Veuillez aller dans l'onglet Paramètres pour :\n\n1. Vérifier ou modifier votre cadencier de révision (le rythme par rapport aux J).\n2. Régler vos seuils de notes basses.\n3. Renseigner votre nombre de cours maximum par jour (la limite de saturation quotidienne : si une journée atteint ce quota, le système bloque la réintégration automatique pour éviter la surcharge et cherche le jour suivant).\n\nUne fois vos réglages enregistrés, vous pourrez créer votre chapitre." 
+		};
+	}
 
     const [newChapitre] = await db
       .insert(chapitres)
