@@ -68,10 +68,7 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
             return;
         }
 
-        if (cadencier.length === 0) {
-            alert("Erreur : Le cadencier n'a pas pu être récupéré depuis la base.");
-            return;
-        }
+        
 
         try {
             setLoading(true);
