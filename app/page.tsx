@@ -74,7 +74,7 @@ export default function LandingPage() {
                   </SignUpButton>
                  
                   <SignInButton mode="modal">
-                    <Button size="lg" variant="default" style={{ color: '#141517' }}>
+                    <Button size="lg" variant="outline" color="gray" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
                       Se connecter
                     </Button>
                   </SignInButton>
