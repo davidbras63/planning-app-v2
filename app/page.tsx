@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
-import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders } from 'lucide-react';
+import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function AuthAlertHandler() {
@@ -32,12 +32,23 @@ export default function LandingPage() {
       </Suspense>
 
       {/* HEADER / HERO SECTION (Fond sombre -> Texte blanc pur) */}
-      <div style={{ background: 'linear-gradient(135deg, #141517 0%, #2b2c30 100%)', color: 'white', padding: '80px 20px', textAlign: 'center' }}>
-        <Container size="md">
-          <Stack align="center" gap="lg">
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem' }}>
-              <Brain size={16} color="#4f46e5" /> Fini les révisions au feeling : ton contrôle continu personnel
-            </div>
+      <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
+		  {/* Logo tout en haut à gauche */}
+		  <div style={{ marginBottom: '10px' }}>
+			<img 
+			  src="/logo.png" 
+			  alt="Logo Nesis" 
+			  style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(800%) hue-rotate(130deg)' }} 
+			/>
+		  </div>
+
+		  <Container size="md">
+			<Stack align="center" gap="lg">
+			  {/* Le texte unique, bien positionné sous le logo */}
+			  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', marginBottom: '10px' }}>
+				<HelpCircle size={16} color="#4f9fa5" /> Finis les révisions au feeling : ton contrôle continu personnel
+			  </div>
+
            
             <Title order={1} style={{ fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.2, color: 'white' }}>
               Pilote tes révisions <br />sans mauvaise surprise.

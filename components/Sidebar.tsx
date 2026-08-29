@@ -66,6 +66,9 @@ export default function Sidebar() {
         <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', display: 'flex', flexDirection: 'column' }} p="md">
             <Stack h="100%" justify="space-between" style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1 }} className="custom-scroll">
                 <Stack gap="xs">
+					<div style={{ padding: '0px', margin: '-30px 0px 0px -25px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+						<img src="/logo.png" alt="Logo Nesis" style={{ height: '120px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(800%) hue-rotate(130deg)' }} />
+					</div>
                     <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
                         {isOpen && <Link href="/" style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}><Home size={18} /> Accueil</Link>}
                         <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>

@@ -13,32 +13,39 @@ export default function FAQPage() {
       <Container size="md">
        
         {/* BOUTONS DE NAVIGATION */}
-        <Group justify="space-between" mb="lg">
-          <Button
-            variant="subtle"
-            color="gray"
-            leftSection={<ArrowLeft size={16} />}
-            onClick={() => router.push('/')}
-          >
-            Retour à l'accueil
-          </Button>
+		  <Group justify="space-between" mb="lg">
+			<Group align="center" gap="md">
+			  <img 
+				src="/logo.png" 
+				alt="Logo Nesis" 
+				style={{ height: '160px', width: 'auto' }} 
+			  />
+			  <Button
+				variant="subtle"
+				color="gray"
+				leftSection={<ArrowLeft size={16} />}
+				onClick={() => router.push('/')}
+			  >
+				Retour à l'accueil
+			  </Button>
+			</Group>
 
-          <Button
-            variant="light"
-            color="indigo"
-            leftSection={<Home size={16} />}
-            onClick={() => router.push('/protected/dashboard')}
-          >
-            Revenir à l'application
-          </Button>
-        </Group>
+			<Button
+			  variant="light"
+			  color="indigo"
+			  leftSection={<Home size={16} />}
+			  onClick={() => router.push('/protected/dashboard')}
+			>
+			  Revenir à l'application
+			</Button>
+		  </Group>
 
         {/* EN-TÊTE */}
         <Stack align="center" mb={40} style={{ textAlign: 'center' }}>
           <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '12px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <HelpCircle size={32} />
           </div>
-          <Title order={1}>Prise en main de Nesis App</Title>
+          <Title order={1}>Prise en main de Nesis</Title>
           <Text c="dimmed" maw={600}>
             Tout ce que tu dois savoir pour maîtriser l'application, organiser tes révisions et piloter ton succès.
           </Text>
@@ -68,7 +75,7 @@ export default function FAQPage() {
                 <br /><br />
                 Tu peux également déplacer n'importe quel J de manière indépendante (en cas de retard ou d'imprévu) : tous les J se déplacent de façon indépendante, sauf le J0 qui fait un déplacement global. 
                 <br /><br />
-                <b>Pour déplacer un J d'une semaine à l'autre :</b> clique sur la vignette (le curseur se transforme en petite main), glisse-la vers le haut ou le bas sur l'onglet de la semaine précédente ou suivante pour changer de vue, puis dépose-la dans le jour souhaité du planning.
+                <b>Pour déplacer un J d'une semaine à l'autre :</b> clique sur la vignette avec la peite main, maintiens appuyé, glisse-la vers le haut sur l'onglet de la semaine précédente ou suivante pour changer de vue, puis dépose-la dans le jour souhaité du planning.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>
@@ -106,7 +113,7 @@ export default function FAQPage() {
             <Accordion.Control>6. Comment fonctionnent la période d'essai et la conservation des données ?</Accordion.Control>
             <Accordion.Panel>
               <Text size="sm" c="dimmed" style={{ lineHeight: 1.6 }}>
-                Tu bénéficies de <b>30 jours d'essai</b> complets pour tester l'outil. Si ton essai se termine et que tu n'as pas encore validé ton abonnement, tes données et ton planning sont conservés en sécurité pendant une période de grâce pour ne pas perdre ton travail.
+                Tu bénéficies de <b>3 jours d'essai</b> complets pour tester l'outil. Si ton essai se termine et que tu n'as pas encore validé ton abonnement, tes données et ton planning sont conservés en sécurité pendant une période de 30 jours pour ne pas perdre ton travail.
               </Text>
             </Accordion.Panel>
           </Accordion.Item>

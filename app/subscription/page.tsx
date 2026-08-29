@@ -22,7 +22,7 @@ export default function SubscriptionPage() {
             </div>
 
             <Stack gap={8}>
-              <Title order={2} c="white">Bienvenue sur Nésis App</Title>
+              <Title order={2} c="white">Bienvenue sur Nésis</Title>
               <Text c="white" size="sm" fw={500} style={{ lineHeight: 1.6, opacity: 0.9 }}>
                 Heureux de voir que l'application vous plaît ! Pour continuer à piloter vos révisions sereinement, débloquez l'accès complet et illimité à toutes les fonctionnalités.
               </Text>
