@@ -8,9 +8,7 @@ import { eq } from 'drizzle-orm';
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/protected(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-   if (req.nextUrl.pathname.startsWith('/api/webhooks')) {
-    return NextResponse.next();
-  }
+  
   if (isProtectedRoute(req)) {
     const { userId: clerkId } = await auth();
 
