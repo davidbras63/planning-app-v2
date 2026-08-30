@@ -6,9 +6,10 @@ import { updateEcheanceAction } from '@/app/actions/planningUpdates';
 import { toggleEcheanceCompleted } from '@/app/actions/actions';
 import GradeInput from '@/components/GradeInput';
 import { saveNotesAction, getMoyenneAction, getNotesContentAction, getAllUserNotesAction } from '@/app/actions/gradeActions';
+import { useRouter } from 'next/navigation';
 
 export default function PlanningView({ chapitres, folderId }: { chapitres: any[], folderId: string }) {
-
+	const router = useRouter();
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const d = new Date();
         const day = d.getDay();
@@ -191,13 +192,14 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     };
 
     const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
-        e.preventDefault();
-        const echeanceId = e.dataTransfer.getData('text/plain');
-        if (!echeanceId) return;
+		e.preventDefault();
+		const echeanceId = e.dataTransfer.getData('text/plain');
+		if (!echeanceId) return;
 
-        await updateEcheanceAction(echeanceId, new Date(targetDateStr));
-        window.location.reload();
-    };
+		await updateEcheanceAction(echeanceId, new Date(targetDateStr));
+		router.refresh();
+	};
+
 
     const formatDateHeader = (date: Date) => {
         return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' });
