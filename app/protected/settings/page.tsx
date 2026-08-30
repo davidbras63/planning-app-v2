@@ -19,8 +19,14 @@ export default async function DashboardPage() {
         .select({ id: folders.id, name: folders.name })
         .from(folders)
         .where(eq(folders.clerkId, userId));
-
-    return (
+	
+	// --- NOUVEAU : Redirection directe s'il n'y a qu'un seul dossier ---
+	if (userFolders.length === 1) {
+		redirect(`/protected/dashboard/${userFolders[0].id}`);
+	}
+	// -----------------------------------------------------------------
+    
+	return (
         <div style={{ padding: '40px', textAlign: 'center', color: 'white' }}>
             <h2>Tableau de bord</h2>
             <p>Veuillez sélectionner un dossier pour commencer :</p>
