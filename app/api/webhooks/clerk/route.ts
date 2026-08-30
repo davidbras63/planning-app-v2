@@ -7,7 +7,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-  if (!process.env.WEBHOOK_SECRET) {
+  if (!WEBHOOK_SECRET) {
     throw new Error("Veuillez ajouter WEBHOOK_SECRET dans votre .env");
   }
 
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
     return new Response("Error occured -- no svix headers", { status: 400 });
   }
 
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  // CORRECTION ICI : on récupère le texte brut directement pour Svix
+  const body = await req.text();
   const wh = new Webhook(WEBHOOK_SECRET);
   let evt: WebhookEvent;
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (evt.type === 'user.created') {
-    const { id: clerkId, email_addresses } = evt.data;
+    const { id: clerkId, email_addresses } = evt.data as any;
     const email = email_addresses[0]?.email_address;
 
     if (!clerkId || !email) {
@@ -48,10 +48,9 @@ export async function POST(req: NextRequest) {
     trialEndDate.setDate(trialEndDate.getDate() + 3);
 
     try {
-      // Insertion avec les noms de colonnes exacts de ton schéma Postgres
       await db.insert(users)
         .values({
-          clerkId: clerkId, 
+          clerkId: clerkId,
           email: email,
           status: 'trial',
           periodEnd: trialEndDate
