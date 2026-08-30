@@ -30,14 +30,14 @@ export default function FAQPage() {
 			  </Button>
 			</Group>
 
-			<Button
-			  variant="light"
-			  color="indigo"
-			  leftSection={<Home size={16} />}
-			  onClick={() => router.push('/protected/dashboard')}
-			>
-			  Revenir à l'application
-			</Button>
+			 <Button
+				variant="light"
+				color="indigo"
+				leftSection={<Home size={16} />}
+				onClick={() => router.back()}
+			 >
+				Revenir à l'application
+			 </Button>
 		  </Group>
 
         {/* EN-TÊTE */}
