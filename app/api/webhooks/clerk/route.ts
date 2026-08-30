@@ -7,7 +7,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-  if (!WEBHOOK_SECRET) {
+  if (!process.env.WEBHOOK_SECRET) {
     throw new Error("Veuillez ajouter WEBHOOK_SECRET dans votre .env");
   }
 
