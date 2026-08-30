@@ -26,7 +26,10 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       const user = result[0];
-
+      // --- Bypass si statut 'elite' ---
+	  if (user.status === 'elite') {
+	    return NextResponse.next();
+	  }
       // 3. Vérification de la période d'accès (periodEnd)
       const now = new Date();
       const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;

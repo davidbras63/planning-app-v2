@@ -19,6 +19,10 @@ export async function checkAccessAction() {
     }
 
     const user = result[0];
+    // --- Bypass direct si statut 'elite' ---
+	if (user.status === 'elite') {
+		return { hasAccess: true };
+	}
 
     // Vérification stricte de la période d'essai ou du statut actif
     const now = new Date();
