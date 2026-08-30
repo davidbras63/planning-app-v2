@@ -19,10 +19,9 @@ export async function POST(request: Request) {
 
     // Envoi de l'e-mail via Resend
     const data = await resend.emails.send({
-      // ⚠️ Attention : tant que tu n'as pas validé ton nom de domaine sur Resend, 
-      // tu dois utiliser 'onboarding@resend.dev' comme expéditeur.
-      from: 'Contact <onboarding@resend.dev>',
-      to: ['bdavid0801@gmail.com'],
+      
+      from: 'Contact <contact@nesis.fr>',
+      to: ['contact@nesis.fr'],
       subject: `Nouveau message de contact de ${name || email}`,
       replyTo: email,
       text: `Nom: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
