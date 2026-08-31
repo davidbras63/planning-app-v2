@@ -233,7 +233,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                                 dragTimerRef.current = setTimeout(() => {
                                     changeWeek(-1);
                                     dragTimerRef.current = null;
-                                }, 1200);
+                                }, 500);
                             }
                         }}
                         onDragLeave={() => {
@@ -258,7 +258,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                                 dragTimerRef.current = setTimeout(() => {
                                     changeWeek(1);
                                     dragTimerRef.current = null;
-                                }, 1200);
+                                }, 500);
                             }
                         }}
                         onDragLeave={() => {

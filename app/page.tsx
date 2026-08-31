@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, Suspense } from 'react';
-import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { useUser, SignInButton, SignUpButton,SignOutButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,13 +34,31 @@ export default function LandingPage() {
       {/* HEADER / HERO SECTION (Fond sombre -> Texte blanc pur) */}
       <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
 		  {/* Logo tout en haut à gauche */}
-		  <div style={{ marginBottom: '10px' }}>
-			<img 
-			  src="/logo.png" 
-			  alt="Logo Nesis" 
-			  style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(800%) hue-rotate(130deg)' }} 
-			/>
+		  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+			  <div>
+				<img
+				  src="/logo.png"
+				  alt="Logo Nesis"
+				  style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(500%) hue-rotate(120deg)' }}
+				/>
+			  </div>
+			  <div>
+				<SignOutButton>
+				  <button style={{ 
+					backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+					border: '1px solid rgba(255, 255, 255, 0.2)', 
+					color: '#ffffff', 
+					padding: '8px 16px', 
+					borderRadius: '8px', 
+					cursor: 'pointer',
+					fontWeight: 500
+				  }}>
+					Déconnexion
+				  </button>
+				</SignOutButton>
+			  </div>
 		  </div>
+
 
 		  <Container size="md">
 			<Stack align="center" gap="lg">
