@@ -113,7 +113,7 @@ export default function Sidebar() {
                 <Stack gap="md">
                     <TextInput 
                         label="Nom du dossier" 
-                        placeholder="Nom"
+                        placeholder="Ex: Semestre 1 ou Première année ou nom de la formation...."
                         value={folderName}
                         onChange={(e) => setFolderName(e.currentTarget.value)}
                     />
@@ -141,7 +141,7 @@ export default function Sidebar() {
                     />
                     <TextInput 
                         label="Nom de la matière" 
-                        placeholder="Nom"
+                        placeholder="Ex: Mathématiques ou Chimie..."
                         value={matiereName}
                         onChange={(e) => setMatiereName(e.currentTarget.value)}
                     />
