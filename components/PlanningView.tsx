@@ -7,30 +7,28 @@ import { toggleEcheanceCompleted } from '@/app/actions/actions';
 import GradeInput from '@/components/GradeInput';
 import { saveNotesAction, getMoyenneAction, getNotesContentAction, getAllUserNotesAction } from '@/app/actions/gradeActions';
 import { useRouter } from 'next/navigation';
+import { majDateExamen } from '@/app/actions/majDateExamen';
+
 
 export default function PlanningView({ chapitres, folderId }: { chapitres: any[], folderId: string }) {
-	const router = useRouter();
-    const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const router = useRouter();
+    const [currentWeekStart, setCurrentWeekStart] = useState<Date>(new Date(0));
+    const [notesValues, setNotesValues] = useState<{ [key: string]: string }>({});
+    const [averages, setAverages] = useState<{ [key: string]: number }>({});
+    const inputRefs = useRef<HTMLInputElement[]>([]);
+    
+
+    useEffect(() => {
         const d = new Date();
         const day = d.getDay();
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(d.setDate(diff));
         monday.setHours(0, 0, 0, 0);
-        return monday;
-    });
+        setCurrentWeekStart(monday);
 
-    // États pour gérer les notes saisies, les moyennes et les références d'inputs
-    const [notesValues, setNotesValues] = useState<{ [key: string]: string }>({});
-    const [averages, setAverages] = useState<{ [key: string]: number }>({});
-    const inputRefs = useRef<HTMLInputElement[]>([]);
-
-    // CHARGEMENT INITIAL : Récupération de toutes les notes depuis Neon au montage pour afficher le contenu et les moyennes
-    useEffect(() => {
         async function loadInitialNotes() {
             try {
                 const data = await getAllUserNotesAction();
-                console.log("DONNEES RECUES DE NEON : ", data);
-               
                 const loadedNotes: { [key: string]: string } = {};
                 const loadedAverages: { [key: string]: number } = {};
 
@@ -46,14 +44,13 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                 setNotesValues(loadedNotes);
                 setAverages(loadedAverages);
             } catch (error) {
-                // On ignore l'erreur si elle est liée à l'initialisation de session Clerk
-                // tant que les données finissent par se charger.
                 console.log("Chargement en attente de session...");
             }
         }
 
         loadInitialNotes();
     }, []);
+
 
     // Date du jour au format YYYY-MM-DD pour filtrer le tableau du jour
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
@@ -183,21 +180,33 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         setNotesValues(prev => ({ ...prev, ...newNotesValues }));
     };
 
-    const handleDragStart = (e: React.DragEvent, echeanceId: string) => {
-        e.dataTransfer.setData('text/plain', echeanceId);
-    };
+    const handleDragStart = (e: React.DragEvent, item: any) => {
+		e.dataTransfer.setData('text/plain', JSON.stringify({
+			id: item.isExamen ? item.chapitreId : item.echeanceId,
+			isExamen: item.isExamen
+		}));
+	};
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
-
-    const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
+	const handleDragOver = (e: React.DragEvent) => {
 		e.preventDefault();
-		const echeanceId = e.dataTransfer.getData('text/plain');
-		if (!echeanceId) return;
+	};
 
-		await updateEcheanceAction(echeanceId, new Date(targetDateStr));
-		router.refresh();
+	const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
+		e.preventDefault();
+		const rawData = e.dataTransfer.getData('text/plain');
+		if (!rawData) return;
+
+		try {
+			const data = JSON.parse(rawData);
+			if (data.isExamen) {
+				await majDateExamen(data.id, new Date(targetDateStr));
+			} else {
+				await updateEcheanceAction(data.id, new Date(targetDateStr));
+			}
+			router.refresh();
+		} catch (err) {
+			console.error("Erreur lors du drop", err);
+		}
 	};
 
 
@@ -306,14 +315,14 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 										itemsForDay.map((item, idx) => (
 											<div
 												key={idx}
-												draggable={!item.isExamen}
-												onDragStart={(e) => !item.isExamen && handleDragStart(e, item.echeanceId)}
+												draggable={true}
+												onDragStart={(e) => handleDragStart(e, item)}
 												style={{
 													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.7)' : 'rgba(30, 41, 59, 0.95)',
 													border: item.isExamen ? '1px solid #f87171' : '1px solid rgba(255, 255, 255, 0.25)',
 													borderRadius: '8px',
 													padding: '10px',
-													cursor: item.isExamen ? 'default' : 'grab',
+													cursor: 'grab',
 													boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
 													display: 'flex',
 													flexDirection: 'column',
@@ -324,34 +333,35 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 												{/* LIGNE DU HAUT : Check à gauche + Titre du chapitre à côté */}
 												<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 													{/* Bouton check ROUGE VIF */}
-													<button
-														type="button"
-														onClick={async () => {
-															const newStatus = !item.completed;
-															await toggleEcheanceCompleted(item.echeanceId, newStatus);
-														}}
-														style={{
-															width: '18px',
-															height: '18px',
-															minWidth: '18px',
-															borderRadius: '4px',
-															cursor: 'pointer',
-															backgroundColor: 'rgba(15, 23, 42, 0.9)',
-															border: item.completed ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.5)',
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															color: '#ef4444',
-															fontSize: '12px',
-															fontWeight: 900,
-															padding: 0,
-															margin: 0
-														}}
-														title="Valider"
-													>
-														{item.completed ? '✓' : ''}
-													</button>
-													
+													{!item.isExamen && (
+														<button
+															type="button"
+															onClick={async () => {
+																const newStatus = !item.completed;
+																await toggleEcheanceCompleted(item.echeanceId, newStatus);
+															}}
+															style={{
+																width: '18px',
+																height: '18px',
+																minWidth: '18px',
+																borderRadius: '4px',
+																cursor: 'pointer',
+																backgroundColor: 'rgba(15, 23, 42, 0.9)',
+																border: item.completed ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.5)',
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																color: '#ef4444',
+																fontSize: '12px',
+																fontWeight: 900,
+																padding: 0,
+																margin: 0
+															}}
+															title="Valider"
+														>
+															{item.completed ? '✓' : ''}
+														</button>
+													)}
 													{/* Titre du chapitre net à côté du check */}
 													<div style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', wordBreak: 'break-word', lineHeight: '1.2' }}>
 														{item.titreChapitre}

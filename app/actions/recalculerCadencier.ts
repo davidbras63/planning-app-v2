@@ -55,7 +55,7 @@ export async function actionRecalculerCadencierComplet(clerkId: string, folderId
                     const cadencierNums = nouveauCadencier.map((d: any) => Number(d));
                     
                     const horsCadencier = dayNum !== 0 && !cadencierNums.includes(dayNum);
-                    const depasseExamen = dateExamenMax && new Date(r.date) > dateExamenMax;
+                    const depasseExamen = dateExamenMax && new Date(r.date) >= dateExamenMax;
 
                     return horsCadencier || depasseExamen;
                 })
@@ -71,7 +71,7 @@ export async function actionRecalculerCadencierComplet(clerkId: string, folderId
                 nouvelleDate.setDate(nouvelleDate.getDate() + jour);
 
                 // Si une date d'examen existe et que l'échéance dépasse, on zappe ce jour
-                if (dateExamenMax && nouvelleDate > dateExamenMax) {
+                if (dateExamenMax && nouvelleDate >= dateExamenMax) {
                     continue;
                 }
 
