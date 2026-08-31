@@ -25,7 +25,15 @@ export default function AccesRefuse() {
             >
               Voir les abonnements / Payer
             </Button>
-
+			<Button
+			  component={Link}
+			  href="/contact"
+			  variant="light"
+			  color="gray"
+			  fullWidth
+			>
+			  Contacter le support
+			</Button>
             <Button
               component={Link}
               href="/"
