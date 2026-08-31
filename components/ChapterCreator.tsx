@@ -148,7 +148,7 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
 
                     <TextInput
                         label="Nom du chapitre"
-                        placeholder="Ex: Nom du cours 01 ou Nom du cours 02... en fonction de l'avancement dans le chapitre "
+                        placeholder="Ex: Nom du cours01-Nom du cours02... "
                         value={formData.nom}
                         onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                         size="xs"
