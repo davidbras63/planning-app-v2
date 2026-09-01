@@ -14,20 +14,24 @@ export function OnboardingGuide() {
     return 1;
   });
 
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  // On vérifie au démarrage si le guide a été explicitement fermé ou terminé
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const isFinished = localStorage.getItem("nesis_onboarding_completed");
+      const isClosed = localStorage.getItem("nesis_guide_closed");
+      if (isFinished === "true" || isClosed === "true") {
+        return false;
+      }
+    }
+    return true;
+  });
+
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const pathname = usePathname();
 
   const [position, setPosition] = useState({ x: window.innerWidth - 440, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
-
-  useEffect(() => {
-    const isFinished = localStorage.getItem("nesis_onboarding_completed");
-    if (isFinished === "true") {
-      setIsOpen(false);
-    }
-  }, []);
 
   const handleStepChange = (step: number) => {
     setCurrentStep(step);
@@ -93,15 +97,27 @@ export function OnboardingGuide() {
     setIsOpen(false);
   };
 
-  // Permet de fermer le guide à tout moment pour le transformer en petit bouton
+  // Ferme le guide et mémorise le choix pour qu'il ne s'ouvre plus tout seul
   const handleCloseGuide = () => {
     setIsOpen(false);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("nesis_guide_closed", "true");
+    }
+  };
+
+  // Permet de le réouvrir manuellement via le bouton du bas
+  const handleOpenGuide = () => {
+    setIsOpen(true);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("nesis_guide_closed");
+    }
   };
 
   const handleResetGuide = () => {
     localStorage.removeItem("nesis_onboarding_completed");
     localStorage.removeItem("nesis_planning_tested");
     localStorage.removeItem("nesis_current_step");
+    localStorage.removeItem("nesis_guide_closed");
     setIsOpen(true);
     handleStepChange(1);
   };
@@ -109,7 +125,7 @@ export function OnboardingGuide() {
   if (!isOpen) {
     return (
       <Button
-        onClick={handleResetGuide}
+        onClick={handleOpenGuide}
         size="compact-xs"
         variant="filled"
         color="indigo"
@@ -193,7 +209,6 @@ export function OnboardingGuide() {
           </Text>
         </Group>
         
-        {/* Boutons Réduire et Fermer */}
         <Group gap="xs">
           <Button
             size="compact-xs"
@@ -293,7 +308,7 @@ export function OnboardingGuide() {
                 fullWidth
                 size="xs"
                 color="indigo"
-                rightSection={<ArrowRight size={14} />}
+                rightSection={<ArrowRight size5={14} />}
                 onClick={handleCompletePlanning}
               >
                 J'ai compris, passer à la suite
@@ -319,7 +334,7 @@ export function OnboardingGuide() {
                 color="indigo"
                 onClick={handleFinishStep6}
               >
-                Fermer le guide 
+                Fermer le guide
               </Button>
             </div>
           )}
@@ -328,6 +343,7 @@ export function OnboardingGuide() {
     </Paper>
   );
 }
+
 
 
 
