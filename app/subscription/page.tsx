@@ -30,7 +30,7 @@ export default function SubscriptionPage() {
 
             <Card p="md" radius="md" style={{ width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <Text size="sm" c="white">
-                <b>Formule unique :</b> 9,90 € / mois (sans engagement, résiliable à tout moment)
+                <b>Formule unique :</b> 7,90 € / mois (sans engagement, résiliable à tout moment)
               </Text>
             </Card>
 
@@ -42,7 +42,7 @@ export default function SubscriptionPage() {
                 leftSection={<CreditCard size={18} />}
                 onClick={handleCheckout}
               >
-                S'abonner — 9,90 € / mois
+                S'abonner — 7,90 € / mois
               </Button>
 
               <Button

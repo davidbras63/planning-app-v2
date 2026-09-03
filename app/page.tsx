@@ -104,7 +104,7 @@ export default function LandingPage() {
                     leftSection={<CreditCard size={18} />}
                     onClick={() => router.push('/subscription')}
                   >
-                    Abonnement — 9,90 € / mois
+                    Abonnement — 7,90 € / mois
                   </Button>
                 </Group>
               ) : (
@@ -119,7 +119,7 @@ export default function LandingPage() {
                     leftSection={<CreditCard size={18} />}
                     onClick={() => router.push('/subscription')}
                   >
-                    Abonnement — 9,90 € / mois
+                    Abonnement — 7,90 € / mois
                   </Button>
                 </Group>
               )}

@@ -304,15 +304,7 @@ export function OnboardingGuide() {
                 <li>Déplace juste un J tout seul pour voir qu'il bouge indépendamment. Remets-le à sa place.</li>
                 <li>Prends un J, glisse-le sur Semaine suivante pour changer de semaine, puis ramène-le à sa place.</li>
               </ol>
-              <Button
-                fullWidth
-                size="xs"
-                color="indigo"
-                rightSection={<ArrowRight size5={14} />}
-                onClick={handleCompletePlanning}
-              >
-                J'ai compris, passer à la suite
-              </Button>
+              
             </div>
           )}
 
