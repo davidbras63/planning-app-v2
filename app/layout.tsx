@@ -8,6 +8,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" suppressHydrationWarning>
       <head>
         <ColorSchemeScript defaultColorScheme="dark" />
+		<script
+		  dangerouslySetInnerHTML={{
+			__html: 'window.lemonSqueezyAffiliateConfig = { store: "nesis" };',
+		  }}
+		/>
+		<script src="https://lemonsqueezy.com/affiliate.js" defer></script>
       </head>
       <body>
         <ClerkProvider>
