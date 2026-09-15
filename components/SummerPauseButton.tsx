@@ -6,41 +6,43 @@ import { IconSun } from '@tabler/icons-react';
 
 export default function SummerPauseButton() {
   const [loading, setLoading] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [isActiveUser, setIsActiveUser] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(true); // Forcé à true pour le test
+  const [isActiveUser, setIsActiveUser] = useState(true); // Forcé à true pour le test
+  const [checked, setChecked] = useState(true); // Forcé à true pour afficher direct
 
   useEffect(() => {
+    // === CODE D'ORIGINE DÉSACTIVÉ POUR LE TEST ===
     // 1. Vérification de la date (du 25 juin au 31 août de l'année en cours)
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const june25 = new Date(currentYear, 5, 25);
-    const august31 = new Date(currentYear, 7, 31);
-    const dateOk = now >= june25 && now <= august31;
-    setIsAvailable(dateOk);
+    // const now = new Date();
+    // const currentYear = now.getFullYear();
+    // const june25 = new Date(currentYear, 5, 25);
+    // const august31 = new Date(currentYear, 7, 31);
+    // const dateOk = now >= june25 && now <= august31;
+    // setIsAvailable(dateOk);
 
     // 2. Vérification du statut en base via une petite route ou en interrogeant l'API
-    async function checkStatus() {
-      try {
-        const res = await fetch('/api/check-user-status'); // Ou une route qui renvoie le statut
-        const data = await res.json();
-        if (data.status === 'active') {
-          setIsActiveUser(true);
-        }
-      } catch (err) {
-        console.error('Erreur vérif statut', err);
-      } finally {
-        setChecked(true);
-      }
-    }
-
-    checkStatus();
+    // async function checkStatus() {
+    // try {
+    // const res = await fetch('/api/check-user-status');
+    // const data = await res.json();
+    // if (data.status === 'active') {
+    // setIsActiveUser(true);
+    // }
+    // } catch (err) {
+    // console.error('Erreur vérif statut', err);
+    // } finally {
+    // setChecked(true);
+    // }
+    // }
+    // checkStatus();
+    // ===========================================
   }, []);
 
   // Si on n'a pas fini de charger, ou si le mec n'est pas actif, ou si on n'est pas en période estivale, on n'affiche RIEN
-  if (!checked || !isActiveUser || !isAvailable) {
-    return null;
-  }
+  // Désactivé temporairement pour forcer l'affichage :
+  // if (!checked || !isActiveUser || !isAvailable) {
+  // return null;
+  // }
 
   const handleSummerPause = async () => {
     if (!confirm('Voulez-vous activer votre pause estivale ? Aucun prélèvement ne sera effectué en juillet et en août, et votre accès sera prolongé jusqu\'au 5 septembre.')) {
@@ -82,4 +84,3 @@ export default function SummerPauseButton() {
     </Stack>
   );
 }
-
