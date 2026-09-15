@@ -191,6 +191,22 @@ export default function LandingPage() {
           </Grid.Col>
         </Grid>
 
+		 {/* SECTION PAUSE ESTIVALE */}
+        <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
+          <Group align="flex-start" gap="md">
+            <ThemeIcon size={50} radius="md" color="orange" mb="md">
+              <Calendar size={26} />
+            </ThemeIcon>
+            <Stack gap={5} style={{ flex: 1 }}>
+              <Title order={3} size="h4" c="white">☀️ Pause estivale : Soufflez sans stress en été</Title>
+              <Text size="sm" c="white" style={{ opacity: 0.9, lineHeight: 1.6 }}>
+                Pas question de payer pour rien pendant les grandes vacances ! Entre le <b>25 juin et le 31 août</b>, un bouton dédié apparaît automatiquement dans votre menu latéral. En un clic, vous suspendez votre abonnement : aucun prélèvement n'est effectué en juillet et en août, et votre accès est automatiquement prolongé jusqu'au <b>5 septembre</b>.
+              </Text>
+            </Stack>
+          </Group>
+        </Card>
+
+
         {/* SECTION PARRAINAGE */}
         <Card withBorder mt={50} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">

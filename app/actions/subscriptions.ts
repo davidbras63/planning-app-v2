@@ -61,6 +61,16 @@ export async function handleLemonSqueezyWebhook(event: any) {
     }
   }
 
+  // --- GESTION DE LA PAUSE DEPUIS LE PORTAIL LEMON SQUEEZY ---
+  else if (eventName === 'subscription_paused') {
+    await db.execute(sql`
+      UPDATE users
+      SET status = 'paused'
+      WHERE clerk_id = ${clerkId}
+    `);
+    console.log("✅ Abonnement mis en pause (via portail Lemon Squeezy). Le period_end reste inchangé pour laisser l'accès actif jusqu'à son terme.");
+  }
+
   else if (eventName === 'subscription_payment_success') {
     const now = new Date();
    
@@ -181,4 +191,3 @@ export async function handleLemonSqueezyWebhook(event: any) {
     console.log("✅ Abonnement marqué comme expiré.");
   }
 }
-

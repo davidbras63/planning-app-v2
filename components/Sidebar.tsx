@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
+import SummerPauseButton from '@/components/SummerPauseButton';
+
 import {
   actionCreateMatiere,
   actionGetFolders,
@@ -103,7 +105,9 @@ export default function Sidebar() {
 					
 					
                 </Stack>
-
+				
+				<SummerPauseButton />
+				
                 <Box style={{ cursor: 'pointer', color: '#ff6b6b', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', marginTop: '20px' }} onClick={() => signOut()}>
                     <LogOut size={20} /> {isOpen && "Déconnexion"}
                 </Box>
