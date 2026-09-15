@@ -76,7 +76,7 @@ export async function POST() {
     const subscriptionId = listData.data[0].id;
 
     // 5. Calcul de la date cible pour le 5 septembre dynamique
-    const targetDate = `${currentYear}-09-05T00:00:00Z`;
+    const targetDate = `${currentYear}-10-05T00:00:00Z`;
 
     // 6. Appel à l'API Lemon Squeezy pour mettre en pause l'abonnement
     const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
