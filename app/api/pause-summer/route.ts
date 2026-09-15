@@ -91,6 +91,7 @@ export async function POST() {
           type: 'subscriptions',
           id: subscriptionId,
           attributes: {
+            status: 'paused', 
             pause: {
               mode: 'free',
               resumes_at: targetDate,
@@ -99,6 +100,7 @@ export async function POST() {
         },
       }),
     });
+
 
     const responseData = await lsResponse.json();
 
