@@ -191,7 +191,7 @@ export default function LandingPage() {
           </Grid.Col>
         </Grid>
 
-		 {/* SECTION PAUSE ESTIVALE */}
+		{/* SECTION PAUSE ESTIVALE */}
         <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">
             <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -200,7 +200,7 @@ export default function LandingPage() {
             <Stack gap={5} style={{ flex: 1 }}>
               <Title order={3} size="h4" c="white">☀️ Pause estivale : Soufflez sans stress en été</Title>
               <Text size="sm" c="white" style={{ opacity: 0.9, lineHeight: 1.6 }}>
-                Pas question de payer pour rien pendant les grandes vacances ! Entre le <b>25 juin et le 31 août</b>, un bouton dédié apparaît automatiquement dans votre menu latéral. En un clic, vous suspendez votre abonnement : aucun prélèvement n'est effectué en juillet et en août, et votre accès est automatiquement prolongé jusqu'au <b>5 septembre</b>.
+                Pas question de payer pour rien pendant les grandes vacances ! Le bouton dédié, déjà présent dans votre menu latéral, sera actif du <b>25 juin au 31 août</b>. En un clic, vous suspendez votre abonnement : aucun prélèvement n'est effectué en juillet et en août, vous conservez l'accès à l'application durant toute cette période, les prélèvements reprendront leurs cycles à partir du <b>3 septembre</b>.
               </Text>
             </Stack>
           </Group>
