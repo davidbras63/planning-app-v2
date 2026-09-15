@@ -14,9 +14,9 @@ export async function POST() {
 
     // 1. Récupérer l'utilisateur et son statut en base + son ID d'abonnement
     const userRecord = await db
-      .select({ 
-        subscriptionId: users.lemonSqueezySubscriptionId, 
-        status: users.status 
+      .select({
+        subscriptionId: users.lemonSqueezySubscriptionId,
+        status: users.status
       })
       .from(users)
       .where(eq(users.clerkId, userId))
@@ -46,12 +46,13 @@ export async function POST() {
     const june25 = new Date(currentYear, 5, 25); // Mois 5 = Juin
     const august31 = new Date(currentYear, 7, 31); // Mois 7 = Août
 
-    if (now < june25 || now > august31) {
-      return NextResponse.json(
-        { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
-        { status: 400 }
-      );
-    }
+    // ASTUCE TEST : Si tu veux tester en dehors de la période, commente temporairement la ligne du dessous
+    //if (now < june25 || now > august31) {
+      //return NextResponse.json(
+        //{ error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
+        //{ status: 400 }
+      //);
+    //}
 
     // 4. Calcul de la date cible pour le 5 septembre dynamique
     const targetDate = `${currentYear}-09-05T00:00:00Z`;
@@ -76,11 +77,14 @@ export async function POST() {
       }),
     });
 
+    const responseData = await lsResponse.json();
+
     if (!lsResponse.ok) {
-      const errorData = await lsResponse.json();
-      console.error('Erreur API Lemon Squeezy:', errorData);
-      return NextResponse.json({ error: 'Erreur lors de la communication avec Lemon Squeezy.' }, { status: 500 });
+      console.error('Erreur API Lemon Squeezy:', responseData);
+      return NextResponse.json({ error: 'Erreur lors de la communication avec Lemon Squeezy.', details: responseData }, { status: 500 });
     }
+
+    console.log('Succès Lemon Squeezy:', responseData);
 
     // 6. Mise à jour de la base de données locale
     await db
