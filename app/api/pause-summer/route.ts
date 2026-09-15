@@ -91,7 +91,6 @@ export async function POST() {
           type: 'subscriptions',
           id: subscriptionId,
           attributes: {
-            status: 'paused', 
             pause: {
               mode: 'free',
               resumes_at: targetDate,
@@ -101,15 +100,15 @@ export async function POST() {
       }),
     });
 
-
     const responseData = await lsResponse.json();
 
     if (!lsResponse.ok) {
-      console.error('Erreur API Lemon Squeezy:', responseData);
+      console.error('Erreur API Lemon Squeezy:', JSON.stringify(responseData, null, 2));
       return NextResponse.json({ error: 'Erreur lors de la communication avec Lemon Squeezy.', details: responseData }, { status: 500 });
     }
 
-    console.log('Succès Lemon Squeezy:', responseData);
+    console.log('Succes Lemon Squeezy (JSON brut) :');
+    console.log(JSON.stringify(responseData, null, 2));
 
     // 7. Mise à jour de la base de données locale
     await db
