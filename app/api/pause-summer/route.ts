@@ -72,8 +72,16 @@ export async function POST() {
       return NextResponse.json({ error: 'Aucun abonnement actif trouvé chez Lemon Squeezy pour cet email.' }, { status: 404 });
     }
 
-    // On prend le premier abonnement actif ou valide trouvé
-    const subscriptionId = listData.data[0].id;
+    // On cherche explicitement l'abonnement actif pour éviter les vieux profils morts
+	const activeSubscription = listData.data.find(
+	  (sub: any) => sub.attributes && sub.attributes.status === 'active'
+	);
+
+	if (!activeSubscription) {
+	  return NextResponse.json({ error: 'Aucun abonnement actif trouvé chez Lemon Squeezy pour cet email.' }, { status: 404 });
+	}
+
+	const subscriptionId = activeSubscription.id;
 
     // 5. Calcul de la date cible pour le 5 septembre dynamique
     const targetDate = `${currentYear}-09-05T00:00:00Z`;
