@@ -12,10 +12,10 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Récupérer l'utilisateur et son statut en base + son ID d'abonnement
+    // 1. Récupérer l'utilisateur en base pour avoir son email et son statut
     const userRecord = await db
       .select({
-        subscriptionId: users.lemonSqueezySubscriptionId,
+        email: users.email,
         status: users.status
       })
       .from(users)
@@ -25,7 +25,7 @@ export async function POST() {
     const dbUser = userRecord[0];
 
     if (!dbUser) {
-      return NextResponse.json({ error: 'Utilisateur introuvable.' }, { status: 404 });
+      return NextResponse.json({ error: 'Utilisateur introuvable en base.' }, { status: 404 });
     }
 
     // 2. Sécurité : le statut DOIT être strictement 'active'
@@ -36,29 +36,50 @@ export async function POST() {
       );
     }
 
-    if (!dbUser.subscriptionId) {
-      return NextResponse.json({ error: 'Aucun abonnement valide associé à ce compte.' }, { status: 400 });
+    if (!dbUser.email) {
+      return NextResponse.json({ error: 'Aucun email associé à ce compte.' }, { status: 400 });
     }
 
-    // 3. Vérification dynamique de la date (>= 25 juin de l'année en cours)
+    // 3. Vérification de la période (MIS EN COMMENTAIRE POUR LE TEST)
+    // const now = new Date();
+    // const currentYear = now.getFullYear();
+    // const june25 = new Date(currentYear, 5, 25);
+    // const august31 = new Date(currentYear, 7, 31);
+    // if (now < june25 || now > august31) {
+    // return NextResponse.json(
+    // { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
+    // { status: 400 }
+    // );
+    // }
+
     const now = new Date();
     const currentYear = now.getFullYear();
-    const june25 = new Date(currentYear, 5, 25); // Mois 5 = Juin
-    const august31 = new Date(currentYear, 7, 31); // Mois 7 = Août
 
-    // ASTUCE TEST : Si tu veux tester en dehors de la période, commente temporairement la ligne du dessous
-    //if (now < june25 || now > august31) {
-      //return NextResponse.json(
-        //{ error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
-        //{ status: 400 }
-      //);
-    //}
+    // 4. Récupérer dynamiquement l'abonnement Lemon Squeezy via l'email de l'utilisateur
+    const listRes = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions?filter[user_email]=${encodeURIComponent(dbUser.email)}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
+        'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
+      },
+    });
 
-    // 4. Calcul de la date cible pour le 5 septembre dynamique
+    const listData = await listRes.json();
+
+    if (!listRes.ok || !listData.data || listData.data.length === 0) {
+      console.error('Erreur recherche abonnement Lemon Squeezy par email:', listData);
+      return NextResponse.json({ error: 'Aucun abonnement actif trouvé chez Lemon Squeezy pour cet email.' }, { status: 404 });
+    }
+
+    // On prend le premier abonnement actif ou valide trouvé
+    const subscriptionId = listData.data[0].id;
+
+    // 5. Calcul de la date cible pour le 5 septembre dynamique
     const targetDate = `${currentYear}-09-05T00:00:00Z`;
 
-    // 5. Appel à l'API Lemon Squeezy pour reporter la facturation au 5 septembre
-    const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${dbUser.subscriptionId}`, {
+    // 6. Appel à l'API Lemon Squeezy pour reporter la facturation au 5 septembre
+    const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
       method: 'PATCH',
       headers: {
         'Accept': 'application/vnd.api+json',
@@ -68,7 +89,7 @@ export async function POST() {
       body: JSON.stringify({
         data: {
           type: 'subscriptions',
-          id: dbUser.subscriptionId,
+          id: subscriptionId,
           attributes: {
             trial_ends_at: null,
             renews_at: targetDate,
@@ -86,7 +107,7 @@ export async function POST() {
 
     console.log('Succès Lemon Squeezy:', responseData);
 
-    // 6. Mise à jour de la base de données locale
+    // 7. Mise à jour de la base de données locale
     await db
       .update(users)
       .set({
@@ -96,8 +117,8 @@ export async function POST() {
       .where(eq(users.clerkId, userId));
 
     return NextResponse.json({ success: true, message: 'Pause estivale activée jusqu\'au 5 septembre.' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur critique route pause-summer:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur interne du serveur', details: error?.message }, { status: 500 });
   }
 }
