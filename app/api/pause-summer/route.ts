@@ -72,8 +72,13 @@ export async function POST() {
       return NextResponse.json({ error: 'Aucun abonnement actif trouvé chez Lemon Squeezy pour cet email.' }, { status: 404 });
     }
 
-    // On cherche explicitement l'abonnement actif pour éviter les vieux profils morts
-	const activeSubscription = listData.data.find(
+    // On trie d'abord du plus récent au plus ancien par created_at pour éviter de choper un vieux profil mort
+	const sortedSubscriptions = listData.data.sort((a: any, b: any) => {
+	  return new Date(b.attributes.created_at).getTime() - new Date(a.attributes.created_at).getTime();
+	});
+
+	// On cherche explicitement l'abonnement actif dans les plus récents
+	const activeSubscription = sortedSubscriptions.find(
 	  (sub: any) => sub.attributes && sub.attributes.status === 'active'
 	);
 
@@ -83,51 +88,51 @@ export async function POST() {
 
 	const subscriptionId = activeSubscription.id;
 
-    // 5. Calcul de la date cible pour le 5 septembre dynamique
-    const targetDate = `${currentYear}-09-05T00:00:00Z`;
+	// 5. Calcul de la date cible pour le 5 septembre dynamique
+	const targetDate = `${currentYear}-10-05T00:00:00Z`;
 
-    // 6. Appel à l'API Lemon Squeezy pour mettre en pause l'abonnement
-    const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
-      method: 'PATCH',
-      headers: {
-        'Accept': 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-        'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
-      },
-      body: JSON.stringify({
-        data: {
-          type: 'subscriptions',
-          id: subscriptionId,
-          attributes: {
-            pause: {
-              mode: 'free',
-              resumes_at: targetDate,
-            },
-          },
-        },
-      }),
-    });
+	// 6. Appel à l'API Lemon Squeezy pour mettre en pause l'abonnement
+	const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
+	  method: 'PATCH',
+	  headers: {
+	    'Accept': 'application/vnd.api+json',
+	    'Content-Type': 'application/vnd.api+json',
+	    'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
+	  },
+	  body: JSON.stringify({
+	    data: {
+	      type: 'subscriptions',
+	      id: subscriptionId,
+	      attributes: {
+	        pause: {
+	          mode: 'free',
+	          resumes_at: targetDate,
+	        },
+	      },
+	    },
+	  }),
+	});
 
-    const responseData = await lsResponse.json();
+	const responseData = await lsResponse.json();
 
-    if (!lsResponse.ok) {
-      console.error('Erreur API Lemon Squeezy:', JSON.stringify(responseData, null, 2));
-      return NextResponse.json({ error: 'Erreur lors de la communication avec Lemon Squeezy.', details: responseData }, { status: 500 });
-    }
+	if (!lsResponse.ok) {
+	  console.error('Erreur API Lemon Squeezy:', JSON.stringify(responseData, null, 2));
+	  return NextResponse.json({ error: 'Erreur lors de la communication avec Lemon Squeezy.', details: responseData }, { status: 500 });
+	}
 
-    console.log('Succes Lemon Squeezy (JSON brut) :');
-    console.log(JSON.stringify(responseData, null, 2));
+	console.log('Succes Lemon Squeezy (JSON brut) :');
+	console.log(JSON.stringify(responseData, null, 2));
 
-    // 7. Mise à jour de la base de données locale
-    await db
-      .update(users)
-      .set({
-        status: 'summer_paused',
-        periodEnd: new Date(targetDate),
-      })
-      .where(eq(users.clerkId, userId));
+	// 7. Mise à jour de la base de données locale
+	await db
+	  .update(users)
+	  .set({
+	    status: 'summer_paused',
+	    periodEnd: new Date(targetDate),
+	  })
+	  .where(eq(users.clerkId, userId));
 
-    return NextResponse.json({ success: true, message: 'Pause estivale activée jusqu\'au 5 septembre.' });
+	return NextResponse.json({ success: true, message: 'Pause estivale activée jusqu\'au 5 septembre.' });
   } catch (error: any) {
     console.error('Erreur critique route pause-summer:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur', details: error?.message }, { status: 500 });

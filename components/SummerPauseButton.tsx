@@ -9,15 +9,15 @@ export default function SummerPauseButton() {
 
   const handleSummerPause = async () => {
     // 1. Vérification de la date au moment du clic (du 25 juin au 31 août de l'année en cours)
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const june25 = new Date(currentYear, 5, 25);
-    const august31 = new Date(currentYear, 7, 31, 23, 59, 59);
+    //const now = new Date();
+    //const currentYear = now.getFullYear();
+    //const june25 = new Date(currentYear, 5, 25);
+    //const august31 = new Date(currentYear, 7, 31, 23, 59, 59);
 
-    if (now < june25 || now > august31) {
-      alert("La pause estivale est uniquement active du 25 juin au 31 août !");
-      return;
-    }
+    //if (now < june25 || now > august31) {
+      //alert("La pause estivale est uniquement active du 25 juin au 31 août !");
+      //return;
+    //}
 
     // 2. Demande de confirmation avant l'appel API
     if (!confirm('Voulez-vous activer votre pause estivale ? Aucun prélèvement ne sera effectué, et l\'abonnement reprendra le 5 septembre.')) {
