@@ -41,19 +41,18 @@ export async function POST() {
     }
 
     // 3. Vérification de la période (MIS EN COMMENTAIRE POUR LE TEST)
-    // const now = new Date();
-    // const currentYear = now.getFullYear();
-    // const june25 = new Date(currentYear, 5, 25);
-    // const august31 = new Date(currentYear, 7, 31);
-    // if (now < june25 || now > august31) {
-    // return NextResponse.json(
-    // { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
-    // { status: 400 }
-    // );
-    // }
+     const now = new Date();
+     const currentYear = now.getFullYear();
+     const june25 = new Date(currentYear, 5, 25);
+     const august31 = new Date(currentYear, 7, 31);
+     if (now < june25 || now > august31) {
+     return NextResponse.json(
+     { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
+     { status: 400 }
+     );
+     }
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
+    
 
     // 4. Récupérer dynamiquement l'abonnement Lemon Squeezy via l'email de l'utilisateur
     const listRes = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions?filter[user_email]=${encodeURIComponent(dbUser.email)}`, {
@@ -89,7 +88,7 @@ export async function POST() {
 	const subscriptionId = activeSubscription.id;
 
 	// 5. Calcul de la date cible pour le 5 septembre dynamique
-	const targetDate = `${currentYear}-10-05T00:00:00Z`;
+	const targetDate = `${currentYear}-09-05T00:00:00Z`;
 
 	// 6. Appel à l'API Lemon Squeezy pour mettre en pause l'abonnement
 	const lsResponse = await fetch(`https://api.lemonsqueezy.com/v1/subscriptions/${subscriptionId}`, {
@@ -106,7 +105,7 @@ export async function POST() {
 	      attributes: {
 	        pause: {
 	          mode: 'free',
-	          resumes_at: targetDate,
+	          resumes_at: `${currentYear}-09-03T00:00:00Z`,
 	        },
 	      },
 	    },
