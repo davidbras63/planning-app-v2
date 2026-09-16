@@ -20,7 +20,7 @@ export default function SummerPauseButton() {
     }
 
     // 2. Demande de confirmation avant l'appel API
-    if (!confirm('Voulez-vous activer votre pause estivale ? Aucun prélèvement ne sera effectué, et l\'abonnement reprendra le 5 septembre.')) {
+    if (!confirm('Voulez-vous activer votre pause estivale ? Aucun prélèvement ne sera effectué, et l\'abonnement reprendra le 3 septembre.')) {
       return;
     }
 
