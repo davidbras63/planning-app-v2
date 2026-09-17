@@ -17,6 +17,7 @@
     "@mantine/dates": "^9.4.2",
     "@mantine/hooks": "^9.4.1",
     "@neondatabase/serverless": "^1.1.0",
+    "@tabler/icons-react": "^3.46.0",
     "@vercel/postgres": "^0.10.0",
     "dayjs": "^1.11.21",
     "drizzle-orm": "^0.45.2",

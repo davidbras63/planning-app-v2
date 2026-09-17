@@ -24,15 +24,15 @@ export async function checkAccessAction() {
 		return { hasAccess: true };
 	}
 
-    // Vérification stricte de la période d'essai ou du statut actif
-    const now = new Date();
-    const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
-    const isTrialActive = user.status === 'trial' && periodEnd && periodEnd > now;
-    const isPaidActive = user.status === 'active'; 
+    // Vérification stricte de la date de fin, peu importe le texte du statut
+	const now = new Date();
+	const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
+	const isAccessGranted = periodEnd && periodEnd > now;
 
-    if (!isTrialActive && !isPaidActive) {
-        return { hasAccess: false };
-    }
+	if (!isAccessGranted) {
+		return { hasAccess: false };
+	}
 
-    return { hasAccess: true };
+	return { hasAccess: true };
+
 }

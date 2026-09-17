@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, Suspense } from 'react';
-import { useUser, SignInButton, SignUpButton,SignOutButton } from '@clerk/nextjs';
+import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from 'next/navigation';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
-import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle } from 'lucide-react';
+import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function AuthAlertHandler() {
@@ -33,40 +35,38 @@ export default function LandingPage() {
 
       {/* HEADER / HERO SECTION (Fond sombre -> Texte blanc pur) */}
       <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
-		  {/* Logo tout en haut à gauche */}
-		  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-			  <div>
-				<img
-				  src="/logo.png"
-				  alt="Logo Nesis"
-				  style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(500%) hue-rotate(120deg)' }}
-				/>
-			  </div>
-			  <div>
-				<SignOutButton>
-				  <button style={{ 
-					backgroundColor: 'rgba(255, 255, 255, 0.05)', 
-					border: '1px solid rgba(255, 255, 255, 0.2)', 
-					color: '#ffffff', 
-					padding: '8px 16px', 
-					borderRadius: '8px', 
-					cursor: 'pointer',
-					fontWeight: 500
-				  }}>
-					Déconnexion
-				  </button>
-				</SignOutButton>
-			  </div>
-		  </div>
+        {/* Logo tout en haut à gauche */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div>
+            <img
+              src="/logo.png"
+              alt="Logo Nesis"
+              style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(500%) hue-rotate(120deg)' }}
+            />
+          </div>
+          <div>
+            <SignOutButton>
+              <button style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 500
+              }}>
+                Déconnexion
+              </button>
+            </SignOutButton>
+          </div>
+        </div>
 
-
-		  <Container size="md">
-			<Stack align="center" gap="lg">
-			  {/* Le texte unique, bien positionné sous le logo */}
-			  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', marginBottom: '10px' }}>
-				<HelpCircle size={16} color="#4f9fa5" /> Finis les révisions au feeling : ton contrôle continu personnel
-			  </div>
-
+        <Container size="md">
+          <Stack align="center" gap="lg">
+            {/* Le texte unique, bien positionné sous le logo */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', marginBottom: '10px' }}>
+              <HelpCircle size={16} color="#4f9fa5" /> Finis les révisions au feeling : ton contrôle continu personnel
+            </div>
            
             <Title order={1} style={{ fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.2, color: 'white' }}>
               Pilote tes révisions <br />sans mauvaise surprise.
@@ -191,8 +191,39 @@ export default function LandingPage() {
           </Grid.Col>
         </Grid>
 
+		{/* SECTION PAUSE ESTIVALE */}
+        <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
+          <Group align="flex-start" gap="md">
+            <ThemeIcon size={50} radius="md" color="orange" mb="md">
+              <Calendar size={26} />
+            </ThemeIcon>
+            <Stack gap={5} style={{ flex: 1 }}>
+              <Title order={3} size="h4" c="white">☀️ Pause estivale : Soufflez sans stress en été</Title>
+              <Text size="sm" c="white" style={{ opacity: 0.9, lineHeight: 1.6 }}>
+                Pas question de payer pour rien pendant les grandes vacances ! Le bouton dédié, déjà présent dans votre menu latéral, sera actif du <b>25 juin au 31 août</b>. En un clic, vous suspendez votre abonnement : aucun prélèvement n'est effectué en juillet et en août, vous conservez l'accès à l'application durant toute cette période, les prélèvements reprendront leurs cycles à partir du <b>3 septembre</b>.
+              </Text>
+            </Stack>
+          </Group>
+        </Card>
+
+
+        {/* SECTION PARRAINAGE */}
+        <Card withBorder mt={50} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
+          <Group align="flex-start" gap="md">
+            <ThemeIcon size={50} radius="md" color="pink" mb="md">
+              <Gift size={26} />
+            </ThemeIcon>
+            <Stack gap={5} style={{ flex: 1 }}>
+              <Title order={3} size="h4" c="white">Programme Parrainage : Gagne des commissions récurrentes</Title>
+              <Text size="sm" c="white" style={{ opacity: 0.9, lineHeight: 1.6 }}>
+                Chaque utilisateur actif disposant d'un abonnement reçoit <b>automatiquement par e-mail un lien de parrainage personnel</b> dès la validation de son premier paiement. Partage-le autour de toi : dès qu'une personne s'inscrit et s'abonne via ton lien, tu touches <b>15 % de commission</b> sur la valeur de son abonnement <b>chaque mois</b>, et ce, à chaque renouvellement, tant que son abonnement reste actif.
+              </Text>
+            </Stack>
+          </Group>
+        </Card>
+
         {/* SECTION VALEUR AJOUTÉE (Fond blanc conservé) */}
-        <Card withBorder mt={50} p="xl" radius="md" bg="white" style={{ borderColor: '#e2e8f0' }}>
+        <Card withBorder mt={30} p="xl" radius="md" bg="white" style={{ borderColor: '#e2e8f0' }}>
           <Group justify="space-between" align="center">
             <Stack gap={5} maw={650}>
               <Title order={3} size="h4" c="#141517">L'outil indispensable pour réussir tes examens</Title>
