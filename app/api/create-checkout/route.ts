@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const { userId } = await auth();
 
@@ -24,14 +24,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données.' }, { status: 404 });
     }
 
-    // Récupération dynamique de l'URL et de tes identifiants Vercel
-    const host = req.headers.get('host');
-    const protocol = req.headers.get('x-forwarded-proto') || 'https';
-    const dynamicUrl = host ? `${protocol}://${host}` : null;
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || dynamicUrl || 'https://nesis-quih5eela-pilot-expert.vercel.app';
-
+    // Récupération propre de tes variables d'environnement Vercel
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nesis.fr';
 
     const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
