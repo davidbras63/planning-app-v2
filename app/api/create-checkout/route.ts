@@ -27,7 +27,7 @@ export async function POST() {
     // Récupération propre de tes variables d'environnement Vercel
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
-    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nesis.fr';
+    const siteUrl = 'https://nesis-dev.vercel.app';
 
     const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
