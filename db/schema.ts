@@ -75,6 +75,14 @@ export const individualNotes = pgTable('individual_notes', {
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const userCustomization = pgTable("user_customization", {
+  id: serial("id").primaryKey().notNull(),
+  clerkId: text("clerk_id").notNull().unique(), // Une seule ligne de personnalisation par utilisateur
+  bgColor: text("bg_color"),
+  bgImage: text("bg_image"),
+  bgZoom: text("bg_zoom").default('cover'),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const users = pgTable("users", {
 	id: integer().primaryKey().generatedAlwaysAsIdentity({ name: "users_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),

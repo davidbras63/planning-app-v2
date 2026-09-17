@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect,useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, Button } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
-  LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Plus, HelpCircle
+  LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Plus, HelpCircle, Palette
 } from 'lucide-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
+import { useDisclosure } from '@mantine/hooks';
 import SummerPauseButton from '@/components/SummerPauseButton';
+import BackgroundPicker from '@/components/BackgroundPicker';
 
 import {
   actionCreateMatiere,
@@ -32,6 +34,9 @@ export default function Sidebar() {
     const [linkTitle, setLinkTitle] = useState("");
     const [linkUrl, setLinkUrl] = useState("");
 
+    // État pour la modale de personnalisation du fond
+    const [openedBackground, { open: openBackground, close: closeBackground }] = useDisclosure(false);
+
     const { signOut } = useClerk();
     const params = useParams();
     const urlFolderId = params?.folderId as string | null;
@@ -50,7 +55,6 @@ export default function Sidebar() {
                 if (dataFolders && dataFolders.length > 0) {
                     const formattedFolders = dataFolders.map((f: any) => ({ value: String(f.id), label: f.nom || f.name }));
                     setFolders(formattedFolders);
-                    // On retire le setSelectedFolderId d'ici pour stopper le re-rendu en cascade chaotique
                 }
             }
         };
@@ -60,9 +64,7 @@ export default function Sidebar() {
 
     const handleCreateFolder = () => setOpenedFolder(true);
     const handleCreateSubject = () => setOpenedSubject(true);
-
     const handleAddLink = () => setOpenedLink(true);
-        
 
     return (
         <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', display: 'flex', flexDirection: 'column' }} p="md">
@@ -80,6 +82,15 @@ export default function Sidebar() {
 					<Link href={currentFolderId ? `/protected/planning/${currentFolderId}` : "/protected/planning"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
 					<Link href={currentFolderId ? `/protected/graphiques/${currentFolderId}` : "/protected/graphiques"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
 					<Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
+
+                    {/* Bouton pour ouvrir la modale de fond */}
+                    <Box 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none', borderRadius: '8px' }} 
+                        onClick={openBackground}
+                        className="hover:bg-slate-800 hover:text-white transition"
+                    >
+                        <Palette size={20} /> {isOpen && "Personnalisation"}
+                    </Box>
 
                     <Divider my="sm" />
                     <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}><FolderPlus size={20} /> {isOpen && "Créer Dossier"}</Box>
@@ -102,8 +113,6 @@ export default function Sidebar() {
                     <Link href="/faq" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
 					   <HelpCircle size={20} /> {isOpen && "Prise en main"}
 					</Link>
-					
-					
                 </Stack>
 				
 				<SummerPauseButton />
@@ -161,6 +170,7 @@ export default function Sidebar() {
                     </Button>
                 </Stack>
             </Modal>
+
 			<Modal opened={openedLink} onClose={() => setOpenedLink(false)} title="Ajouter un lien">
                 <Stack gap="md">
                     <TextInput
@@ -189,6 +199,8 @@ export default function Sidebar() {
                 </Stack>
             </Modal>
 
+            {/* Composant de fond d'écran et modale de personnalisation */}
+            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
         </Box>
     );
 }
