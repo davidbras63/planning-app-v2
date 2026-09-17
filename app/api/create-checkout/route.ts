@@ -24,6 +24,11 @@ export async function POST() {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données.' }, { status: 404 });
     }
 
+    // Récupération dynamique depuis tes variables Vercel (avec tes exacts noms de ta capture d'écran)
+    const storeId = process.env.LEMONSQUEEZY_STORE_ID;
+    const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://nesis-quih5eela-pilot-expert.vercel.app';
+
     const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
@@ -42,10 +47,10 @@ export async function POST() {
               },
             },
             product_options: {
-              enabled_variants: ['2089254'],
-              redirect_url: `${process.env.NEXT_PUBLIC_APP_URL}/protected/dashboard`,
+              enabled_variants: [variantId],
+              redirect_url: `${siteUrl}/protected/dashboard`,
               receipt_button_text: 'Accéder à mon espace',
-              receipt_link_url: `${process.env.NEXT_PUBLIC_APP_URL}/protected/dashboard`,
+              receipt_link_url: `${siteUrl}/protected/dashboard`,
             },
             checkout_options: {
               embed: false,
@@ -58,13 +63,13 @@ export async function POST() {
             store: {
               data: {
                 type: 'stores',
-                id: '466416',
+                id: storeId,
               },
             },
             variant: {
               data: {
                 type: 'variants',
-                id: '2089254',
+                id: variantId,
               },
             },
           },
