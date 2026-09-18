@@ -70,7 +70,15 @@ export async function handleLemonSqueezyWebhook(event: any) {
     `);
     console.log("✅ Abonnement mis en pause (via portail Lemon Squeezy). Le period_end reste inchangé pour laisser l'accès actif jusqu'à son terme.");
   }
-
+  // --- GESTION DE LA REPRISE DE PAUSE (UNPAUSE) ---
+  else if (eventName === 'subscription_unpaused') {
+    await db.execute(sql`
+      UPDATE users
+      SET status = 'active'
+      WHERE clerk_id = ${clerkId}
+    `);
+    console.log("✅ Abonnement réactivé suite à la levée de la pause (via portail Lemon Squeezy).");
+  }
   else if (eventName === 'subscription_payment_success') {
     const now = new Date();
    
