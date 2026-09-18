@@ -303,6 +303,7 @@ export default function Dashboard() {
                           </div>
                         </Table.Td>
 
+                        {/* Date d'origine non modifiée */}
                         <Table.Td style={{ padding: '16px 12px', color: '#ffffff', fontSize: '14px' }}>
                           {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
                         </Table.Td>
@@ -325,10 +326,11 @@ export default function Dashboard() {
                         <Table.Td style={{ padding: '16px 12px' }}>
                           <Flex gap="sm">
                             <Button size="xs" color="blue" onClick={() => handleReintegrer(r)}>Réintégrer</Button>
+                            {/* Bouton Ignorer d'origine en rouge */}
                             <Button
                               size="xs"
                               color="red"
-                              variant="outline"
+                              variant="filled"
                               onClick={async () => {
                                 if (r.id) {
                                   const res = await actionIgnorerRattrapage(String(r.id));
