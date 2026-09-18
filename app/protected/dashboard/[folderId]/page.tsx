@@ -82,19 +82,9 @@ export default function Dashboard() {
         {/* DOSSIER ACTIF */}
         <Box>
           <div style={{ marginBottom: '30px' }}>
-            {/* TITRE AVEC CONTENEUR HARMONISÉ */}
-            <div style={{ 
-              backgroundColor: 'rgba(15, 23, 42, 0.85)', 
-              border: '1px solid rgba(255, 255, 255, 0.35)', 
-              borderRadius: '8px', 
-              padding: '10px 16px',
-              marginBottom: '12px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
-            }}>
-              <Title order={5} style={{ margin: 0, color: '#ffffff', fontWeight: 600 }}>
-                Dossier actif
-              </Title>
-            </div>
+            <Title order={5} style={{ margin: 0, color: '#ffffff', fontWeight: 600, marginBottom: '12px' }}>
+              Dossier actif
+            </Title>
 
             <Flex align="flex-end" gap="sm">
               <div style={{ flex: 1 }}>
@@ -114,7 +104,7 @@ export default function Dashboard() {
                   }}
                   styles={{
                     input: {
-                      backgroundColor: 'rgba(15, 23, 42, 0.35)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.65)',
                       border: '1px solid rgba(255, 255, 255, 0.35)',
                       color: '#ffffff',
                     },
@@ -153,21 +143,10 @@ export default function Dashboard() {
             </Flex>
           </div>
 
-          {/* TITRE GESTION DES MATIÈRES AVEC CONTENEUR */}
-          <div style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.85)', 
-            border: '1px solid rgba(255, 255, 255, 0.35)', 
-            borderRadius: '8px', 
-            padding: '10px 16px',
-            marginBottom: '16px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
-          }}>
-            <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
-              <Folder size={20} color="#38bdf8" /> Gestion des Matières
-            </Title>
-          </div>
+          <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600, marginBottom: '16px' }}>
+            <Folder size={20} color="#38bdf8" /> Gestion des Matières
+          </Title>
          
-          {/* LISTE DES MATIÈRES AVEC DESIGN CLAIR ET FLOUTÉ (0.35) */}
           <Stack gap="md">
             {matieresList?.map((matiere: any) => {
               const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
@@ -191,7 +170,17 @@ export default function Dashboard() {
                       onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
                     >
                       {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
-                      <Text fw={700} size="md" ml={8} style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
+                      
+                      <div style={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.70)',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
+                        borderRadius: '6px',
+                        padding: '4px 12px',
+                        marginLeft: '8px',
+                        display: 'inline-block'
+                      }}>
+                        <Text fw={700} size="md" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
+                      </div>
                     </Flex>
                     <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
                       <Trash2 size={18} />
@@ -208,10 +197,21 @@ export default function Dashboard() {
 
                           return (
                             <Flex key={chapId} justify="space-between" align="center" py={4}>
-                              <Text size="sm" style={{ color: '#ffffff' }}>
-                                {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
-                                {chapTitre}
-                              </Text>
+                              {/* Petit encart discret sur les chapitres pour garantir une lisibilité parfaite sur fond clair */}
+                              <div style={{
+                                backgroundColor: 'rgba(15, 23, 42, 0.60)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                display: 'inline-block',
+                                flex: 1,
+                                marginRight: '10px'
+                              }}>
+                                <Text size="sm" style={{ color: '#ffffff' }}>
+                                  {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
+                                  {chapTitre}
+                                </Text>
+                              </div>
                               <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
                                 <Trash2 size={15} />
                               </ActionIcon>
@@ -229,21 +229,11 @@ export default function Dashboard() {
           </Stack>
         </Box>
 
-        {/* TABLEAU DE RATTRAPAGE */}
+        {/* TABLEAU DE RATTRAPAGE AVEC PETITS ENCARTS CIBLÉS */}
         <Box mt={40}>
-          {/* TITRE TABLEAU DE RATTRAPAGE AVEC CONTENEUR */}
-          <div style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.85)', 
-            border: '1px solid rgba(255, 255, 255, 0.35)', 
-            borderRadius: '8px', 
-            padding: '10px 16px',
-            marginBottom: '16px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
-          }}>
-            <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
-              <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
-            </Title>
-          </div>
+          <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600, marginBottom: '16px' }}>
+            <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
+          </Title>
 
           <div style={{ 
             backgroundColor: 'rgba(15, 23, 42, 0.35)', 
@@ -271,28 +261,65 @@ export default function Dashboard() {
                     const noteMoyenne = r.moyenne ?? 0;
                     const rowKey = r.echeanceId ?? r.id ?? index;
 
+                    // Style des petits encarts internes pour le tableau de rattrapage
+                    const cellBoxStyle = {
+                      backgroundColor: 'rgba(15, 23, 42, 0.70)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      display: 'inline-block',
+                      width: '100%'
+                    };
+
                     return (
                       <Table.Tr key={rowKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
-                        <Table.Td style={{ padding: '12px', color: '#ffffff', fontWeight: 500 }}>
-                          {jValue && <span style={{ marginRight: '8px', fontWeight: 700, color: '#38bdf8' }}>[{jValue}]</span>}
-                          {titreChapitre}
+                        <Table.Td style={{ padding: '10px' }}>
+                          <div style={cellBoxStyle}>
+                            <Text size="sm" style={{ color: '#ffffff', fontWeight: 500 }}>
+                              {jValue && <span style={{ marginRight: '8px', fontWeight: 700, color: '#38bdf8' }}>[{jValue}]</span>}
+                              {titreChapitre}
+                            </Text>
+                          </div>
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '12px', color: '#ffffff' }}>
-                          {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
+                        <Table.Td style={{ padding: '10px' }}>
+                          <div style={cellBoxStyle}>
+                            <Text size="sm" style={{ color: '#ffffff' }}>
+                              {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
+                            </Text>
+                          </div>
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '12px', color: '#ffffff' }}>
-                          {Number(noteMoyenne).toFixed(1)}
+                        <Table.Td style={{ padding: '10px' }}>
+                          <div style={{ ...cellBoxStyle, maxWidth: '80px' }}>
+                            <Text size="sm" style={{ color: '#ffffff', textAlign: 'center' }}>
+                              {Number(noteMoyenne).toFixed(1)}
+                            </Text>
+                          </div>
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '12px' }}>
-                          <Flex gap="sm">
-                            <Button size="xs" color="blue" onClick={() => handleReintegrer(r)}>Réintégrer</Button>
+                        <Table.Td style={{ padding: '10px' }}>
+                          <Flex gap="sm" align="center">
+                            <Button 
+                              size="xs" 
+                              style={{ 
+                                backgroundColor: '#0284c7', 
+                                color: '#ffffff', 
+                                fontWeight: 600,
+                                border: '1px solid rgba(56, 189, 248, 0.5)' 
+                              }} 
+                              onClick={() => handleReintegrer(r)}
+                            >
+                              Réintégrer
+                            </Button>
                             <Button
                               size="xs"
-                              color="red"
-                              variant="outline"
+                              style={{
+                                backgroundColor: 'rgba(127, 29, 29, 0.85)',
+                                color: '#fca5a5',
+                                fontWeight: 600,
+                                border: '1px solid rgba(239, 68, 68, 0.5)'
+                              }}
                               onClick={async () => {
                                 if (r.id) {
                                   const res = await actionIgnorerRattrapage(String(r.id));
@@ -313,8 +340,18 @@ export default function Dashboard() {
                   })
                 ) : (
                   <Table.Tr>
-                    <Table.Td colSpan={4} align="center" style={{ color: 'rgba(255, 255, 255, 0.7)', padding: '24px', fontStyle: 'italic' }}>
-                      Aucun élément en rattrapage
+                    <Table.Td colSpan={4} align="center" style={{ padding: '24px' }}>
+                      <div style={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.70)', 
+                        border: '1px solid rgba(255, 255, 255, 0.25)', 
+                        borderRadius: '8px', 
+                        padding: '10px',
+                        display: 'inline-block'
+                      }}>
+                        <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.8)' }} fs="italic">
+                          Aucun élément en rattrapage
+                        </Text>
+                      </div>
                     </Table.Td>
                   </Table.Tr>
                 )}

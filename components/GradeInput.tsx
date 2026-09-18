@@ -79,8 +79,20 @@ export default function GradeInput({
                           {e.stepName || e.step || "Étape"}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 12px', color: '#ffffff', fontWeight: '600', fontSize: '15px' }}>
-                        {e.titreChapitre || e.chapitre_titre || e.titre || "Chapitre sans nom"}
+                      <td style={{ padding: '16px 12px' }}>
+                        {/* Conteneur pour le titre du chapitre reprenant exactement les mêmes réglages que l'input des notes */}
+                        <div style={{
+                          display: 'inline-block',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          color: '#ffffff',
+                          fontWeight: '600',
+                          fontSize: '14px'
+                        }}>
+                          {e.titreChapitre || e.chapitre_titre || e.titre || "Chapitre sans nom"}
+                        </div>
                       </td>
                       <td style={{ padding: '16px 12px' }}>
                         <input
@@ -136,7 +148,7 @@ export default function GradeInput({
                         />
                       </td>
                       <td style={{ padding: '16px 12px' }}>
-                        {/* Petit conteneur sombre et opaque pour que la moyenne verte ressorte parfaitement */}
+                        {/* Petit conteneur pour la moyenne */}
                         <div style={{
                           display: 'inline-block',
                           backgroundColor: 'rgba(15, 23, 42, 0.85)',
