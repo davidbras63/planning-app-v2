@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState } from 'react';
 import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
@@ -22,8 +22,39 @@ function AuthAlertHandler() {
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
+  const [userStatus, setUserStatus] = useState<string | null>(null);
+  const [periodEnd, setPeriodEnd] = useState<string | null>(null);
+  const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      fetch('/api/user-status')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            setUserStatus(data.status);
+            setPeriodEnd(data.periodEnd);
+            setCustomerPortalUrl(data.customerPortalUrl);
+
+            // Règle 1 : Tant qu'il a du temps, on le jette direct sur le dashboard (peu importe son statut)
+            if (data.periodEnd && new Date(data.periodEnd) > new Date()) {
+              router.push('/protected/dashboard');
+            }
+          }
+        })
+        .catch((err) => console.error("Erreur chargement statut user", err));
+    }
+  }, [isSignedIn, router]);
 
   if (!isLoaded) return null;
+
+  const hasTimeRemaining = periodEnd ? new Date(periodEnd) > new Date() : false;
+
+  // Le bouton d'abonnement disparaît uniquement si le statut est active, elite ou paused
+  const shouldHideSubscriptionButton = ['active', 'elite', 'paused'].includes(userStatus || '');
+
+  // Cas spécifique : En pause et période finie -> Bouton pour gérer/enlever la pause
+  const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -107,18 +138,37 @@ export default function LandingPage() {
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
-                    Accéder à mon espace
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    color="gray"
-                    leftSection={<CreditCard size={18} />}
-                    onClick={() => router.push('/subscription')}
-                  >
-                    Abonnement — 7,90 € / mois
-                  </Button>
+                  {/* S'il a encore du temps, il est redirigé, mais au cas où on affiche aussi le bouton */}
+                  {hasTimeRemaining && (
+                    <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
+                      Accéder à mon espace
+                    </Button>
+                  )}
+
+                  {/* Cas spécifique : En pause et période finie -> Bouton pour gérer/enlever la pause */}
+                  {isPausedAndExpired && customerPortalUrl && (
+                    <Button
+                      size="lg"
+                      color="orange"
+                      leftSection={<CreditCard size={18} />}
+                      onClick={() => window.location.href = customerPortalUrl}
+                    >
+                      Gérer mon abonnement &amp; Reprendre
+                    </Button>
+                  )}
+
+                  {/* Bouton d'abonnement classique affiché selon la règle du statut (masqué pour active, elite, paused) */}
+                  {!shouldHideSubscriptionButton && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      color="gray"
+                      leftSection={<CreditCard size={18} />}
+                      onClick={() => router.push('/subscription')}
+                    >
+                      Abonnement — 7,90 € / mois
+                    </Button>
+                  )}
                 </Group>
               )}
             </div>
@@ -189,7 +239,7 @@ export default function LandingPage() {
           </Grid.Col>
         </Grid>
 
-		{/* SECTION PAUSE ESTIVALE */}
+        {/* SECTION PAUSE ESTIVALE */}
         <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">
             <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -203,7 +253,6 @@ export default function LandingPage() {
             </Stack>
           </Group>
         </Card>
-
 
         {/* SECTION PARRAINAGE */}
         <Card withBorder mt={50} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
