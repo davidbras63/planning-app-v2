@@ -4,7 +4,6 @@ import { SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
-import Link from 'next/link';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -106,7 +105,7 @@ export default async function LandingPage() {
                   </SignInButton>
 
                   <Button
-                    component={Link}
+                    component="a"
                     href="/subscription"
                     size="lg"
                     variant="outline"
@@ -119,14 +118,20 @@ export default async function LandingPage() {
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} component={Link} href="/protected/dashboard">
+                  <Button 
+                    component="a"
+                    href="/protected/dashboard"
+                    size="lg" 
+                    color="indigo" 
+                    rightSection={<ArrowRight size={18} />}
+                  >
                     Accéder à mon espace
                   </Button>
 
                   {/* Le bouton d'abonnement disparaît si élite, active ou pause */}
                   {showSubscriptionButton && (
                     <Button
-                      component={Link}
+                      component="a"
                       href="/subscription"
                       size="lg"
                       variant="outline"
