@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
-import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
-import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
+import { Container, Title, Text, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
+import { Calendar, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -14,7 +14,6 @@ export default async function LandingPage() {
   let subscriptionStatus = null;
 
   if (userId) {
-    // 1. Récupérer le statut exact depuis la table users de Neon
     const userRecord = await db
       .select({
         status: users.status
@@ -26,21 +25,17 @@ export default async function LandingPage() {
     const dbUser = userRecord[0];
     subscriptionStatus = dbUser?.status;
 
-    // 2. Redirection automatique vers le dashboard si l'accès est actif ou elite
     if (subscriptionStatus === 'elite' || subscriptionStatus === 'active') {
       redirect('/protected/dashboard');
     }
   }
 
   const isSignedIn = !!userId;
-
-  // Statuts où le bouton d'abonnement ne doit PAS apparaître
   const hiddenStatuses = ['elite', 'active', 'pause'];
   const showSubscriptionButton = !hiddenStatuses.includes(subscriptionStatus);
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
-      {/* HEADER / HERO SECTION */}
       <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <div>
@@ -91,65 +86,106 @@ export default async function LandingPage() {
            
             <div style={{ marginTop: '5px' }}>
               {!isSignedIn ? (
-                <Group gap="md" justify="center">
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                   <SignUpButton mode="modal">
-                    <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />}>
-                      Commencer mes 3 jours d'essai
-                    </Button>
+                    <button style={{
+                      backgroundColor: '#4f46e5',
+                      color: 'white',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '1rem'
+                    }}>
+                      Commencer mes 3 jours d'essai <ArrowRight size={18} />
+                    </button>
                   </SignUpButton>
                  
                   <SignInButton mode="modal">
-                    <Button size="lg" variant="outline" color="gray" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                    <button style={{
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontSize: '1rem'
+                    }}>
                       Se connecter
-                    </Button>
+                    </button>
                   </SignInButton>
 
-                  <Button
-                    component="a"
+                  <a
                     href="/subscription"
-                    size="lg"
-                    variant="outline"
-                    color="gray"
-                    leftSection={<CreditCard size={18} />}
-                    style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '1rem'
+                    }}
                   >
-                    Abonnement — 7,90 € / mois
-                  </Button>
-                </Group>
+                    <CreditCard size={18} /> Abonnement — 7,90 € / mois
+                  </a>
+                </div>
               ) : (
-                <Group gap="md" justify="center">
-                  <Button 
-                    component="a"
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <a
                     href="/protected/dashboard"
-                    size="lg" 
-                    color="indigo" 
-                    rightSection={<ArrowRight size={18} />}
+                    style={{
+                      backgroundColor: '#4f46e5',
+                      color: 'white',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '1rem'
+                    }}
                   >
-                    Accéder à mon espace
-                  </Button>
+                    Accéder à mon espace <ArrowRight size={18} />
+                  </a>
 
-                  {/* Le bouton d'abonnement disparaît si élite, active ou pause */}
                   {showSubscriptionButton && (
-                    <Button
-                      component="a"
+                    <a
                       href="/subscription"
-                      size="lg"
-                      variant="outline"
-                      color="gray"
-                      leftSection={<CreditCard size={18} />}
-                      style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}
+                      style={{
+                        backgroundColor: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        color: 'white',
+                        padding: '12px 24px',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '1rem'
+                      }}
                     >
-                      Abonnement — 7,90 € / mois
-                    </Button>
+                      <CreditCard size={18} /> Abonnement — 7,90 € / mois
+                    </a>
                   )}
-                </Group>
+                </div>
               )}
             </div>
           </Stack>
         </Container>
       </div>
 
-      {/* SECTION EXPLICATION : COMMENT ÇA MARCHE */}
       <Container size="lg" mt={60}>
         <Stack align="center" mb={40}>
           <Title order={2} ta="center" c="#141517">Comment ça fonctionne du début à la fin ?</Title>
@@ -208,7 +244,6 @@ export default async function LandingPage() {
           </Grid.Col>
         </Grid>
 
-        {/* SECTION PAUSE ESTIVALE */}
         <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">
             <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -223,7 +258,6 @@ export default async function LandingPage() {
           </Group>
         </Card>
 
-        {/* SECTION PARRAINAGE */}
         <Card withBorder mt={50} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">
             <ThemeIcon size={50} radius="md" color="pink" mb="md">
@@ -238,7 +272,6 @@ export default async function LandingPage() {
           </Group>
         </Card>
 
-        {/* SECTION VALEUR AJOUTÉE */}
         <Card withBorder mt={30} p="xl" radius="md" bg="white" style={{ borderColor: '#e2e8f0' }}>
           <Group justify="space-between" align="center">
             <Stack gap={5} maw={650}>
@@ -249,7 +282,17 @@ export default async function LandingPage() {
             </Stack>
             {!isSignedIn && (
               <SignUpButton mode="modal">
-                <Button size="md" color="indigo">Démarrer l'essai</Button>
+                <button style={{
+                  backgroundColor: '#4f46e5',
+                  color: 'white',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}>
+                  Démarrer l'essai
+                </button>
               </SignUpButton>
             )}
           </Group>
