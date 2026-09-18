@@ -304,8 +304,19 @@ export default function Dashboard() {
                         </Table.Td>
 
                         {/* Date d'origine non modifiée */}
-                        <Table.Td style={{ padding: '16px 12px', color: '#ffffff', fontSize: '14px' }}>
-                          {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
+                        {/* Date dans son container stylisé comme tu l'avais à l'origine */}
+                        <Table.Td style={{ padding: '16px 12px' }}>
+                          <div style={{
+                            display: 'inline-block',
+                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
+                            border: '1px solid rgba(255, 255, 255, 0.25)',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            color: '#ffffff',
+                            fontSize: '14px'
+                          }}>
+                            {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
+                          </div>
                         </Table.Td>
 
                         <Table.Td style={{ padding: '16px 12px' }}>
