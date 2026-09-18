@@ -216,66 +216,87 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 
     return (
         <Stack gap="md" w="100%" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
-            {/* Ligne du haut : Titre du planning à gauche et boutons à droite alignés sur la même hauteur */}
-            <Group justify="space-between" align="center" w="100%" mb="xs">
-                <Title order={3} c="dimmed" style={{ margin: 0 }}>
-                    Planning de la semaine du {currentWeekStart.toLocaleDateString('fr-FR')}
-                </Title>
+            {/* CONTENEUR SOMBRE DU HAUT : Titre et boutons parfaitement lisibles peu importe l'image de fond */}
+            <div style={{ 
+                backgroundColor: 'rgba(15, 23, 42, 0.75)', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
+                padding: '14px 18px',
+                backdropFilter: 'blur(4px)'
+            }}>
+                <Group justify="space-between" align="center" w="100%">
+                    <Title order={3} c="white" style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                        Planning de la semaine du {currentWeekStart.toLocaleDateString('fr-FR')}
+                    </Title>
 
-                <Group gap="xs">
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => changeWeek(-1)}
-                        onDragOver={(e) => {
-                            e.preventDefault();
-                            if (!dragTimerRef.current) {
-                                dragTimerRef.current = setTimeout(() => {
-                                    changeWeek(-1);
+                    <Group gap="xs">
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => changeWeek(-1)}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                if (!dragTimerRef.current) {
+                                    dragTimerRef.current = setTimeout(() => {
+                                        changeWeek(-1);
+                                        dragTimerRef.current = null;
+                                    }, 500);
+                                }
+                            }}
+                            onDragLeave={() => {
+                                if (dragTimerRef.current) {
+                                    clearTimeout(dragTimerRef.current);
                                     dragTimerRef.current = null;
-                                }, 500);
-                            }
-                        }}
-                        onDragLeave={() => {
-                            if (dragTimerRef.current) {
-                                clearTimeout(dragTimerRef.current);
-                                dragTimerRef.current = null;
-                            }
-                        }}
-                    >
-                        ← Semaine Précédente
-                    </Button>
+                                }
+                            }}
+                            style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)' }}
+                        >
+                            ← Semaine Précédente
+                        </Button>
 
-                    <Button variant="outline" color="blue" size="sm" onClick={goToCurrentWeek}>Aujourd'hui</Button>
+                        {/* Bouton Aujourd'hui bien visible avec fond lumineux et texte contrasté */}
+                        <Button 
+                            size="sm" 
+                            onClick={goToCurrentWeek}
+                            style={{ 
+                                backgroundColor: '#38bdf8', 
+                                color: '#0f172a', 
+                                fontWeight: 700,
+                                boxShadow: '0 0 10px rgba(56, 189, 248, 0.4)'
+                            }}
+                        >
+                            Aujourd'hui
+                        </Button>
 
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => changeWeek(1)}
-                        onDragOver={(e) => {
-                            e.preventDefault();
-                            if (!dragTimerRef.current) {
-                                dragTimerRef.current = setTimeout(() => {
-                                    changeWeek(1);
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => changeWeek(1)}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                if (!dragTimerRef.current) {
+                                    dragTimerRef.current = setTimeout(() => {
+                                        changeWeek(1);
+                                        dragTimerRef.current = null;
+                                    }, 500);
+                                }
+                            }}
+                            onDragLeave={() => {
+                                if (dragTimerRef.current) {
+                                    clearTimeout(dragTimerRef.current);
                                     dragTimerRef.current = null;
-                                }, 500);
-                            }
-                        }}
-                        onDragLeave={() => {
-                            if (dragTimerRef.current) {
-                                clearTimeout(dragTimerRef.current);
-                                dragTimerRef.current = null;
-                            }
-                        }}
-                    >
-                        Semaine Suivante →
-                    </Button>
+                                }
+                            }}
+                            style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)' }}
+                        >
+                            Semaine Suivante →
+                        </Button>
+                    </Group>
                 </Group>
-            </Group>
+            </div>
 
-            {/* Le tableau du planning avec effet transparent/flouté pour s'adapter aux futurs fonds */}
-            
-  
+            {/* Le tableau du planning avec effet transparent/flouté pour s'adapter aux fonds */}
 				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', width: '100%', marginBottom: '20px' }}>
 					{weekDays.map((day, index) => {
 						const dStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -289,7 +310,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 								onDrop={(e) => handleDrop(e, dStr)}
 								style={{ 
 									minHeight: '340px', 
-									backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.55)', 
+									backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.35)', 
 									borderRadius: '12px',
 									border: isToday ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.25)',
 									boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
@@ -318,7 +339,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 												draggable={true}
 												onDragStart={(e) => handleDragStart(e, item)}
 												style={{
-													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.8)' : 'rgba(30, 41, 59, 0.55)',
+													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.85)' : 'rgba(30, 41, 59, 0.65)',
 													border: item.isExamen ? '1px solid #f87171' : '1px solid rgba(255, 255, 255, 0.25)',
 													borderRadius: '8px',
 													padding: '10px',

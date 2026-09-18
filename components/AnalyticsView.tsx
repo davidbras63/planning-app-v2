@@ -96,14 +96,15 @@ export default function AnalyticsView({
   };
 
   return (
-    <Container fluid p="xl">
-      <Title order={2} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
+      {/* Titre Principal (directement sur le fond de page) */}
+      <Title order={2} c="dimmed" style={{ margin: 0, marginBottom: '24px' }}>
         Tableau de Suivi & Statistiques
       </Title>
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
           Matière
         </Title>
         <Select
@@ -124,9 +125,23 @@ export default function AnalyticsView({
           }}
         />
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+        {/* Fond uniformisé à 0.75 (exactement comme les cartes chapitres) */}
+        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
           <Stack gap="xs">
-            <Text fw={700} size="lg" c="white">Vue Globale Matière (Moyenne: {matiereInfo.average} / 20)</Text>
+            {/* Petit conteneur sombre pour sécuriser la visibilité de la moyenne */}
+            <div style={{
+              display: 'inline-block',
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '16px',
+              width: 'fit-content'
+            }}>
+              Vue Globale Matière (Moyenne : <span style={{ color: '#34d399' }}>{matiereInfo.average} / 20</span>)
+            </div>
            
             <Box style={{ height: 300, width: "100%" }}>
               {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
@@ -156,7 +171,7 @@ export default function AnalyticsView({
 
       {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
           Chapitres
         </Title>
        
@@ -189,6 +204,20 @@ export default function AnalyticsView({
               >
                 <Stack gap="xs">
                   <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
+
+                  {/* Petit bloc opaque pour afficher la moyenne du chapitre bien lisible */}
+                  <div style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    color: '#34d399',
+                    width: 'fit-content'
+                  }}>
+                    Moyenne : {chapInfo.average} / 20
+                  </div>
 
                   <Box style={{ height: 140 }}>
                     {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
@@ -234,7 +263,18 @@ export default function AnalyticsView({
       >
         {activeChapitreModal && (
           <Stack gap="md">
-            <Text size="sm" fw={500} c="gray.3">Moyenne globale du chapitre : {activeChapitreModal.average} / 20</Text>
+            <div style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              color: '#ffffff',
+              fontWeight: 500,
+              fontSize: '14px',
+              width: 'fit-content'
+            }}>
+              Moyenne globale du chapitre : <span style={{ color: '#34d399', fontWeight: 'bold' }}>{activeChapitreModal.average} / 20</span>
+            </div>
            
             <Box style={{ height: 350, width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">

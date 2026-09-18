@@ -22,14 +22,14 @@ export default function GradeInput({
       {/* Ligne de séparation */}
       <hr style={{ border: 'none', height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.15)', margin: '40px 0 20px 0' }} />
 
-      {/* Le titre est DIRECTEMENT sur le fond de page, exactement comme "Planning de la semaine" */}
+      {/* Le titre est DIRECTEMENT sur le fond de page, bien lisible */}
       <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
-                Tableau de saisie des notes
+        Tableau de saisie des notes
       </Title>
 
-      {/* Le cadre stylisé s'applique UNIQUEMENT au tableau lui-même, pas au titre */}
+      {/* Le cadre stylisé s'applique au tableau */}
       <div style={{ 
-        backgroundColor: 'rgba(15, 23, 42, 0.55)', 
+        backgroundColor: 'rgba(15, 23, 42, 0.35)', 
         color: '#ffffff', 
         borderRadius: '16px', 
         border: '1px solid rgba(56, 189, 248, 0.3)',
@@ -85,7 +85,6 @@ export default function GradeInput({
                           onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                               event.preventDefault();
-                              // On utilise directement inputRefs pour sauter à la ligne suivante instantanément
                               const nextInput = inputRefs.current[index + 1];
                               if (nextInput) {
                                 nextInput.focus();
@@ -128,8 +127,20 @@ export default function GradeInput({
                           placeholder="Ex: 15 ou 14/30 18/20"
                         />
                       </td>
-                      <td style={{ padding: '16px 12px', color: '#34d399', fontWeight: 'bold', fontSize: '15px' }}>
-                        {matchingKey && averages && averages[matchingKey] !== undefined ? `Moyenne : ${averages[matchingKey]}` : '-'}
+                      <td style={{ padding: '16px 12px' }}>
+                        {/* Petit conteneur sombre et opaque pour que la moyenne verte ressorte parfaitement */}
+                        <div style={{
+                          display: 'inline-block',
+                          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#34d399',
+                          fontWeight: 'bold',
+                          fontSize: '14px'
+                        }}>
+                          {matchingKey && averages && averages[matchingKey] !== undefined ? `Moyenne : ${averages[matchingKey]}` : '-'}
+                        </div>
                       </td>
                     </tr>
                   );
