@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const { userId } = await auth();
 
@@ -12,28 +12,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Récupérer l'e-mail envoyé par le front s'il existe
-    let userEmail: string | undefined;
-    try {
-      const body = await req.json();
-      userEmail = body?.email;
-    } catch {
-      // Si le body est vide, on continue pour aller le chercher en base
-    }
+    // 1. On essaie de récupérer l'e-mail depuis ta base Neon pour ce userId exact
+    const userRecord = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
 
-    // Si pas d'e-mail reçu du front, on va le chercher dans la base
+    let userEmail = userRecord[0]?.email;
+
+    // 2. Sécurité de secours : si la base ne renvoie rien, on va le chercher direct chez Clerk
     if (!userEmail) {
-      const userRecord = await db
-        .select({ email: users.email })
-        .from(users)
-        .where(eq(users.clerkId, userId))
-        .limit(1);
-
-      userEmail = userRecord[0]?.email;
+      const clerkUser = await currentUser();
+      userEmail = clerkUser?.primaryEmailAddress?.emailAddress;
     }
 
     if (!userEmail) {
-      return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données.' }, { status: 404 });
+      return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données ou chez Clerk.' }, { status: 404 });
     }
 
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
@@ -52,7 +47,7 @@ export async function POST(req: Request) {
           type: 'checkouts',
           attributes: {
             checkout_data: {
-              email: userEmail, // L'e-mail est explicitement passé ici
+              email: userEmail,
               custom: {
                 user_id: userId,
               },
