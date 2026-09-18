@@ -29,7 +29,7 @@ export default function GradeInput({
         width: 'fit-content',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
       }}>
-        <Title order={3} style={{ margin: 0, color: '#ffffff' }}>
+        <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
           Tableau de saisie des notes
         </Title>
       </div>

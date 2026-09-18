@@ -226,7 +226,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                 backdropFilter: 'blur(4px)'
             }}>
                 <Group justify="space-between" align="center" w="100%">
-                    <Title order={3} c="white" style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                    <Title order={5} c="white" style={{ margin: 0, fontWeight: 700 }}>
                         Planning de la semaine du {currentWeekStart.toLocaleDateString('fr-FR')}
                     </Title>
 

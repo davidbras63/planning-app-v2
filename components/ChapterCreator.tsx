@@ -125,7 +125,7 @@ Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
                 width: 'fit-content',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
             }}>
-                <Title order={3} style={{ margin: 0, color: '#ffffff' }}>
+                <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
                     Création d'un nouveau chapitre
                 </Title>
             </div>
