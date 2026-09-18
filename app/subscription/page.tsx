@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth, useClerk } from '@clerk/nextjs';
+import { useAuth, useClerk, useUser } from '@clerk/nextjs';
 import { Button, Container, Text, Card, Stack, Title, Group } from '@mantine/core';
 import { IconCreditCard, IconArrowLeft, IconSparkles, IconCheck, IconX } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ export default function SubscriptionPage() {
   const [drawerOpened, setDrawerOpened] = useState(false);
   const [successState, setSuccessState] = useState(false);
   const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
   const { openSignIn } = useClerk();
   const router = useRouter();
 
@@ -20,7 +21,13 @@ export default function SubscriptionPage() {
     setDrawerOpened(false);
 
     try {
-      const res = await fetch('/api/create-checkout', { method: 'POST' });
+      const userEmail = user?.primaryEmailAddress?.emailAddress;
+
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail }),
+      });
       const data = await res.json();
 
       if (data.url) {
@@ -46,7 +53,7 @@ export default function SubscriptionPage() {
         }, 1500);
       }
     }
-  }, [isLoaded, isSignedIn, drawerOpened, successState]);
+  }, [isLoaded, isSignedIn, drawerOpened, successState, user]);
 
   const handleCheckout = async () => {
     if (!isSignedIn) {
@@ -186,8 +193,3 @@ export default function SubscriptionPage() {
     </Container>
   );
 }
-
-
-
-
-

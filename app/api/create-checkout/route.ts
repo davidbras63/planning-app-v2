@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const { userId } = await auth();
 
@@ -12,19 +12,30 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRecord = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.clerkId, userId))
-      .limit(1);
+    // Récupérer l'e-mail envoyé par le front s'il existe
+    let userEmail: string | undefined;
+    try {
+      const body = await req.json();
+      userEmail = body?.email;
+    } catch {
+      // Si le body est vide, on continue pour aller le chercher en base
+    }
 
-    const userEmail = userRecord[0]?.email;
+    // Si pas d'e-mail reçu du front, on va le chercher dans la base
+    if (!userEmail) {
+      const userRecord = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.clerkId, userId))
+        .limit(1);
+
+      userEmail = userRecord[0]?.email;
+    }
 
     if (!userEmail) {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données.' }, { status: 404 });
     }
 
-    // Récupération propre de tes variables d'environnement Vercel
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
     const siteUrl = 'https://nesis-dev.vercel.app';
@@ -41,7 +52,7 @@ export async function POST() {
           type: 'checkouts',
           attributes: {
             checkout_data: {
-              email: userEmail,
+              email: userEmail, // L'e-mail est explicitement passé ici
               custom: {
                 user_id: userId,
               },
