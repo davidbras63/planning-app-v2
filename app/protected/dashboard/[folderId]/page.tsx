@@ -82,11 +82,22 @@ export default function Dashboard() {
         {/* DOSSIER ACTIF */}
         <Box>
           <div style={{ marginBottom: '30px' }}>
+            {/* TITRE AVEC CONTENEUR HARMONISÉ */}
+            <div style={{ 
+              backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+              border: '1px solid rgba(255, 255, 255, 0.35)', 
+              borderRadius: '8px', 
+              padding: '10px 16px',
+              marginBottom: '12px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+            }}>
+              <Title order={5} style={{ margin: 0, color: '#ffffff', fontWeight: 600 }}>
+                Dossier actif
+              </Title>
+            </div>
+
             <Flex align="flex-end" gap="sm">
               <div style={{ flex: 1 }}>
-                <Title order={5} style={{ margin: 0, marginBottom: '8px', color: '#ffffff', fontWeight: 600 }}>
-                  Dossier actif
-                </Title>
                 <Select
                   size="md"
                   placeholder="Sélectionner un dossier"
@@ -103,7 +114,7 @@ export default function Dashboard() {
                   }}
                   styles={{
                     input: {
-                      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.35)',
                       border: '1px solid rgba(255, 255, 255, 0.35)',
                       color: '#ffffff',
                     },
@@ -142,10 +153,19 @@ export default function Dashboard() {
             </Flex>
           </div>
 
-          {/* TITRE GESTION DES MATIÈRES */}
-          <Title order={5} style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
-            <Folder size={20} color="#38bdf8" /> Gestion des Matières
-          </Title>
+          {/* TITRE GESTION DES MATIÈRES AVEC CONTENEUR */}
+          <div style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+            border: '1px solid rgba(255, 255, 255, 0.35)', 
+            borderRadius: '8px', 
+            padding: '10px 16px',
+            marginBottom: '16px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+          }}>
+            <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
+              <Folder size={20} color="#38bdf8" /> Gestion des Matières
+            </Title>
+          </div>
          
           {/* LISTE DES MATIÈRES AVEC DESIGN CLAIR ET FLOUTÉ (0.35) */}
           <Stack gap="md">
@@ -157,7 +177,7 @@ export default function Dashboard() {
                 <div 
                   key={matiere.id} 
                   style={{ 
-                    backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+                    backgroundColor: 'rgba(15, 23, 42, 0.35)', 
                     border: '1px solid rgba(255, 255, 255, 0.35)', 
                     borderRadius: '12px', 
                     padding: '16px',
@@ -211,12 +231,22 @@ export default function Dashboard() {
 
         {/* TABLEAU DE RATTRAPAGE */}
         <Box mt={40}>
-          <Title order={5} style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
-            <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
-          </Title>
-
+          {/* TITRE TABLEAU DE RATTRAPAGE AVEC CONTENEUR */}
           <div style={{ 
             backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+            border: '1px solid rgba(255, 255, 255, 0.35)', 
+            borderRadius: '8px', 
+            padding: '10px 16px',
+            marginBottom: '16px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+          }}>
+            <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
+              <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
+            </Title>
+          </div>
+
+          <div style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.35)', 
             border: '1px solid rgba(255, 255, 255, 0.35)', 
             borderRadius: '12px', 
             padding: '16px',
