@@ -115,7 +115,7 @@ export default function AnalyticsView({
           styles={{
             input: {
               maxWidth: 300,
-              backgroundColor: 'rgba(15, 23, 42, 0.35)', 
+              backgroundColor: 'rgba(15, 23, 42, 0.75)', 
               borderColor: 'rgba(56, 189, 248, 0.3)', 
               color: 'white'
             },
@@ -172,7 +172,7 @@ export default function AnalyticsView({
                 radius="md"
                 p="md"
                 style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.35)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
                   borderColor: 'rgba(56, 189, 248, 0.3)',
                   cursor: "pointer",
                   transition: "transform 0.2s, border-color 0.2s"

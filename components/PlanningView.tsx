@@ -289,7 +289,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 								onDrop={(e) => handleDrop(e, dStr)}
 								style={{ 
 									minHeight: '340px', 
-									backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.35)', 
+									backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.55)', 
 									borderRadius: '12px',
 									border: isToday ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.25)',
 									boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
@@ -318,7 +318,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 												draggable={true}
 												onDragStart={(e) => handleDragStart(e, item)}
 												style={{
-													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.6)' : 'rgba(30, 41, 59, 0.55)',
+													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.8)' : 'rgba(30, 41, 59, 0.55)',
 													border: item.isExamen ? '1px solid #f87171' : '1px solid rgba(255, 255, 255, 0.25)',
 													borderRadius: '8px',
 													padding: '10px',
