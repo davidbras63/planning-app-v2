@@ -113,24 +113,32 @@ Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
     };
 
     return (
-        <Stack gap="xs" maw="100%" w="100%" mx="auto">
-            {/* On retire le texte brut "Nouveau chapitre" qui ne sert à rien et se superpose mal */}
-            
-            {/* Le cadre stylisé du formulaire avec le titre dedans */}
+        <Stack gap="xs" maw="100%" w="100%" mx="auto" style={{ WebkitFontSmoothing: 'antialiased' }}>
+            {/* Le bandeau titre opaque et sombre, exactement harmonisé avec le reste */}
+            <div style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '12px',
+                padding: '12px 20px',
+                marginBottom: '16px',
+                marginTop: '10px',
+                width: 'fit-content',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            }}>
+                <Title order={3} style={{ margin: 0, color: '#ffffff' }}>
+                    Création d'un nouveau chapitre
+                </Title>
+            </div>
+
+            {/* Le cadre stylisé du formulaire */}
             <div style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.35)', 
                 borderRadius: '16px', 
                 border: '1px solid rgba(56, 189, 248, 0.3)',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
                 padding: '24px',
-                marginTop: '20px',
-                marginBottom: '20px',
-                WebkitFontSmoothing: 'antialiased'
+                marginBottom: '20px'
             }}>
-                <Title order={3} c="white" style={{ margin: 0, marginBottom: '20px' }}>
-                    Création d'un nouveau chapitre
-                </Title>
-
                 {successMessage && (
                     <Notification color="teal" title="Succès !" mb="sm" onClose={() => setSuccessMessage(false)}>
                         Le chapitre a bien été créé.
@@ -138,7 +146,6 @@ Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
                 )}
 
                 <Group grow align="flex-end">
-                    
                     <Select
                         data={matieres?.map((m: any) => ({
                             value: String(m.id ?? m.id_matiere ?? m.matiereId ?? ''),
