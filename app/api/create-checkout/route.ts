@@ -12,7 +12,6 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Vérification en base Neon
     const userRecord = await db
       .select({ email: users.email })
       .from(users)
@@ -21,7 +20,6 @@ export async function POST() {
 
     let userEmail = userRecord[0]?.email;
 
-    // 2. Fallback de sécurité Clerk si besoin
     if (!userEmail) {
       const clerkUser = await currentUser();
       userEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -35,6 +33,46 @@ export async function POST() {
     const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
     const siteUrl = 'https://nesis-dev.vercel.app';
 
+    const payload = {
+      data: {
+        type: 'checkouts',
+        attributes: {
+          checkout_data: {
+            email: userEmail, // On remet l'email car sans lui le champ est vide, mais regardons ce que l'API répond
+            custom: {
+              user_id: userId,
+            },
+          },
+          product_options: {
+            enabled_variants: [variantId],
+            redirect_url: `${siteUrl}/protected/dashboard`,
+            receipt_button_text: 'Accéder à mon espace',
+            receipt_link_url: `${siteUrl}/protected/dashboard`,
+          },
+          checkout_options: {
+            embed: false,
+            media: true,
+            logo: true,
+            dark: true,
+          },
+        },
+        relationships: {
+          store: {
+            data: {
+              type: 'stores',
+              id: storeId,
+            },
+          },
+          variant: {
+            data: {
+              type: 'variants',
+              id: variantId,
+            },
+          },
+        },
+      },
+    };
+
     const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
       method: 'POST',
       headers: {
@@ -42,49 +80,13 @@ export async function POST() {
         'Content-Type': 'application/vnd.api+json',
         'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
       },
-      body: JSON.stringify({
-        data: {
-          type: 'checkouts',
-          attributes: {
-            checkout_data: {
-              // ON RETIRE L'EMAIL ICI pour stopper net le bug contact@nesis.fr,
-              // tout en conservant le user_id indispensable pour tes webhooks et le bouton de pause.
-              custom: {
-                user_id: userId,
-              },
-            },
-            product_options: {
-              enabled_variants: [variantId],
-              redirect_url: `${siteUrl}/protected/dashboard`,
-              receipt_button_text: 'Accéder à mon espace',
-              receipt_link_url: `${siteUrl}/protected/dashboard`,
-            },
-            checkout_options: {
-              embed: false,
-              media: true,
-              logo: true,
-              dark: true,
-            },
-          },
-          relationships: {
-            store: {
-              data: {
-                type: 'stores',
-                id: storeId,
-              },
-            },
-            variant: {
-              data: {
-                type: 'variants',
-                id: variantId,
-              },
-            },
-          },
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
+
+    // REGARDE BIEN CE QUE ÇA CRACHE DANS LES LOGS DE TON SERVEUR
+    console.log("REPONSE BRUTE LEMONSQUEEZY:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error('Erreur Lemon Squeezy API:', JSON.stringify(data, null, 2));
