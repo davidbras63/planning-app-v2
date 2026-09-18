@@ -1,41 +1,48 @@
-"use client";
-
-import { useEffect, Suspense } from 'react';
-import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
+import { Suspense } from 'react';
 import { auth } from "@clerk/nextjs/server";
+import { SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
-function AuthAlertHandler() {
-  const searchParams = useSearchParams();
+export default async function LandingPage() {
+  const { userId } = await auth();
 
-  useEffect(() => {
-    if (searchParams.get('auth_alert') === 'true') {
-      alert("Connectez-vous avant d'accéder à cette page !");
-      window.history.replaceState({}, '', '/');
+  let subscriptionStatus = null;
+
+  if (userId) {
+    // 1. Récupérer le statut exact depuis la table users de Neon
+    const userRecord = await db
+      .select({
+        status: users.status
+      })
+      .from(users)
+      .where(eq(users.clerkId, userId))
+      .limit(1);
+
+    const dbUser = userRecord[0];
+    subscriptionStatus = dbUser?.status;
+
+    // 2. Redirection automatique vers le dashboard si l'accès est actif ou elite
+    if (subscriptionStatus === 'elite' || subscriptionStatus === 'active') {
+      redirect('/protected/dashboard');
     }
-  }, [searchParams]);
+  }
 
-  return null;
-}
+  const isSignedIn = !!userId;
 
-export default function LandingPage() {
-  const { isSignedIn, isLoaded } = useUser();
-  const router = useRouter();
-
-  if (!isLoaded) return null;
+  // Statuts où le bouton d'abonnement ne doit PAS apparaître
+  const hiddenStatuses = ['elite', 'active', 'pause'];
+  const showSubscriptionButton = !hiddenStatuses.includes(subscriptionStatus);
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
-      <Suspense fallback={null}>
-        <AuthAlertHandler />
-      </Suspense>
-
-      {/* HEADER / HERO SECTION (Fond sombre -> Texte blanc pur) */}
+      {/* HEADER / HERO SECTION */}
       <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
-        {/* Logo tout en haut à gauche */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <div>
             <img
@@ -45,25 +52,26 @@ export default function LandingPage() {
             />
           </div>
           <div>
-            <SignOutButton>
-              <button style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 500
-              }}>
-                Déconnexion
-              </button>
-            </SignOutButton>
+            {isSignedIn && (
+              <SignOutButton>
+                <button style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}>
+                  Déconnexion
+                </button>
+              </SignOutButton>
+            )}
           </div>
         </div>
 
         <Container size="md">
           <Stack align="center" gap="lg">
-            {/* Le texte unique, bien positionné sous le logo */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', marginBottom: '10px' }}>
               <HelpCircle size={16} color="#4f9fa5" /> Finis les révisions au feeling : ton contrôle continu personnel
             </div>
@@ -98,29 +106,37 @@ export default function LandingPage() {
                   </SignInButton>
 
                   <Button
+                    component={Link}
+                    href="/subscription"
                     size="lg"
                     variant="outline"
                     color="gray"
                     leftSection={<CreditCard size={18} />}
-                    onClick={() => router.push('/subscription')}
+                    style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}
                   >
                     Abonnement — 7,90 € / mois
                   </Button>
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
+                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} component={Link} href="/protected/dashboard">
                     Accéder à mon espace
                   </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    color="gray"
-                    leftSection={<CreditCard size={18} />}
-                    onClick={() => router.push('/subscription')}
-                  >
-                    Abonnement — 7,90 € / mois
-                  </Button>
+
+                  {/* Le bouton d'abonnement disparaît si élite, active ou pause */}
+                  {showSubscriptionButton && (
+                    <Button
+                      component={Link}
+                      href="/subscription"
+                      size="lg"
+                      variant="outline"
+                      color="gray"
+                      leftSection={<CreditCard size={18} />}
+                      style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}
+                    >
+                      Abonnement — 7,90 € / mois
+                    </Button>
+                  )}
                 </Group>
               )}
             </div>
@@ -128,7 +144,7 @@ export default function LandingPage() {
         </Container>
       </div>
 
-      {/* SECTION EXPLICATION : COMMENT ÇA MARCHE (4 carrés distincts sur fond sombre) */}
+      {/* SECTION EXPLICATION : COMMENT ÇA MARCHE */}
       <Container size="lg" mt={60}>
         <Stack align="center" mb={40}>
           <Title order={2} ta="center" c="#141517">Comment ça fonctionne du début à la fin ?</Title>
@@ -138,7 +154,6 @@ export default function LandingPage() {
         </Stack>
 
         <Grid gutter="lg">
-          {/* Carré 1 : Paramètres */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="violet" mb="md">
@@ -151,7 +166,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 2 : Planning & Date d'examen */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="indigo" mb="md">
@@ -164,7 +178,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 3 : Réintégration Intelligente */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -177,7 +190,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 4 : Graphiques */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="teal" mb="md">
@@ -191,7 +203,7 @@ export default function LandingPage() {
           </Grid.Col>
         </Grid>
 
-		{/* SECTION PAUSE ESTIVALE */}
+        {/* SECTION PAUSE ESTIVALE */}
         <Card withBorder mt={40} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
           <Group align="flex-start" gap="md">
             <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -205,7 +217,6 @@ export default function LandingPage() {
             </Stack>
           </Group>
         </Card>
-
 
         {/* SECTION PARRAINAGE */}
         <Card withBorder mt={50} p="xl" radius="md" style={{ backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
@@ -222,7 +233,7 @@ export default function LandingPage() {
           </Group>
         </Card>
 
-        {/* SECTION VALEUR AJOUTÉE (Fond blanc conservé) */}
+        {/* SECTION VALEUR AJOUTÉE */}
         <Card withBorder mt={30} p="xl" radius="md" bg="white" style={{ borderColor: '#e2e8f0' }}>
           <Group justify="space-between" align="center">
             <Stack gap={5} maw={650}>
