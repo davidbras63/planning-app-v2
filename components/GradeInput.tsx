@@ -29,7 +29,7 @@ export default function GradeInput({
 
       {/* Le cadre stylisé s'applique UNIQUEMENT au tableau lui-même, pas au titre */}
       <div style={{ 
-        backgroundColor: 'rgba(15, 23, 42, 0.4)', 
+        backgroundColor: 'rgba(15, 23, 42, 0.35)', 
         color: '#ffffff', 
         borderRadius: '16px', 
         border: '1px solid rgba(56, 189, 248, 0.3)',

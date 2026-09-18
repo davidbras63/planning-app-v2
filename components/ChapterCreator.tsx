@@ -111,7 +111,7 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
     return (
         <Stack gap="xs" maw="100%" w="100%" mx="auto">
             <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                backgroundColor: 'rgba(15, 23, 42, 0.35)',
                 borderRadius: '12px',
                 border: '1px solid rgba(255, 255, 255, 0.25)',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',

@@ -13,7 +13,6 @@ interface AnalyticsViewProps {
   getChapitreData: (chapitreId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
 }
 
-// Fonction de tri pour forcer l'ordre des étapes (J0, J7, J7R, J14...)
 const sortChartSteps = (data: any[]) => {
   if (!Array.isArray(data)) return [];
   return [...data].sort((a, b) => {
@@ -46,14 +45,12 @@ export default function AnalyticsView({
   const params = useParams();
   const folderId = Number(params?.folderId);
 
-  // Filter matieres by folder
   const folderMatieres = matieresList.filter((m) => m.folderId === folderId);
 
   const [selectedMatiere, setSelectedMatiere] = useState<string | null>(
     folderMatieres.length > 0 ? folderMatieres[0].value : null
   );
 
-  // Etats stockés proprement pour stopper la boucle infinie
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
     chartData: [],
     average: 0,
@@ -62,11 +59,9 @@ export default function AnalyticsView({
 
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
-  // Modal
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
-  // 1. Récupération des données Matière sans boucler
   useEffect(() => {
     if (selectedMatiere) {
       getMatiereData(Number(selectedMatiere)).then((res) => {
@@ -75,15 +70,12 @@ export default function AnalyticsView({
     }
   }, [selectedMatiere]);
 
-  // 2. Récupération des données Chapitres sans boucler
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
 
   useEffect(() => {
-    // Réinitialiser les données des chapitres quand la matière change
     setChapitresData({});
-
     filteredChapitres.forEach((chap) => {
       getChapitreData(Number(chap.value)).then((res) => {
         if (res) {
@@ -91,7 +83,7 @@ export default function AnalyticsView({
         }
       });
     });
-  }, [selectedMatiere, chapitresList.length]); // Ajout de chapitresList.length pour le rechargement initial
+  }, [selectedMatiere, chapitresList.length]);
 
   const handleCardClick = (chap: { value: string; label: string }, chapInfo: any) => {
     setActiveChapitreModal({
@@ -106,14 +98,14 @@ export default function AnalyticsView({
   return (
     <Container fluid p="xl">
       <Title order={2} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Tableau de Suivi & Statistiques
- </Title>
+        Tableau de Suivi & Statistiques
+      </Title>
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
         <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Matière
-</Title>
+          Matière
+        </Title>
         <Select
           placeholder="Sélectionner une matière"
           data={folderMatieres}
@@ -123,16 +115,16 @@ export default function AnalyticsView({
           styles={{
             input: {
               maxWidth: 300,
-              backgroundColor: '#0f172a', // Fond sombre
-              borderColor: '#334155', // Bordure foncée
-              color: 'white' // Texte blanc
+              backgroundColor: 'rgba(15, 23, 42, 0.35)', 
+              borderColor: 'rgba(56, 189, 248, 0.3)', 
+              color: 'white'
             },
             dropdown: { backgroundColor: '#0f172a', borderColor: '#334155', color: 'white' },
             item: { '&[data-selected]': { backgroundColor: '#1e293b' } }
           }}
         />
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }}>
+        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(15, 23, 42, 0.35)', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
           <Stack gap="xs">
             <Text fw={700} size="lg" c="white">Vue Globale Matière (Moyenne: {matiereInfo.average} / 20)</Text>
            
@@ -165,8 +157,8 @@ export default function AnalyticsView({
       {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
         <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Chapitres
-</Title>
+          Chapitres
+        </Title>
        
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
           {filteredChapitres.map((chap) => {
@@ -180,8 +172,8 @@ export default function AnalyticsView({
                 radius="md"
                 p="md"
                 style={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#1e293b',
+                  backgroundColor: 'rgba(15, 23, 42, 0.35)',
+                  borderColor: 'rgba(56, 189, 248, 0.3)',
                   cursor: "pointer",
                   transition: "transform 0.2s, border-color 0.2s"
                 }}
@@ -192,7 +184,7 @@ export default function AnalyticsView({
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "#1e293b";
+                  e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.3)";
                 }}
               >
                 <Stack gap="xs">
@@ -216,7 +208,7 @@ export default function AnalyticsView({
                   </Box>
 
                   <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
-<Text size="sm" fw={700} c="#38bdf8">
+                    <Text size="sm" fw={700} c="#38bdf8">
                       QCM : {chapInfo.totalQcm}
                     </Text>
                   </Box>
@@ -235,8 +227,8 @@ export default function AnalyticsView({
         size="lg"
         centered
         styles={{
-          content: { backgroundColor: '#0f172a', border: '1px solid #1e293b' },
-          header: { backgroundColor: '#0f172a' },
+          content: { backgroundColor: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(56, 189, 248, 0.3)' },
+          header: { backgroundColor: 'transparent' },
           close: { color: 'white' }
         }}
       >
