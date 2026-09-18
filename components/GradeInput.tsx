@@ -19,15 +19,22 @@ export default function GradeInput({
 
   return (
     <div style={{ width: '100%', WebkitFontSmoothing: 'antialiased' }}>
-      {/* Ligne de séparation */}
-      <hr style={{ border: 'none', height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.15)', margin: '40px 0 20px 0' }} />
+      {/* Titre dans un encadré sombre et opaque bien visible */}
+      <div style={{
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+        border: '1px solid rgba(56, 189, 248, 0.3)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        marginBottom: '20px',
+        width: 'fit-content',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+      }}>
+        <Title order={3} style={{ margin: 0, color: '#ffffff' }}>
+          Tableau de saisie des notes
+        </Title>
+      </div>
 
-      {/* Le titre est DIRECTEMENT sur le fond de page, bien lisible */}
-      <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
-        Tableau de saisie des notes
-      </Title>
-
-      {/* Le cadre stylisé s'applique au tableau */}
+      {/* Le cadre stylisé du tableau */}
       <div style={{ 
         backgroundColor: 'rgba(15, 23, 42, 0.35)', 
         color: '#ffffff', 
@@ -36,6 +43,7 @@ export default function GradeInput({
         boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
         padding: '24px'
       }}>
+        
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', color: '#ffffff' }}>
             <thead>

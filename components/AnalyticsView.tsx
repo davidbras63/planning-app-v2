@@ -97,16 +97,36 @@ export default function AnalyticsView({
 
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
-      {/* Titre Principal (directement sur le fond de page) */}
-      <Title order={2} c="dimmed" style={{ margin: 0, marginBottom: '24px' }}>
-        Tableau de Suivi & Statistiques
-      </Title>
+      {/* Titre Principal dans un bandeau opaque */}
+      <div style={{
+        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+        border: '1px solid rgba(56, 189, 248, 0.3)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        marginBottom: '24px',
+        width: 'fit-content',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+      }}>
+        <Title order={2} style={{ margin: 0, color: '#ffffff' }}>
+          Tableau de Suivi & Statistiques
+        </Title>
+      </div>
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
-          Matière
-        </Title>
+        <div style={{
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          borderRadius: '10px',
+          padding: '8px 16px',
+          marginBottom: '16px',
+          width: 'fit-content'
+        }}>
+          <Title order={3} style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>
+            Matière
+          </Title>
+        </div>
+
         <Select
           placeholder="Sélectionner une matière"
           data={folderMatieres}
@@ -125,10 +145,8 @@ export default function AnalyticsView({
           }}
         />
 
-        {/* Fond uniformisé à 0.75 (exactement comme les cartes chapitres) */}
         <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(15, 23, 42, 0.75)', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
           <Stack gap="xs">
-            {/* Petit conteneur sombre pour sécuriser la visibilité de la moyenne */}
             <div style={{
               display: 'inline-block',
               backgroundColor: 'rgba(15, 23, 42, 0.85)',
@@ -171,9 +189,18 @@ export default function AnalyticsView({
 
       {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
-          Chapitres
-        </Title>
+        <div style={{
+          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          border: '1px solid rgba(56, 189, 248, 0.3)',
+          borderRadius: '10px',
+          padding: '8px 16px',
+          marginBottom: '16px',
+          width: 'fit-content'
+        }}>
+          <Title order={3} style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>
+            Chapitres
+          </Title>
+        </div>
        
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
           {filteredChapitres.map((chap) => {
@@ -205,7 +232,6 @@ export default function AnalyticsView({
                 <Stack gap="xs">
                   <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
 
-                  {/* Petit bloc opaque pour afficher la moyenne du chapitre bien lisible */}
                   <div style={{
                     backgroundColor: 'rgba(15, 23, 42, 0.85)',
                     border: '1px solid rgba(56, 189, 248, 0.25)',
