@@ -25,6 +25,7 @@ export default function LandingPage() {
   const [userStatus, setUserStatus] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Pour éviter les flashs d'affichage avant le fetch
 
   useEffect(() => {
     if (isSignedIn) {
@@ -35,6 +36,7 @@ export default function LandingPage() {
             setUserStatus(data.status);
             setPeriodEnd(data.periodEnd);
             setCustomerPortalUrl(data.customerPortalUrl);
+            setIsDataLoaded(true);
 
             // Règle 1 : Tant qu'il a du temps, on le jette direct sur le dashboard (peu importe son statut)
             if (data.periodEnd && new Date(data.periodEnd) > new Date()) {
@@ -42,11 +44,16 @@ export default function LandingPage() {
             }
           }
         })
-        .catch((err) => console.error("Erreur chargement statut user", err));
+        .catch((err) => {
+          console.error("Erreur chargement statut user", err);
+          setIsDataLoaded(true);
+        });
+    } else {
+      setIsDataLoaded(true);
     }
   }, [isSignedIn, router]);
 
-  if (!isLoaded) return null;
+  if (!isLoaded || (isSignedIn && !isDataLoaded)) return null;
 
   const hasTimeRemaining = periodEnd ? new Date(periodEnd) > new Date() : false;
 
@@ -138,12 +145,10 @@ export default function LandingPage() {
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  {/* S'il a encore du temps, il est redirigé, mais au cas où on affiche aussi le bouton */}
-                  {hasTimeRemaining && (
-                    <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
-                      Accéder à mon espace
-                    </Button>
-                  )}
+                  {/* Bouton pour accéder au dashboard (affiché si connecté, si le fetch est fait ou par défaut si le temps est OK) */}
+                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
+                    Accéder à mon espace
+                  </Button>
 
                   {/* Cas spécifique : En pause et période finie -> Bouton pour gérer/enlever la pause */}
                   {isPausedAndExpired && customerPortalUrl && (
@@ -157,7 +162,7 @@ export default function LandingPage() {
                     </Button>
                   )}
 
-                  {/* Bouton d'abonnement classique affiché selon la règle du statut (masqué pour active, elite, paused) */}
+                  {/* Bouton d'abonnement classique : affiché SEULEMENT si on ne doit PAS le cacher */}
                   {!shouldHideSubscriptionButton && (
                     <Button
                       size="lg"
