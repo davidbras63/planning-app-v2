@@ -2,8 +2,7 @@
 
 import { useEffect, Suspense } from 'react';
 import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from 'next/navigation';
+
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
