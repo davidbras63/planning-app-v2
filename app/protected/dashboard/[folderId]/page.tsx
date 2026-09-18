@@ -27,7 +27,7 @@ export default function Dashboard() {
  
   const loadAll = async () => {
     if (!folderIdFromUrl) return;
-       
+        
     try {
       const result = await getDashboardData(folderIdFromUrl);
       if (result && !result.error) {
@@ -84,9 +84,9 @@ export default function Dashboard() {
           <div style={{ marginBottom: '30px' }}>
             <Flex align="flex-end" gap="sm">
               <div style={{ flex: 1 }}>
-                <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '8px' }}>
-				Dossier actif
-				</Title>
+                <Title order={5} style={{ margin: 0, marginBottom: '8px', color: '#ffffff', fontWeight: 600 }}>
+                  Dossier actif
+                </Title>
                 <Select
                   size="md"
                   placeholder="Sélectionner un dossier"
@@ -104,12 +104,12 @@ export default function Dashboard() {
                   styles={{
                     input: {
                       backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      border: '1px solid rgba(255, 255, 255, 0.35)',
                       color: '#ffffff',
                     },
                     dropdown: {
                       backgroundColor: '#0f172a',
-                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      border: '1px solid rgba(255, 255, 255, 0.35)',
                       color: '#ffffff',
                     }
                   }}
@@ -119,7 +119,7 @@ export default function Dashboard() {
                 color="red"
                 variant="subtle"
                 size="lg"
-                style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px' }}
+                style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.35)' }}
                 onClick={async () => {
                   if (!selectedFolderId) return;
                   if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
@@ -143,11 +143,11 @@ export default function Dashboard() {
           </div>
 
           {/* TITRE GESTION DES MATIÈRES */}
-          <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Folder size={20} /> Gestion des Matières
+          <Title order={5} style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
+            <Folder size={20} color="#38bdf8" /> Gestion des Matières
           </Title>
          
-          {/* LISTE DES MATIÈRES AVEC LE MÊME DESIGN FLOUTÉ */}
+          {/* LISTE DES MATIÈRES AVEC DESIGN CLAIR ET FLOUTÉ (0.35) */}
           <Stack gap="md">
             {matieresList?.map((matiere: any) => {
               const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
@@ -158,7 +158,7 @@ export default function Dashboard() {
                   key={matiere.id} 
                   style={{ 
                     backgroundColor: 'rgba(15, 23, 42, 0.85)', 
-                    border: '1px solid rgba(255, 255, 255, 0.25)', 
+                    border: '1px solid rgba(255, 255, 255, 0.35)', 
                     borderRadius: '12px', 
                     padding: '16px',
                     boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
@@ -179,7 +179,7 @@ export default function Dashboard() {
                   </Flex>
 
                   {isMatiereOpen && (
-                    <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.4)' }}>
+                    <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
                       {listChapitres.length > 0 ? (
                         listChapitres.map((chap: any) => {
                           const chapId = chap.id;
@@ -188,7 +188,7 @@ export default function Dashboard() {
 
                           return (
                             <Flex key={chapId} justify="space-between" align="center" py={4}>
-                              <Text size="sm" style={{ color: '#e2e8f0' }}>
+                              <Text size="sm" style={{ color: '#ffffff' }}>
                                 {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
                                 {chapTitre}
                               </Text>
@@ -199,7 +199,7 @@ export default function Dashboard() {
                           );
                         })
                       ) : (
-                        <Text size="sm" c="dimmed" fs="italic">Aucun chapitre dans cette matière.</Text>
+                        <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
                       )}
                     </Stack>
                   )}
@@ -211,13 +211,13 @@ export default function Dashboard() {
 
         {/* TABLEAU DE RATTRAPAGE */}
         <Box mt={40}>
-          <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Title order={5} style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 600 }}>
             <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
           </Title>
 
           <div style={{ 
             backgroundColor: 'rgba(15, 23, 42, 0.85)', 
-            border: '1px solid rgba(255, 255, 255, 0.25)', 
+            border: '1px solid rgba(255, 255, 255, 0.35)', 
             borderRadius: '12px', 
             padding: '16px',
             boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
@@ -225,7 +225,7 @@ export default function Dashboard() {
           }}>
             <Table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', color: '#ffffff' }}>
               <Table.Thead>
-                <Table.Tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.15)' }}>
+                <Table.Tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.25)' }}>
                   <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Chapitre</Table.Th>
                   <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Date</Table.Th>
                   <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Note</Table.Th>
@@ -242,7 +242,7 @@ export default function Dashboard() {
                     const rowKey = r.echeanceId ?? r.id ?? index;
 
                     return (
-                      <Table.Tr key={rowKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                      <Table.Tr key={rowKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
                         <Table.Td style={{ padding: '12px', color: '#ffffff', fontWeight: 500 }}>
                           {jValue && <span style={{ marginRight: '8px', fontWeight: 700, color: '#38bdf8' }}>[{jValue}]</span>}
                           {titreChapitre}
@@ -283,7 +283,7 @@ export default function Dashboard() {
                   })
                 ) : (
                   <Table.Tr>
-                    <Table.Td colSpan={4} align="center" style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '24px', fontStyle: 'italic' }}>
+                    <Table.Td colSpan={4} align="center" style={{ color: 'rgba(255, 255, 255, 0.7)', padding: '24px', fontStyle: 'italic' }}>
                       Aucun élément en rattrapage
                     </Table.Td>
                   </Table.Tr>
@@ -300,13 +300,13 @@ export default function Dashboard() {
         onClose={() => setModalOpened(false)} 
         title="Pas de place trouvée - Choix de réintégration"
         styles={{
-          content: { backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)' },
+          content: { backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)' },
           header: { backgroundColor: '#0f172a', color: '#ffffff' },
-          title: { fontWeight: 700 }
+          title: { fontWeight: 700, color: '#ffffff' }
         }}
       >
         <Stack>
-          <Text size="sm" c="dimmed">Aucune place automatique n'a été trouvée pour ce rattrapage. Choisis une date pour forcer ou ignore la ligne.</Text>
+          <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Aucune place automatique n'a été trouvée pour ce rattrapage. Choisis une date pour forcer ou ignore la ligne.</Text>
          
           <TextInput
             label="Date forcée"
@@ -314,8 +314,8 @@ export default function Dashboard() {
             value={forcedDateInput}
             onChange={(e) => setForcedDateInput(e.currentTarget.value)}
             styles={{
-              input: { backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)' },
-              label: { color: '#ffffff' }
+              input: { backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)' },
+              label: { color: '#ffffff', fontWeight: 500 }
             }}
           />
 
@@ -359,4 +359,3 @@ export default function Dashboard() {
     </Container>
   );
 }
-
