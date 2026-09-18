@@ -12,7 +12,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. On essaie de récupérer l'e-mail depuis ta base Neon pour ce userId exact
+    // 1. Vérification en base Neon
     const userRecord = await db
       .select({ email: users.email })
       .from(users)
@@ -21,7 +21,7 @@ export async function POST() {
 
     let userEmail = userRecord[0]?.email;
 
-    // 2. Sécurité de secours : si la base ne renvoie rien, on va le chercher direct chez Clerk
+    // 2. Fallback de sécurité Clerk si besoin
     if (!userEmail) {
       const clerkUser = await currentUser();
       userEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -47,7 +47,8 @@ export async function POST() {
           type: 'checkouts',
           attributes: {
             checkout_data: {
-              email: userEmail,
+              // ON RETIRE L'EMAIL ICI pour stopper net le bug contact@nesis.fr,
+              // tout en conservant le user_id indispensable pour tes webhooks et le bouton de pause.
               custom: {
                 user_id: userId,
               },
