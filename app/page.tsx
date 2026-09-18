@@ -2,11 +2,12 @@ import { Suspense } from 'react';
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
-import { Container, Title, Text, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
+import { Container, Title, Text, Stack, Grid, Card, Group, ThemeIcon, Button } from '@mantine/core';
 import { Calendar, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import Link from 'next/link';
 
 export default async function LandingPage() {
   const { userId } = await auth();
@@ -48,17 +49,9 @@ export default async function LandingPage() {
           <div>
             {isSignedIn && (
               <SignOutButton>
-                <button style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#ffffff',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}>
+                <Button variant="default" bg="rgba(255, 255, 255, 0.05)" c="white" bd="1px solid rgba(255, 255, 255, 0.2)">
                   Déconnexion
-                </button>
+                </Button>
               </SignOutButton>
             )}
           </div>
@@ -86,100 +79,59 @@ export default async function LandingPage() {
            
             <div style={{ marginTop: '5px' }}>
               {!isSignedIn ? (
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Group justify="center" gap="md">
                   <SignUpButton mode="modal">
-                    <button style={{
-                      backgroundColor: '#4f46e5',
-                      color: 'white',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '1rem'
-                    }}>
-                      Commencer mes 3 jours d'essai <ArrowRight size={18} />
-                    </button>
+                    <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />}>
+                      Commencer mes 3 jours d'essai
+                    </Button>
                   </SignUpButton>
                  
                   <SignInButton mode="modal">
-                    <button style={{
-                      backgroundColor: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '1rem'
-                    }}>
+                    <Button size="lg" variant="default" bg="transparent" c="white" bd="1px solid rgba(255,255,255,0.2)">
                       Se connecter
-                    </button>
+                    </Button>
                   </SignInButton>
 
-                  <a
+                  <Button
+                    component="a"
                     href="/subscription"
-                    style={{
-                      backgroundColor: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '1rem'
-                    }}
+                    size="lg"
+                    variant="default"
+                    bg="transparent"
+                    c="white"
+                    bd="1px solid rgba(255,255,255,0.2)"
+                    leftSection={<CreditCard size={18} />}
                   >
-                    <CreditCard size={18} /> Abonnement — 7,90 € / mois
-                  </a>
-                </div>
+                    Abonnement — 7,90 € / mois
+                  </Button>
+                </Group>
               ) : (
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <a
+                <Group justify="center" gap="md">
+                  <Button
+                    component="a"
                     href="/protected/dashboard"
-                    style={{
-                      backgroundColor: '#4f46e5',
-                      color: 'white',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '1rem'
-                    }}
+                    size="lg"
+                    color="indigo"
+                    rightSection={<ArrowRight size={18} />}
                   >
-                    Accéder à mon espace <ArrowRight size={18} />
-                  </a>
+                    Accéder à mon espace
+                  </Button>
 
                   {showSubscriptionButton && (
-                    <a
+                    <Button
+                      component="a"
                       href="/subscription"
-                      style={{
-                        backgroundColor: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        color: 'white',
-                        padding: '12px 24px',
-                        borderRadius: '8px',
-                        textDecoration: 'none',
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '1rem'
-                      }}
+                      size="lg"
+                      variant="default"
+                      bg="transparent"
+                      c="white"
+                      bd="1px solid rgba(255,255,255,0.2)"
+                      leftSection={<CreditCard size={18} />}
                     >
-                      <CreditCard size={18} /> Abonnement — 7,90 € / mois
-                    </a>
+                      Abonnement — 7,90 € / mois
+                    </Button>
                   )}
-                </div>
+                </Group>
               )}
             </div>
           </Stack>
@@ -280,20 +232,21 @@ export default async function LandingPage() {
                 Ne va plus aux examens en te disant "je crois que je sais". Les graphiques ne mentent pas, les courbes d'évolution t'offrent la certitude d'être prêt le jour J, tout en protégeant ton équilibre grâce au quota de cours max pour la réintégration.
               </Text>
             </Stack>
-            {!isSignedIn && (
+            {!isSignedIn ? (
               <SignUpButton mode="modal">
-                <button style={{
-                  backgroundColor: '#4f46e5',
-                  color: 'white',
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}>
-                  Démarrer l'essai
-                </button>
+                <Button color="indigo">Démarrer l'essai</Button>
               </SignUpButton>
+            ) : (
+              showSubscriptionButton && (
+                <Button
+                  component="a"
+                  href="/subscription"
+                  color="indigo"
+                  variant="outline"
+                >
+                  S'abonner
+                </Button>
+              )
             )}
           </Group>
         </Card>
