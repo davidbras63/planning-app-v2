@@ -101,6 +101,9 @@ export async function handleLemonSqueezyWebhook(event: any) {
       return;
     }
 
+    // --- CORRECTION DU CALCUL DES 30 JOURS ---
+    // Si la période actuelle est encore valide (future), on s'appuie dessus. 
+    // Si elle est dépassée (passée), on repart de la date d'aujourd'hui (now).
     const baseDate = currentPeriodEnd > now ? currentPeriodEnd : now;
     const newPeriodEnd = new Date(baseDate);
     newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
@@ -117,6 +120,8 @@ export async function handleLemonSqueezyWebhook(event: any) {
     } catch (dbError) {
       console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
     }
+
+    // Le reste de l'envoi d'e-mail ne change pas...
 
     if (eventName === 'subscription_created' || attributes?.billing_reason === 'initial') {
         try {
