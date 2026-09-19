@@ -8,15 +8,8 @@ import { eq } from 'drizzle-orm';
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/protected(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId: clerkId } = await auth();
-
-  // Redirection automatique vers le dashboard si déjà connecté et sur la page d'accueil
-  if (clerkId && req.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/protected/dashboard', req.url));
-  }
   
   if (isProtectedRoute(req)) {
-    // Ton code d'origine reprend exactement ici, sans aucune autre modification...
     const { userId: clerkId } = await auth();
 
     // 1. Si l'utilisateur n'est pas connecté, on le redirige vers l'accueil / sign-in
