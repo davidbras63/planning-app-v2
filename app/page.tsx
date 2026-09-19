@@ -61,7 +61,7 @@ export default function LandingPage() {
   const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
 
   // Bannière d'essai gratuit affichée pour les non-connectés ou non en règle
-  const showTrialBanner = !isSignedIn || (!['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining);
+  const showTrialBanner = !isSignedIn;
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
