@@ -53,8 +53,9 @@ export default function LandingPage() {
   const now = new Date();
   const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
 
-  // Le bouton d'abonnement classique reste visible uniquement pour trial, expired, canceled (ou non connectés)
-  const shouldShowSubscriptionButton = !isSignedIn || ['trial', 'expired', 'canceled'].includes(userStatus || '');
+  // LE CHANGEMENT EST ICI : Le bouton d'abonnement apparaît pour TOUT LE MONDE, 
+  // SAUF si le statut est active, elite ou paused. (Donc ok pour cancel, expired, trial, etc.)
+  const shouldHideSubscriptionButton = ['active', 'elite', 'paused'].includes(userStatus || '');
 
   // Cas spécifique : En pause ET période finie -> Bouton orange pour gérer / reprendre l'abonnement
   const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
@@ -163,8 +164,8 @@ export default function LandingPage() {
                     </Button>
                   )}
 
-                  {/* Bouton d'abonnement classique affiché uniquement si trial, expired ou canceled */}
-                  {shouldShowSubscriptionButton && (
+                  {/* Bouton d'abonnement classique affiché partout sauf si active, elite ou paused */}
+                  {!shouldHideSubscriptionButton && (
                     <Button
                       size="lg"
                       variant="outline"
