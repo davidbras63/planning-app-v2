@@ -28,21 +28,39 @@ export default function LandingPage() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn) {
-        // Si l'utilisateur revient sur l'accueil et qu'il est déjà connecté, 
-        // on le renvoie direct sur son dashboard sans bloquer sa navigation future.
-        router.replace('/protected/dashboard');
-        return;
-      }
-
-      // Si pas connecté, on charge juste le statut si besoin ou on arrête le loader
+    if (isSignedIn) {
+      fetch('/api/user-status')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data) {
+            setUserStatus(data.status);
+            setPeriodEnd(data.periodEnd);
+            setCustomerPortalUrl(data.customerPortalUrl);
+          }
+          setIsDataLoaded(true);
+        })
+        .catch((err) => {
+          console.error("Erreur chargement statut user", err);
+          setIsDataLoaded(true);
+        });
+    } else {
       setIsDataLoaded(true);
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isSignedIn]);
 
-  // Tant que Clerk charge l'état de session, on ne render rien pour éviter un flash
-  if (!isLoaded) return null;
+  if (!isLoaded || (isSignedIn && !isDataLoaded)) return null;
+
+  const now = new Date();
+  const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
+
+  // Le bouton d'abonnement classique reste visible uniquement pour trial, expired, canceled (ou non connectés)
+  const shouldShowSubscriptionButton = !isSignedIn || ['trial', 'expired', 'canceled'].includes(userStatus || '');
+
+  // Cas spécifique : En pause ET période finie -> Bouton orange pour gérer / reprendre l'abonnement
+  const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
+
+  // Bannière d'essai gratuit affichée pour les non-connectés ou non en règle
+  const showTrialBanner = !isSignedIn || (!['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining);
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -60,6 +78,23 @@ export default function LandingPage() {
               style={{ height: '140px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(500%) hue-rotate(120deg)' }}
             />
           </div>
+          <div>
+            {isSignedIn && (
+              <SignOutButton>
+                <button style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}>
+                  Déconnexion
+                </button>
+              </SignOutButton>
+            )}
+          </div>
         </div>
 
         <Container size="md">
@@ -76,36 +111,72 @@ export default function LandingPage() {
               En études supérieures, entre la charge de travail et la liberté d'organisation, il est facile de se laisser submerger. Reprends le contrôle avec la répétition espacée, un planning intelligent et des graphiques de niveau infaillibles.
             </Text>
 
-            <div style={{ background: 'rgba(79, 70, 229, 0.2)', border: '1px solid #4f46e5', padding: '10px 20px', borderRadius: '8px' }}>
-              <Text size="sm" c="white" ta="center">
-                🎁 <b>3 jours d'essai gratuit offerts</b> : Teste l'intégralité de la méthode sans engagement. Tes données restent sécurisées.
-              </Text>
-            </div>
+            {showTrialBanner && (
+              <div style={{ background: 'rgba(79, 70, 229, 0.2)', border: '1px solid #4f46e5', padding: '10px 20px', borderRadius: '8px' }}>
+                <Text size="sm" c="white" ta="center">
+                  🎁 <b>3 jours d'essai gratuit offerts</b> : Teste l'intégralité de la méthode sans engagement. Tes données restent sécurisées.
+                </Text>
+              </div>
+            )}
            
             <div style={{ marginTop: '5px' }}>
-              <Group gap="md" justify="center">
-                <SignUpButton mode="modal">
-                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />}>
-                    Commencer mes 3 jours d'essai
-                  </Button>
-                </SignUpButton>
-               
-                <SignInButton mode="modal">
-                  <Button size="lg" variant="outline" color="gray" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                    Se connecter
-                  </Button>
-                </SignInButton>
+              {!isSignedIn ? (
+                <Group gap="md" justify="center">
+                  <SignUpButton mode="modal">
+                    <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />}>
+                      Commencer mes 3 jours d'essai
+                    </Button>
+                  </SignUpButton>
+                 
+                  <SignInButton mode="modal">
+                    <Button size="lg" variant="outline" color="gray" style={{ borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                      Se connecter
+                    </Button>
+                  </SignInButton>
 
-                <Button
-                  size="lg"
-                  variant="outline"
-                  color="gray"
-                  leftSection={<CreditCard size={18} />}
-                  onClick={() => router.push('/subscription')}
-                >
-                  Abonnement — 7,90 € / mois
-                </Button>
-              </Group>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    color="gray"
+                    leftSection={<CreditCard size={18} />}
+                    onClick={() => router.push('/subscription')}
+                  >
+                    Abonnement — 7,90 € / mois
+                  </Button>
+                </Group>
+              ) : (
+                <Group gap="md" justify="center">
+                  {/* Bouton d'accès au dashboard */}
+                  <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
+                    Accéder à mon espace
+                  </Button>
+
+                  {/* Bouton orange de gestion si paused et période finie */}
+                  {isPausedAndExpired && customerPortalUrl && (
+                    <Button
+                      size="lg"
+                      color="orange"
+                      leftSection={<CreditCard size={18} />}
+                      onClick={() => window.location.href = customerPortalUrl}
+                    >
+                      Gérer mon abonnement &amp; Reprendre
+                    </Button>
+                  )}
+
+                  {/* Bouton d'abonnement classique affiché uniquement si trial, expired ou canceled */}
+                  {shouldShowSubscriptionButton && (
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      color="gray"
+                      leftSection={<CreditCard size={18} />}
+                      onClick={() => router.push('/subscription')}
+                    >
+                      Abonnement — 7,90 € / mois
+                    </Button>
+                  )}
+                </Group>
+              )}
             </div>
           </Stack>
         </Container>
@@ -209,9 +280,11 @@ export default function LandingPage() {
                 Ne va plus aux examens en te disant "je crois que je sais". Les graphiques ne mentent pas, les courbes d'évolution t'offrent la certitude d'être prêt le jour J, tout en protégeant ton équilibre grâce au quota de cours max pour la réintégration.
               </Text>
             </Stack>
-            <SignUpButton mode="modal">
-              <Button size="md" color="indigo">Démarrer l'essai</Button>
-            </SignUpButton>
+            {!isSignedIn && (
+              <SignUpButton mode="modal">
+                <Button size="md" color="indigo">Démarrer l'essai</Button>
+              </SignUpButton>
+            )}
           </Group>
         </Card>
       </Container>
