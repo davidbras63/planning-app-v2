@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { db } from '@/db'; // Si ton fichier db est à la racine, ajuste si besoin (ex: '@/db/index')
-import { users } from '@/db/schema'; // D'après ton schéma, la table s'appelle bien 'users'
+import { db } from '@/db'; 
+import { users, links } from '@/db/schema'; 
 import { eq } from 'drizzle-orm';
 
 export async function GET() {
@@ -12,13 +12,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // On va chercher directement dans ta table 'users' du schéma
+    // Récupération du statut et de la période dans la table 'users'
     const dbUser = await db
       .select({
         status: users.status,
         periodEnd: users.periodEnd,
-        // S'il n'y a pas de colonne customerPortalUrl dans ta table users, 
-        // tu récupères le lien Lemon Squeezy dans ta table 'links' par exemple :
       })
       .from(users)
       .where(eq(users.clerkId, userId))
@@ -28,7 +26,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 });
     }
 
-    // Si tu stockes le lien du portail dans la table 'links' que tu as définie :
+    // Récupération de l'URL du portail client dans la table 'links'
     const userLink = await db
       .select({
         url: links.url,

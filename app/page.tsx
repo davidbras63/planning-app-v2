@@ -25,7 +25,7 @@ export default function LandingPage() {
   const [userStatus, setUserStatus] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
   const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(null);
-  const [isDataLoaded, setIsDataLoaded] = useState(false); // Pour éviter les flashs d'affichage avant le fetch
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -38,9 +38,11 @@ export default function LandingPage() {
             setCustomerPortalUrl(data.customerPortalUrl);
             setIsDataLoaded(true);
 
-            // Règle 1 : Tant qu'il a du temps, on le jette direct sur le dashboard (peu importe son statut)
-            if (data.periodEnd && new Date(data.periodEnd) > new Date()) {
-              router.push('/protected/dashboard');
+            // Redirection automatique stricte : si active, elite ou temps restant valide -> Dashboard
+            const now = new Date();
+            const hasTimeRemaining = data.periodEnd ? new Date(data.periodEnd) > now : false;
+            if (data.status === 'active' || data.status === 'elite' || hasTimeRemaining) {
+              router.replace('/protected/dashboard');
             }
           }
         })
@@ -55,13 +57,17 @@ export default function LandingPage() {
 
   if (!isLoaded || (isSignedIn && !isDataLoaded)) return null;
 
-  const hasTimeRemaining = periodEnd ? new Date(periodEnd) > new Date() : false;
+  const now = new Date();
+  const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
 
-  // Le bouton d'abonnement disparaît uniquement si le statut est active, elite ou paused
+  // Masquage du bouton d'abonnement pour active, elite, et paused
   const shouldHideSubscriptionButton = ['active', 'elite', 'paused'].includes(userStatus || '');
 
-  // Cas spécifique : En pause et période finie -> Bouton pour gérer/enlever la pause
+  // Cas spécifique : En pause et période finie -> Bouton orange pour gérer / reprendre l'abonnement
   const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
+
+  // Bannière d'essai gratuit affichée uniquement si non connecté ou non en règle
+  const showTrialBanner = !isSignedIn || (!['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining);
 
   return (
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
@@ -69,9 +75,8 @@ export default function LandingPage() {
         <AuthAlertHandler />
       </Suspense>
 
-      {/* HEADER / HERO SECTION (Fond sombre -> Texte blanc pur) */}
+      {/* HEADER / HERO SECTION */}
       <div style={{ backgroundColor: '#141517', minHeight: '100vh', padding: '20px 40px' }}>
-        {/* Logo tout en haut à gauche */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <div>
             <img
@@ -81,42 +86,45 @@ export default function LandingPage() {
             />
           </div>
           <div>
-            <SignOutButton>
-              <button style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#ffffff',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 500
-              }}>
-                Déconnexion
-              </button>
-            </SignOutButton>
+            {isSignedIn && (
+              <SignOutButton>
+                <button style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}>
+                  Déconnexion
+                </button>
+              </SignOutButton>
+            )}
           </div>
         </div>
 
         <Container size="md">
           <Stack align="center" gap="lg">
-            {/* Le texte unique, bien positionné sous le logo */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', marginBottom: '10px' }}>
               <HelpCircle size={16} color="#4f9fa5" /> Finis les révisions au feeling : ton contrôle continu personnel
             </div>
            
-            <Title order={1} style={{ fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.2, color: 'white' }}>
+            <Title order={1} style={{ fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.2, color: 'white', textAlign: 'center' }}>
               Pilote tes révisions <br />sans mauvaise surprise.
             </Title>
            
-            <Text size="lg" c="white" maw={700} style={{ opacity: 0.9 }}>
+            <Text size="lg" c="white" maw={700} ta="center" style={{ opacity: 0.9 }}>
               En études supérieures, entre la charge de travail et la liberté d'organisation, il est facile de se laisser submerger. Reprends le contrôle avec la répétition espacée, un planning intelligent et des graphiques de niveau infaillibles.
             </Text>
 
-            <div style={{ background: 'rgba(79, 70, 229, 0.2)', border: '1px solid #4f46e5', padding: '10px 20px', borderRadius: '8px' }}>
-              <Text size="sm" c="white">
-                🎁 <b>3 jours d'essai gratuit offerts</b> : Teste l'intégralité de la méthode sans engagement. Tes données restent sécurisées.
-              </Text>
-            </div>
+            {showTrialBanner && (
+              <div style={{ background: 'rgba(79, 70, 229, 0.2)', border: '1px solid #4f46e5', padding: '10px 20px', borderRadius: '8px' }}>
+                <Text size="sm" c="white" ta="center">
+                  🎁 <b>3 jours d'essai gratuit offerts</b> : Teste l'intégralité de la méthode sans engagement. Tes données restent sécurisées.
+                </Text>
+              </div>
+            )}
            
             <div style={{ marginTop: '5px' }}>
               {!isSignedIn ? (
@@ -145,12 +153,11 @@ export default function LandingPage() {
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  {/* Bouton pour accéder au dashboard (affiché si connecté, si le fetch est fait ou par défaut si le temps est OK) */}
                   <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
                     Accéder à mon espace
                   </Button>
 
-                  {/* Cas spécifique : En pause et période finie -> Bouton pour gérer/enlever la pause */}
+                  {/* Cas spécifique : En pause et période finie -> Bouton orange de reprise */}
                   {isPausedAndExpired && customerPortalUrl && (
                     <Button
                       size="lg"
@@ -162,7 +169,7 @@ export default function LandingPage() {
                     </Button>
                   )}
 
-                  {/* Bouton d'abonnement classique : affiché SEULEMENT si on ne doit PAS le cacher */}
+                  {/* Bouton d'abonnement classique masqué si active, elite ou paused */}
                   {!shouldHideSubscriptionButton && (
                     <Button
                       size="lg"
@@ -181,7 +188,7 @@ export default function LandingPage() {
         </Container>
       </div>
 
-      {/* SECTION EXPLICATION : COMMENT ÇA MARCHE (4 carrés distincts sur fond sombre) */}
+      {/* SECTION EXPLICATION : COMMENT ÇA MARCHE */}
       <Container size="lg" mt={60}>
         <Stack align="center" mb={40}>
           <Title order={2} ta="center" c="#141517">Comment ça fonctionne du début à la fin ?</Title>
@@ -191,7 +198,6 @@ export default function LandingPage() {
         </Stack>
 
         <Grid gutter="lg">
-          {/* Carré 1 : Paramètres */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="violet" mb="md">
@@ -204,7 +210,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 2 : Planning & Date d'examen */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="indigo" mb="md">
@@ -217,7 +222,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 3 : Réintégration Intelligente */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="orange" mb="md">
@@ -230,7 +234,6 @@ export default function LandingPage() {
             </Card>
           </Grid.Col>
 
-          {/* Carré 4 : Graphiques */}
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card withBorder p="xl" radius="md" style={{ height: '100%', backgroundColor: '#1b1c20', borderColor: '#2f3136' }}>
               <ThemeIcon size={50} radius="md" color="teal" mb="md">
@@ -274,7 +277,7 @@ export default function LandingPage() {
           </Group>
         </Card>
 
-        {/* SECTION VALEUR AJOUTÉE (Fond blanc conservé) */}
+        {/* SECTION VALEUR AJOUTÉE */}
         <Card withBorder mt={30} p="xl" radius="md" bg="white" style={{ borderColor: '#e2e8f0' }}>
           <Group justify="space-between" align="center">
             <Stack gap={5} maw={650}>
