@@ -74,7 +74,7 @@ export default function Sidebar() {
 						<img src="/logo.png" alt="Logo Nesis" style={{ height: '120px', width: 'auto', filter: 'brightness(0) saturate(100%) invert(70%) sepia(80%) saturate(800%) hue-rotate(130deg)' }} />
 					</div>
                     <Flex justify={isOpen ? "space-between" : "center"} align="center" mb="md">
-                        {isOpen && <Link href="/" style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}><Home size={18} /> Accueil</Link>}
+                        {isOpen && <Link href="/?from=menu" style={{ color: 'white', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}><Home size={18} /> Accueil</Link>}
                         <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>
                     </Flex>
 

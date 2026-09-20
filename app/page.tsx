@@ -2,6 +2,8 @@
 
 import { useEffect, Suspense, useState } from 'react';
 import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server'; // Import de Clerk côté serveur pour la redirection
+import { redirect } from 'next/navigation'; // Import pour la redirection Next.js
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -19,7 +21,27 @@ function AuthAlertHandler() {
   return null;
 }
 
-export default function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  // --- GESTION DE LA REDIRECTION PROpre ---
+  const { userId } = await auth();
+  const resolvedSearchParams = await searchParams;
+  const fromMenu = resolvedSearchParams.from === 'menu';
+
+  // Si connecté ET qu'il ne vient pas explicitement du menu -> Dashboard direct
+  if (userId && !fromMenu) {
+    redirect('/protected/dashboard');
+  }
+  // ----------------------------------------
+
+  return <LandingContent />;
+}
+
+// On sépare le contenu pour garder le fonctionnement Client Component de ta page
+function LandingContent() {
   const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<string | null>(null);
@@ -53,14 +75,8 @@ export default function LandingPage() {
   const now = new Date();
   const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
 
-  // LE CHANGEMENT EST ICI : Le bouton d'abonnement apparaît pour TOUT LE MONDE, 
-  // SAUF si le statut est active, elite ou paused. (Donc ok pour cancel, expired, trial, etc.)
   const shouldHideSubscriptionButton = ['active', 'elite', 'paused'].includes(userStatus || '');
-
-  // Cas spécifique : En pause ET période finie -> Bouton orange pour gérer / reprendre l'abonnement
   const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
-
-  // Bannière d'essai gratuit affichée pour les non-connectés ou non en règle
   const showTrialBanner = !isSignedIn;
 
   return (
@@ -147,12 +163,10 @@ export default function LandingPage() {
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
-                  {/* Bouton d'accès au dashboard */}
                   <Button size="lg" color="indigo" rightSection={<ArrowRight size={18} />} onClick={() => router.push('/protected/dashboard')}>
                     Accéder à mon espace
                   </Button>
 
-                  {/* Bouton orange de gestion si paused et période finie */}
                   {isPausedAndExpired && customerPortalUrl && (
                     <Button
                       size="lg"
@@ -164,7 +178,6 @@ export default function LandingPage() {
                     </Button>
                   )}
 
-                  {/* Bouton d'abonnement classique affiché partout sauf si active, elite ou paused */}
                   {!shouldHideSubscriptionButton && (
                     <Button
                       size="lg"
