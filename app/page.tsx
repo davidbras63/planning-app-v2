@@ -2,8 +2,6 @@
 
 import { useEffect, Suspense, useState } from 'react';
 import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextjs';
-import { auth } from '@clerk/nextjs/server'; // Import de Clerk côté serveur pour la redirection
-import { redirect } from 'next/navigation'; // Import pour la redirection Next.js
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -21,27 +19,25 @@ function AuthAlertHandler() {
   return null;
 }
 
-export default async function LandingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ from?: string }>;
-}) {
-  // --- GESTION DE LA REDIRECTION PROpre ---
-  const { userId } = await auth();
-  const resolvedSearchParams = await searchParams;
-  const fromMenu = resolvedSearchParams.from === 'menu';
+// --- REDIRECTION CLIENT SI CONNECTÉ (SAUF SI ?from=menu) ---
+function RedirectHandler() {
+  const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Si connecté ET qu'il ne vient pas explicitement du menu -> Dashboard direct
-  if (userId && !fromMenu) {
-    redirect('/protected/dashboard');
-  }
-  // ----------------------------------------
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      const fromMenu = searchParams.get('from') === 'menu';
+      if (!fromMenu) {
+        router.push('/protected/dashboard');
+      }
+    }
+  }, [isLoaded, isSignedIn, searchParams, router]);
 
-  return <LandingContent />;
+  return null;
 }
 
-// On sépare le contenu pour garder le fonctionnement Client Component de ta page
-function LandingContent() {
+export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<string | null>(null);
@@ -83,6 +79,7 @@ function LandingContent() {
     <main style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '80px' }}>
       <Suspense fallback={null}>
         <AuthAlertHandler />
+        <RedirectHandler />
       </Suspense>
 
       {/* HEADER / HERO SECTION */}
