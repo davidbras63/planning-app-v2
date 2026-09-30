@@ -21,9 +21,9 @@ export default async function DashboardPage() {
         .where(eq(folders.clerkId, userId));
 	
 	// --- NOUVEAU : Redirection directe s'il n'y a qu'un seul dossier ---
-	if (userFolders.length === 1) {
-		redirect(`/protected/dashboard/${userFolders[0].id}`);
-	}
+	//if (userFolders.length === 1) {
+		//redirect(`/protected/dashboard/${userFolders[0].id}`);
+	//}
 	// -----------------------------------------------------------------
     
 	return (
