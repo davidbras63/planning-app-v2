@@ -93,4 +93,15 @@ export const users = pgTable("users", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
  });
  
+export const subjectAnnals = pgTable("subject_annals", {
+	id: serial("id").primaryKey().notNull(),
+	clerkId: text("clerk_id"),
+	folderId: integer("folder_id").references(() => folders.id),
+	matiereId: integer("matiere_id").references(() => matieres.id),
+	notes: jsonb("notes"), // Stocke le tableau brut des notes (ex: [12, 14, 16]) pour compter les QCM via .length
+	average: numeric("average", { precision: 5, scale: 2 }).default('0'), // La moyenne stockée de la session pour le graphique
+	revisionDate: timestamp("revision_date", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
+}); 
+ 
 ;

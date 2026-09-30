@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, Button } from '@mantine/core';
+import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, Button, Group, NumberInput } from '@mantine/core';
 import { useParams } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
-  LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Plus, HelpCircle, Palette
+  LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Plus, HelpCircle, Palette, Target
 } from 'lucide-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
 import { useDisclosure } from '@mantine/hooks';
 import SummerPauseButton from '@/components/SummerPauseButton';
 import BackgroundPicker from '@/components/BackgroundPicker';
-
+import { actionGetMatieresByFolder, actionSaveTraining } from '@/app/actions/trainingActions';
 import {
   actionCreateMatiere,
   actionGetFolders,
@@ -33,6 +33,20 @@ export default function Sidebar() {
     const [openedLink, setOpenedLink] = useState(false);
     const [linkTitle, setLinkTitle] = useState("");
     const [linkUrl, setLinkUrl] = useState("");
+
+    // États additionnels pour la modale d'entraînement / annales complète
+    const [trainingType, setTrainingType] = useState<'annales' | 'chapitre'>('annales');
+    const [trainingFolderId, setTrainingFolderId] = useState<string | null>(null);
+    const [trainingMatieres, setTrainingMatieres] = useState<any[]>([]);
+    const [trainingMatiereId, setTrainingMatiereId] = useState<string | null>(null);
+    const [trainingChapitres, setTrainingChapitres] = useState<any[]>([]);
+    const [trainingChapitreId, setTrainingChapitreId] = useState<string | null>(null);
+    const [trainingTitle, setTrainingTitle] = useState("");
+    const [trainingScore, setTrainingScore] = useState<number | ''>('');
+    const [trainingMaxScore, setTrainingMaxScore] = useState<number | ''>(20);
+
+    // État pour la modale d'entraînement / annales
+    const [openedTraining, { open: openTraining, close: closeTraining }] = useDisclosure(false);
 
     // État pour la modale de personnalisation du fond
     const [openedBackground, { open: openBackground, close: closeBackground }] = useDisclosure(false);
@@ -62,6 +76,49 @@ export default function Sidebar() {
         return () => { isMounted = false; };
     }, []);
 
+    // Chargement dynamique des matières selon le dossier sélectionné dans l'entraînement
+    useEffect(() => {
+        let isMounted = true;
+        const fetchMatieres = async () => {
+            if (!trainingFolderId) {
+                setTrainingMatieres([]);
+                setTrainingMatiereId(null);
+                setTrainingChapitres([]);
+                setTrainingChapitreId(null);
+                return;
+            }
+            const res = await actionGetMatieresByFolder(trainingFolderId);
+            if (isMounted) {
+                if (res?.success && res.matieres) {
+                    setTrainingMatieres(res.matieres.map((m: any) => ({ value: String(m.id), label: m.nom, chapitres: m.chapitres || [] })));
+                } else {
+                    setTrainingMatieres([]);
+                }
+                setTrainingMatiereId(null);
+                setTrainingChapitres([]);
+                setTrainingChapitreId(null);
+            }
+        };
+        fetchMatieres();
+        return () => { isMounted = false; };
+    }, [trainingFolderId]);
+
+    // Chargement dynamique des chapitres selon la matière sélectionnée
+    useEffect(() => {
+        if (!trainingMatiereId) {
+            setTrainingChapitres([]);
+            setTrainingChapitreId(null);
+            return;
+        }
+        const selectedMat = trainingMatieres.find(m => m.value === trainingMatiereId);
+        if (selectedMat && selectedMat.chapitres) {
+            setTrainingChapitres(selectedMat.chapitres.map((c: any) => ({ value: String(c.id), label: c.titre || c.name })));
+        } else {
+            setTrainingChapitres([]);
+        }
+        setTrainingChapitreId(null);
+    }, [trainingMatiereId, trainingMatieres]);
+
     const handleCreateFolder = () => setOpenedFolder(true);
     const handleCreateSubject = () => setOpenedSubject(true);
     const handleAddLink = () => setOpenedLink(true);
@@ -81,6 +138,17 @@ export default function Sidebar() {
                     <Link href={currentFolderId ? `/protected/dashboard/${currentFolderId}` : "/protected/dashboard"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><LayoutDashboard size={20} />{isOpen && "Dashboard"}</Link>
 					<Link href={currentFolderId ? `/protected/planning/${currentFolderId}` : "/protected/planning"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
 					<Link href={currentFolderId ? `/protected/graphiques/${currentFolderId}` : "/protected/graphiques"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
+					
+					{/* Le bouton d'entraînement / annales */}
+					<Box 
+						style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none', borderRadius: '8px' }} 
+						onClick={openTraining}
+						className="hover:bg-slate-800 hover:text-white transition"
+					>
+						<Target size={20} /> {isOpen && "Entraînement / Annales"}
+					</Box>
+													
+					
 					<Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
                     {/* Bouton pour ouvrir la modale de fond */}
@@ -195,6 +263,125 @@ export default function Sidebar() {
                         window.location.reload();
                     }}>
                         Enregistrer le lien
+                    </Button>
+                </Stack>
+            </Modal>
+
+            {/* Modale d'entraînement / annales complète */}
+            <Modal opened={openedTraining} onClose={closeTraining} title="Espace Entraînement / Annales" size="lg">
+                <Stack gap="md">
+                    <Text size="sm" c="dimmed">
+                        Enregistre tes notes soit en mode Annales (global par date), soit en mode Chapitre (lié au planning J0 existant).
+                    </Text>
+
+                    <Group grow>
+                        <Button 
+                            variant={trainingType === 'annales' ? 'filled' : 'outline'}
+                            onClick={() => setTrainingType('annales')}
+                        >
+                            Mode Annales
+                        </Button>
+                        <Button 
+                            variant={trainingType === 'chapitre' ? 'filled' : 'outline'}
+                            onClick={() => setTrainingType('chapitre')}
+                        >
+                            Mode Chapitre
+                        </Button>
+                    </Group>
+
+                    <Select
+                        label="Dossier cible"
+                        placeholder="Sélectionne un dossier"
+                        data={folders}
+                        value={trainingFolderId}
+                        onChange={setTrainingFolderId}
+                        clearable
+                    />
+
+                    <Select
+                        label="Matière"
+                        placeholder="Sélectionne une matière"
+                        data={trainingMatieres}
+                        value={trainingMatiereId}
+                        onChange={setTrainingMatiereId}
+                        disabled={!trainingFolderId}
+                        clearable
+                    />
+
+                    {trainingType === 'chapitre' && (
+                        <Select
+                            label="Chapitre"
+                            placeholder="Sélectionne un chapitre"
+                            data={trainingChapitres}
+                            value={trainingChapitreId}
+                            onChange={setTrainingChapitreId}
+                            disabled={!trainingMatiereId}
+                            clearable
+                        />
+                    )}
+
+                    {trainingType === 'annales' && (
+                        <TextInput
+                            label="Titre des Annales / Examen"
+                            placeholder="Ex: Annales Concours 2024"
+                            value={trainingTitle}
+                            onChange={(e) => setTrainingTitle(e.currentTarget.value)}
+                        />
+                    )}
+
+                    <Group grow>
+                        <NumberInput
+                            label="Note obtenue"
+                            placeholder="Ex: 14"
+                            value={trainingScore}
+                            onChange={(val) => setTrainingScore(val)}
+                        />
+                        <NumberInput
+                            label="Sur (Note maximale)"
+                            placeholder="Ex: 20"
+                            value={trainingMaxScore}
+                            onChange={(val) => setTrainingMaxScore(val)}
+                        />
+                    </Group>
+
+                    <Button 
+                        mt="md" 
+                        onClick={async () => {
+                            if (!trainingFolderId || !trainingMatiereId || trainingScore === '') {
+                                alert("Merci de remplir au moins le dossier, la matière et la note !");
+                                return;
+                            }
+                            if (trainingType === 'chapitre' && !trainingChapitreId) {
+                                alert("Sélectionne un chapitre pour le mode Chapitre !");
+                                return;
+                            }
+                            if (trainingType === 'annales' && !trainingTitle) {
+                                alert("Donne un titre à tes annales !");
+                                return;
+                            }
+
+                            const res = await actionSaveTraining({
+                                type: trainingType,
+                                folderId: trainingFolderId,
+                                matiereId: trainingMatiereId,
+                                chapitreId: trainingChapitreId,
+                                title: trainingTitle,
+                                score: trainingScore,
+                                maxScore: trainingMaxScore
+                            });
+
+                            if (res?.success) {
+                                alert("Entraînement enregistré avec succès !");
+                                closeTraining();
+                                // Réinitialisation des champs
+                                setTrainingTitle("");
+                                setTrainingScore("");
+                            } else {
+                                alert("Erreur lors de l'enregistrement.");
+                            }
+                        }}
+                    >
+                        Enregistrer l'entraînement
                     </Button>
                 </Stack>
             </Modal>
