@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, Button, Group, NumberInput } from '@mantine/core';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
   LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Mail, Plus, HelpCircle, Palette, Target
@@ -22,6 +22,7 @@ import {
 } from '@/app/actions/sidebarActions';
 
 export default function Sidebar() {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(true);
     const [links, setLinks] = useState<any[]>([]);
     const [folders, setFolders] = useState<any[]>([]);
@@ -45,18 +46,24 @@ export default function Sidebar() {
     const [trainingScore, setTrainingScore] = useState<number | ''>('');
     const [trainingMaxScore, setTrainingMaxScore] = useState<number | ''>(20);
 
-    // État pour la modale d'entraînement / annales
-    const [openedTraining, { open: openTraining, close: closeTraining }] = useDisclosure(false);
-
-    // État pour la modale de personnalisation du fond
-    const [openedBackground, { open: openBackground, close: closeBackground }] = useDisclosure(false);
-
     const { signOut } = useClerk();
     const params = useParams();
     const urlFolderId = params?.folderId as string | null;
     const currentFolderId = useMemo(() => {
 		return urlFolderId || (folders.length > 0 ? folders[0].value : null);
 	}, [urlFolderId, folders]);
+
+	// État pour la modale d'entraînement / annales avec injection automatique du dossier actif
+	const [openedTraining, { open: baseOpenTraining, close: closeTraining }] = useDisclosure(false);
+	const openTraining = () => {
+		if (currentFolderId && !trainingFolderId) {
+			setTrainingFolderId(currentFolderId);
+		}
+		baseOpenTraining();
+	};
+
+    // État pour la modale de personnalisation du fond
+    const [openedBackground, { open: openBackground, close: closeBackground }] = useDisclosure(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -139,7 +146,6 @@ export default function Sidebar() {
 					<Link href={currentFolderId ? `/protected/planning/${currentFolderId}` : "/protected/planning"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
 					<Link href={currentFolderId ? `/protected/graphiques/${currentFolderId}` : "/protected/graphiques"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
 					
-					{/* Le bouton d'entraînement / annales */}
 					<Box 
 						style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none', borderRadius: '8px' }} 
 						onClick={openTraining}
@@ -148,10 +154,8 @@ export default function Sidebar() {
 						<Target size={20} /> {isOpen && "Entraînement / Annales"}
 					</Box>
 													
-					
 					<Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
-                    {/* Bouton pour ouvrir la modale de fond */}
                     <Box 
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none', borderRadius: '8px' }} 
                         onClick={openBackground}
@@ -168,8 +172,8 @@ export default function Sidebar() {
                     <Text size="xs" color="#5c5f66" p="xs">{isOpen && "MES LIENS"}</Text>
                     {links.map((link) => (
                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
-                         <ExternalLink size={18} /> {isOpen && link.label}
-                       </a>
+                          <ExternalLink size={18} /> {isOpen && link.label}
+                      </a>
                     ))}
                     <Box style={{ cursor: 'pointer', color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleAddLink}><Plus size={20} /> {isOpen && "Ajouter Lien"}</Box>
 
@@ -204,7 +208,9 @@ export default function Sidebar() {
                             return;
                         }
                         await actionCreateFolder(folderName);
-                        window.location.reload();
+                        setOpenedFolder(false);
+                        setFolderName("");
+                        router.refresh();
                     }}>
                         Créer le dossier
                     </Button>
@@ -232,7 +238,9 @@ export default function Sidebar() {
                             return;
                         }
                         await actionCreateMatiere(matiereName, selectedFolderId);
-                        window.location.reload();
+                        setOpenedSubject(false);
+                        setMatiereName("");
+                        router.refresh();
                     }}>
                         Créer la matière
                     </Button>
@@ -260,7 +268,9 @@ export default function Sidebar() {
                         }
                         await actionSaveLink(linkTitle, linkUrl);
                         setOpenedLink(false);
-                        window.location.reload();
+                        setLinkTitle("");
+                        setLinkUrl("");
+                        router.refresh();
                     }}>
                         Enregistrer le lien
                     </Button>
@@ -373,21 +383,20 @@ export default function Sidebar() {
                             if (res?.success) {
                                 alert("Entraînement enregistré avec succès !");
                                 closeTraining();
-                                // Réinitialisation des champs
                                 setTrainingTitle("");
                                 setTrainingScore("");
+                              router.refresh();
                             } else {
                                 alert("Erreur lors de l'enregistrement.");
                             }
                         }}
-                    >
+                  >
                         Enregistrer l'entraînement
-                    </Button>
-                </Stack>
-            </Modal>
+                  </Button>
+              </Stack>
+          </Modal>
 
-            {/* Composant de fond d'écran et modale de personnalisation */}
-            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
-        </Box>
+          <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
+      </Box>
     );
 }
