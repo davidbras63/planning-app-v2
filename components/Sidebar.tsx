@@ -50,14 +50,15 @@ export default function Sidebar() {
     const params = useParams();
     const urlFolderId = params?.folderId as string | null;
     const currentFolderId = useMemo(() => {
-		return urlFolderId || (folders.length > 0 ? folders[0].value : null);
-	}, [urlFolderId, folders]);
+        return urlFolderId || (folders.length > 0 ? folders[0].value : null);
+    }, [urlFolderId, folders]);
 
-	// État pour la modale d'entraînement / annales avec injection automatique du dossier actif
+    // État pour la modale d'entraînement / annales (corrigé pour injecter proprement le dossier actif)
 	const [openedTraining, { open: baseOpenTraining, close: closeTraining }] = useDisclosure(false);
 	const openTraining = () => {
-		if (currentFolderId && !trainingFolderId) {
-			setTrainingFolderId(currentFolderId);
+		const activeFolder = urlFolderId || (folders.length > 0 ? folders[0].value : null);
+		if (activeFolder) {
+			setTrainingFolderId(activeFolder);
 		}
 		baseOpenTraining();
 	};
@@ -89,9 +90,6 @@ export default function Sidebar() {
         const fetchMatieres = async () => {
             if (!trainingFolderId) {
                 setTrainingMatieres([]);
-                setTrainingMatiereId(null);
-                setTrainingChapitres([]);
-                setTrainingChapitreId(null);
                 return;
             }
             const res = await actionGetMatieresByFolder(trainingFolderId);
@@ -101,9 +99,6 @@ export default function Sidebar() {
                 } else {
                     setTrainingMatieres([]);
                 }
-                setTrainingMatiereId(null);
-                setTrainingChapitres([]);
-                setTrainingChapitreId(null);
             }
         };
         fetchMatieres();
@@ -210,7 +205,7 @@ export default function Sidebar() {
                         await actionCreateFolder(folderName);
                         setOpenedFolder(false);
                         setFolderName("");
-                        router.refresh();
+                        window.location.reload();
                     }}>
                         Créer le dossier
                     </Button>
@@ -238,9 +233,7 @@ export default function Sidebar() {
                             return;
                         }
                         await actionCreateMatiere(matiereName, selectedFolderId);
-                        setOpenedSubject(false);
-                        setMatiereName("");
-                        router.refresh();
+                        window.location.reload();
                     }}>
                         Créer la matière
                     </Button>
@@ -268,9 +261,7 @@ export default function Sidebar() {
                         }
                         await actionSaveLink(linkTitle, linkUrl);
                         setOpenedLink(false);
-                        setLinkTitle("");
-                        setLinkUrl("");
-                        router.refresh();
+                        window.location.reload();
                     }}>
                         Enregistrer le lien
                     </Button>
@@ -385,18 +376,18 @@ export default function Sidebar() {
                                 closeTraining();
                                 setTrainingTitle("");
                                 setTrainingScore("");
-                              router.refresh();
+                                window.location.reload();
                             } else {
                                 alert("Erreur lors de l'enregistrement.");
                             }
                         }}
                   >
                         Enregistrer l'entraînement
-                  </Button>
+                </Button>
               </Stack>
           </Modal>
 
           <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
       </Box>
-    );
+  );
 }
