@@ -5,7 +5,6 @@ import { matieres, chapitres, subjectAnnals, individualNotes } from '@/db/schema
 import { auth } from '@clerk/nextjs/server';
 import { eq, and } from 'drizzle-orm';
 
-// 1. Récupérer toutes les matières et leurs chapitres du dossier actif
 export async function actionGetMatieresByFolder(folderId: string) {
     const { userId } = await auth();
     if (!userId || !folderId) return { success: false, matieres: [] };
@@ -15,10 +14,7 @@ export async function actionGetMatieresByFolder(folderId: string) {
             .select()
             .from(matieres)
             .where(
-                and(
-                    eq(matieres.clerkId, userId),
-                    eq(matieres.folderId, Number(folderId))
-                )
+                eq(matieres.folderId, Number(folderId))
             );
 
         const matieresWithChapitres = await Promise.all(
