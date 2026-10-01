@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres, subjectAnnals } from '@/db/schema';
-import { eq, and, sql, isNull, or } from 'drizzle-orm';
+import { eq, and, sql, isNull, or, desc } from 'drizzle-orm';
 
 // Tri dynamique et universel pour n'importe quel J (J3, J7, J7R, J9, J14, J30, J60...)
 function sortEcheances(a: string, b: string) {
@@ -106,9 +106,11 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
+        isDirectTraining: individualNotes.isDirectTraining,
+        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
+      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
@@ -118,6 +120,10 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
             : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
         )
       );
+
+    // Recherche de la date de référence J0 pour le calcul dynamique en mode training
+    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
+    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
 
     let allNotes: number[] = [];
     let totalQcm = 0;
@@ -133,12 +139,25 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          const step = row.stepName || 'Inconnu';
-          if (!statsByStep[step]) {
-            statsByStep[step] = { sum: 0, count: 0 };
+          
+          let step = row.stepName;
+          // Si c'est du training direct et qu'il n'y a pas de stepName, on calcule le J dynamiquement
+          if (!step && row.isDirectTraining && row.createdAt) {
+            if (j0Date) {
+              const noteTime = new Date(row.createdAt).getTime();
+              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
+              step = `J${Math.max(0, diffDays)}`;
+            } else {
+              step = 'J0';
+            }
           }
-          statsByStep[step].sum += val;
-          statsByStep[step].count += 1;
+
+          const finalStep = step || 'Inconnu';
+          if (!statsByStep[finalStep]) {
+            statsByStep[finalStep] = { sum: 0, count: 0 };
+          }
+          statsByStep[finalStep].sum += val;
+          statsByStep[finalStep].count += 1;
         }
       }
     });
@@ -188,9 +207,11 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
+        isDirectTraining: individualNotes.isDirectTraining,
+        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
+      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
       .where(
@@ -218,7 +239,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          const step = row.stepName || 'Inconnu';
+          const step = row.stepName || (row.isDirectTraining ? 'Entraînement' : 'Inconnu');
           if (!statsByStep[step]) {
             statsByStep[step] = { sum: 0, count: 0 };
           }
@@ -306,7 +327,7 @@ export async function getSubjectAnalGraphData(matiereId: number, clerkId: string
             day: '2-digit', 
             month: '2-digit', 
             year: 'numeric' 
-          })
+          }) 
         : 'Inconnue';
 
       return {

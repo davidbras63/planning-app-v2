@@ -12,7 +12,7 @@ import { useClerk } from '@clerk/nextjs';
 import { useDisclosure } from '@mantine/hooks';
 import SummerPauseButton from '@/components/SummerPauseButton';
 import BackgroundPicker from '@/components/BackgroundPicker';
-import { actionGetMatieresByFolder, actionSaveTraining } from '@/app/actions/trainingActions';
+import { actionGetMatieresByFolder, actionSaveTraining, actionGetTodayAnnales, actionGetTodayChapitres } from '@/app/actions/trainingActions';
 import {
     actionCreateMatiere,
     actionGetFolders,
@@ -57,10 +57,41 @@ export default function Sidebar() {
     }, [urlFolderId, folders]);
 
     const [openedTraining, { open: baseOpenTraining, close: closeTraining }] = useDisclosure(false);
-    const openTraining = () => {
-        if (currentFolderId && !trainingFolderId) {
-            setTrainingFolderId(currentFolderId);
+    
+    // MODIFICATION : Rechargement automatique des dossiers, matières ET récupération des notes du jour
+    const openTraining = async () => {
+        const dataFolders = await actionGetFolders();
+        let activeFolders = folders;
+        if (dataFolders && dataFolders.length > 0) {
+            activeFolders = dataFolders.map((f: any) => ({ value: String(f.id), label: f.nom || f.name }));
+            setFolders(activeFolders);
         }
+
+        const targetFolder = trainingFolderId || currentFolderId || (activeFolders.length > 0 ? activeFolders[0].value : null);
+        if (targetFolder) {
+            setTrainingFolderId(targetFolder);
+            const res = await actionGetMatieresByFolder(targetFolder);
+            if (res?.success && res.matieres) {
+                setTrainingMatieres(res.matieres);
+            }
+
+            // Récupération des notes d'annales déjà saisies aujourd'hui pour ce dossier
+            const todayAnnalesRes = await actionGetTodayAnnales(targetFolder);
+            if (todayAnnalesRes?.success && todayAnnalesRes.data) {
+                setAnnalesInputs(todayAnnalesRes.data);
+            }
+        }
+
+        // Récupération des notes de chapitres déjà saisies aujourd'hui
+        const todayChapRes = await actionGetTodayChapitres();
+        if (todayChapRes?.success && todayChapRes.data) {
+            setChapitreInputs(todayChapRes.data);
+            const savedChapIds = Object.keys(todayChapRes.data);
+            if (savedChapIds.length > 0) {
+                setSelectedChapitreIds(prev => Array.from(new Set([...prev, ...savedChapIds])));
+            }
+        }
+
         baseOpenTraining();
     };
 
@@ -105,7 +136,14 @@ export default function Sidebar() {
                 setTrainingMatiereId(null);
                 setAvailableChapitres([]);
                 setSelectedChapitreIds([]);
-                setAnnalesInputs({});
+                
+                // Charger également les annales du jour pour ce dossier
+                const todayAnnalesRes = await actionGetTodayAnnales(trainingFolderId);
+                if (todayAnnalesRes?.success && todayAnnalesRes.data) {
+                    setAnnalesInputs(todayAnnalesRes.data);
+                } else {
+                    setAnnalesInputs({});
+                }
             }
         };
         fetchMatieres();
@@ -116,18 +154,23 @@ export default function Sidebar() {
     useEffect(() => {
         if (!trainingMatiereId) {
             setAvailableChapitres([]);
-            setSelectedChapitreIds([]);
             return;
         }
         const selectedMat = trainingMatieres.find(m => String(m.id) === trainingMatiereId);
         if (selectedMat && selectedMat.chapitres) {
             setAvailableChapitres(selectedMat.chapitres);
+            const existingChapIds = Object.keys(chapitreInputs);
+            const matchingChapIds = selectedMat.chapitres
+                .filter((c: any) => existingChapIds.includes(String(c.id)))
+                .map((c: any) => String(c.id));
+            
+            if (matchingChapIds.length > 0) {
+                setSelectedChapitreIds(prev => Array.from(new Set([...prev, ...matchingChapIds])));
+            }
         } else {
             setAvailableChapitres([]);
         }
-        setSelectedChapitreIds([]);
-        setChapitreInputs({});
-    }, [trainingMatiereId, trainingMatieres]);
+    }, [trainingMatiereId, trainingMatieres, chapitreInputs]);
 
     // Fonction utilitaire pour parser et calculer la moyenne d'une saisie libre (ex: "15 25/30 14/15")
     const calculateAverage = (rawInput: string) => {
@@ -143,7 +186,6 @@ export default function Sidebar() {
                 const val = parseFloat(valStr);
                 const max = parseFloat(maxStr);
                 if (!isNaN(val) && !isNaN(max) && max > 0) {
-                    // Normalisation sur 20 pour faire la moyenne proprement
                     totalScore += (val / max) * 20;
                     totalMax += 20;
                     count++;
@@ -152,7 +194,7 @@ export default function Sidebar() {
                 const val = parseFloat(part);
                 if (!isNaN(val)) {
                     totalScore += val;
-                    totalMax += 20; // Par défaut sur 20 si pas de barème précisé
+                    totalMax += 20;
                     count++;
                 }
             }
@@ -189,7 +231,7 @@ export default function Sidebar() {
                     >
                         <Target size={20} /> {isOpen && "Entraînement / Annales"}
                     </Box>
-                                                    
+                                            
                     <Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
                     <Box 
@@ -360,35 +402,35 @@ export default function Sidebar() {
                                     </Table.Thead>
                                     <Table.Tbody>
                                         {trainingMatieres.map((mat, index) => {
-											const val = annalesInputs[mat.id] || "";
-											const avg = calculateAverage(val);
-											return (
-												<Table.Tr key={mat.id}>
-													<Table.Td fw={500}>{mat.nom}</Table.Td>
-													<Table.Td>
-														<TextInput
-															className="annale-input"
-															placeholder="Ex: 15 25/30 14/15"
-															value={val}
-															onChange={(e) => setAnnalesInputs({ ...annalesInputs, [mat.id]: e.currentTarget.value })}
-															onKeyDown={(e) => {
-																if (e.key === 'Enter') {
-																	e.preventDefault();
-																	const inputs = document.querySelectorAll('.annale-input input');
-																	const nextInput = inputs[index + 1] as HTMLInputElement;
-																	if (nextInput) {
-																		nextInput.focus();
-																	}
-																}
-															}}
-														/>
-													</Table.Td>
-													<Table.Td>
-														{avg !== null ? `${avg} / 20` : '-'}
-													</Table.Td>
-												</Table.Tr>
-											);
-										})}
+                                            const val = annalesInputs[mat.id] || "";
+                                            const avg = calculateAverage(val);
+                                            return (
+                                                <Table.Tr key={mat.id}>
+                                                    <Table.Td fw={500}>{mat.nom}</Table.Td>
+                                                    <Table.Td>
+                                                        <TextInput
+                                                            className="annale-input"
+                                                            placeholder="Ex: 15 25/30 14/15"
+                                                            value={val}
+                                                            onChange={(e) => setAnnalesInputs({ ...annalesInputs, [mat.id]: e.currentTarget.value })}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    const inputs = document.querySelectorAll('.annale-input input');
+                                                                    const nextInput = inputs[index + 1] as HTMLInputElement;
+                                                                    if (nextInput) {
+                                                                        nextInput.focus();
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                    </Table.Td>
+                                                    <Table.Td>
+                                                        {avg !== null ? `${avg} / 20` : '-'}
+                                                    </Table.Td>
+                                                </Table.Tr>
+                                            );
+                                        })}
                                     </Table.Tbody>
                                 </Table>
                             )}
@@ -447,36 +489,36 @@ export default function Sidebar() {
                                                 </Table.Thead>
                                                 <Table.Tbody>
                                                     {selectedChapitreIds.map((chapId, index) => {
-														const chap = availableChapitres.find(c => String(c.id) === chapId);
-														const val = chapitreInputs[chapId] || "";
-														const avg = calculateAverage(val);
-														return (
-															<Table.Tr key={chapId}>
-																<Table.Td fw={500}>{chap?.titre || chap?.name}</Table.Td>
-																<Table.Td>
-																	<TextInput
-																		className="chapitre-input"
-																		placeholder="Ex: 14 18/20"
-																		value={val}
-																		onChange={(e) => setChapitreInputs({ ...chapitreInputs, [chapId]: e.currentTarget.value })}
-																		onKeyDown={(e) => {
-																			if (e.key === 'Enter') {
-																				e.preventDefault();
-																				const inputs = document.querySelectorAll('.chapitre-input input');
-																				const nextInput = inputs[index + 1] as HTMLInputElement;
-																				if (nextInput) {
-																					nextInput.focus();
-																				}
-																			}
-																		}}
-																	/>
-																</Table.Td>
-																<Table.Td>
-																	{avg !== null ? `${avg} / 20` : '-'}
-																</Table.Td>
-															</Table.Tr>
-														);
-													})}
+                                                        const chap = availableChapitres.find(c => String(c.id) === chapId);
+                                                        const val = chapitreInputs[chapId] || "";
+                                                        const avg = calculateAverage(val);
+                                                        return (
+                                                            <Table.Tr key={chapId}>
+                                                                <Table.Td fw={500}>{chap?.titre || chap?.name}</Table.Td>
+                                                                <Table.Td>
+                                                                    <TextInput
+                                                                        className="chapitre-input"
+                                                                        placeholder="Ex: 14 18/20"
+                                                                        value={val}
+                                                                        onChange={(e) => setChapitreInputs({ ...chapitreInputs, [chapId]: e.currentTarget.value })}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                const inputs = document.querySelectorAll('.chapitre-input input');
+                                                                                const nextInput = inputs[index + 1] as HTMLInputElement;
+                                                                                if (nextInput) {
+                                                                                    nextInput.focus();
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </Table.Td>
+                                                                <Table.Td>
+                                                                    {avg !== null ? `${avg} / 20` : '-'}
+                                                                </Table.Td>
+                                                            </Table.Tr>
+                                                        );
+                                                    })}
                                                 </Table.Tbody>
                                             </Table>
                                         </>
@@ -487,62 +529,60 @@ export default function Sidebar() {
                     )}
 
                     <Button 
-						mt="md" 
-						onClick={async () => {
-							if (!trainingFolderId) {
-								alert("Sélectionne un dossier !");
-								return;
-							}
+                        mt="md" 
+                        onClick={async () => {
+                            if (!trainingFolderId) {
+                                alert("Sélectionne un dossier !");
+                                return;
+                            }
 
-							let successCount = 0;
+                            let successCount = 0;
 
-							if (trainingType === 'annales') {
-								for (const [matiereId, rawInput] of Object.entries(annalesInputs)) {
-									const avg = calculateAverage(rawInput);
-									if (avg !== null) {
-										// MODIFICATION ICI : on envoie rawNotesInput au lieu de score/maxScore
-										const res = await actionSaveTraining({
-											type: 'annales',
-											folderId: trainingFolderId,
-											matiereId,
-											chapitreId: null,
-											rawNotesInput: rawInput, 
-										});
-										if (res?.success) successCount++;
-									}
-								}
-							} else {
-								for (const chapId of selectedChapitreIds) {
-									const rawInput = chapitreInputs[chapId] || "";
-									const avg = calculateAverage(rawInput);
-									if (avg !== null && trainingMatiereId) {
-										// MODIFICATION ICI AUSSI : on envoie rawNotesInput
-										const res = await actionSaveTraining({
-											type: 'chapitre',
-											folderId: trainingFolderId,
-											matiereId: trainingMatiereId,
-											chapitreId: chapId,
-											rawNotesInput: rawInput,
-										});
-										if (res?.success) successCount++;
-									}
-								}
-							}
+                            if (trainingType === 'annales') {
+                                for (const [matiereId, rawInput] of Object.entries(annalesInputs)) {
+                                    const avg = calculateAverage(rawInput);
+                                    if (avg !== null) {
+                                        const res = await actionSaveTraining({
+                                            type: 'annales',
+                                            folderId: trainingFolderId,
+                                            matiereId,
+                                            chapitreId: null,
+                                            rawNotesInput: rawInput, 
+                                        });
+                                        if (res?.success) successCount++;
+                                    }
+                                }
+                            } else {
+                                for (const chapId of selectedChapitreIds) {
+                                    const rawInput = chapitreInputs[chapId] || "";
+                                    const avg = calculateAverage(rawInput);
+                                    if (avg !== null && trainingMatiereId) {
+                                        const res = await actionSaveTraining({
+                                            type: 'chapitre',
+                                            folderId: trainingFolderId,
+                                            matiereId: trainingMatiereId,
+                                            chapitreId: chapId,
+                                            rawNotesInput: rawInput,
+                                        });
+                                        if (res?.success) successCount++;
+                                    }
+                                }
+                            }
 
-							if (successCount > 0) {
-								alert("Entraînements enregistrés avec succès !");
-								closeTraining();
-								setAnnalesInputs({});
-								setChapitreInputs({});
-								setSelectedChapitreIds([]);
-								router.refresh();
-							} else {
-								alert("Aucune note valide à enregistrer.");
-							}
-						}}
-					>
-						Enregistrer l'entraînement
-					</Button>
+                            if (successCount > 0) {
+                                alert("Entraînements enregistrés avec succès !");
+                                closeTraining();
+                                setAnnalesInputs({});
+                                setChapitreInputs({});
+                                setSelectedChapitreIds([]);
+                                router.refresh();
+                            } else {
+                                alert("Aucune note valide à enregistrer.");
+                            }
+                        }}
+                    >
+                        Enregistrer l'entraînement
+                    </Button>
                 </Stack>
             </Modal>
 
