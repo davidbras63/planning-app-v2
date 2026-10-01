@@ -12,12 +12,10 @@ function sortEcheances(a: string, b: string) {
   const numA = parseInt(stepA.replace(/\D/g, "")) || 0;
   const numB = parseInt(stepB.replace(/\D/g, "")) || 0;
 
-  // 1. On trie d'abord par la valeur numérique (ex: 7 avant 9, 9 avant 14)
   if (numA !== numB) {
     return numA - numB;
   }
 
-  // 2. Si c'est le même nombre, la version normale passe avant la version 'R' (ex: J7 avant J7R)
   const hasRA = stepA.includes("R");
   const hasRB = stepB.includes("R");
 
@@ -110,7 +108,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         content: individualNotes.content,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
+      .innerJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
@@ -131,7 +129,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         totalQcm += notes.length;
       }
 
-      if (row.moyenne) {
+      if (row.moyenne !== null && row.moyenne !== undefined) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
@@ -181,7 +179,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * 5. Données graphiques complètes pour TOUTE UNE MATIÈRE (Filtrée par folderId via les tables)
+ * 5. Données graphiques complètes pour TOUTE UNE MATIÈRE
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string, isDirectTraining: boolean = false) {
   try {
@@ -192,7 +190,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         content: individualNotes.content,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
+      .innerJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
       .where(
@@ -216,7 +214,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         totalQcm += notes.length;
       }
 
-      if (row.moyenne) {
+      if (row.moyenne !== null && row.moyenne !== undefined) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
@@ -294,7 +292,7 @@ export async function getSubjectAnalGraphData(matiereId: number, clerkId: string
         totalQcm += row.notes.length;
       }
 
-      const val = row.average ? parseFloat(row.average) : 0;
+      const val = row.average !== null && row.average !== undefined ? parseFloat(row.average) : 0;
       if (!isNaN(val) && row.average !== null) {
         allNotes.push(val);
         runningSum += val;
