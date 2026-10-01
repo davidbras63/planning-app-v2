@@ -465,64 +465,62 @@ export default function Sidebar() {
                     )}
 
                     <Button 
-                        mt="md" 
-                        onClick={async () => {
-                            if (!trainingFolderId) {
-                                alert("Sélectionne un dossier !");
-                                return;
-                            }
+						mt="md" 
+						onClick={async () => {
+							if (!trainingFolderId) {
+								alert("Sélectionne un dossier !");
+								return;
+							}
 
-                            let successCount = 0;
+							let successCount = 0;
 
-                            if (trainingType === 'annales') {
-                                for (const [matiereId, rawInput] of Object.entries(annalesInputs)) {
-                                    const avg = calculateAverage(rawInput);
-                                    if (avg !== null) {
-                                        const res = await actionSaveTraining({
-                                            type: 'annales',
-                                            folderId: trainingFolderId,
-                                            matiereId,
-                                            chapitreId: null,
-                                            title: 'Saisie Annales',
-                                            score: avg,
-                                            maxScore: 20
-                                        });
-                                        if (res?.success) successCount++;
-                                    }
-                                }
-                            } else {
-                                for (const chapId of selectedChapitreIds) {
-                                    const rawInput = chapitreInputs[chapId] || "";
-                                    const avg = calculateAverage(rawInput);
-                                    if (avg !== null && trainingMatiereId) {
-                                        const res = await actionSaveTraining({
-                                            type: 'chapitre',
-                                            folderId: trainingFolderId,
-                                            matiereId: trainingMatiereId,
-                                            chapitreId: chapId,
-                                            title: 'Saisie Chapitre',
-                                            score: avg,
-                                            maxScore: 20
-                                        });
-                                        if (res?.success) successCount++;
-                                    }
-                                }
-                            }
+							if (trainingType === 'annales') {
+								for (const [matiereId, rawInput] of Object.entries(annalesInputs)) {
+									const avg = calculateAverage(rawInput);
+									if (avg !== null) {
+										// MODIFICATION ICI : on envoie rawNotesInput au lieu de score/maxScore
+										const res = await actionSaveTraining({
+											type: 'annales',
+											folderId: trainingFolderId,
+											matiereId,
+											chapitreId: null,
+											rawNotesInput: rawInput, 
+										});
+										if (res?.success) successCount++;
+									}
+								}
+							} else {
+								for (const chapId of selectedChapitreIds) {
+									const rawInput = chapitreInputs[chapId] || "";
+									const avg = calculateAverage(rawInput);
+									if (avg !== null && trainingMatiereId) {
+										// MODIFICATION ICI AUSSI : on envoie rawNotesInput
+										const res = await actionSaveTraining({
+											type: 'chapitre',
+											folderId: trainingFolderId,
+											matiereId: trainingMatiereId,
+											chapitreId: chapId,
+											rawNotesInput: rawInput,
+										});
+										if (res?.success) successCount++;
+									}
+								}
+							}
 
-                            if (successCount > 0) {
-                                alert("Entraînements enregistrés avec succès !");
-                                closeTraining();
-                                setAnnalesInputs({});
-                                setChapitreInputs({});
-                                setSelectedChapitreIds([]);
-                                router.refresh();
-                            } else {
-                                alert("Aucune note valide à enregistrer.");
-                            }
-                        }}
-                    >
-                        Enregistrer l'entraînement
-                    </Button>
+							if (successCount > 0) {
+								alert("Entraînements enregistrés avec succès !");
+								closeTraining();
+								setAnnalesInputs({});
+								setChapitreInputs({});
+								setSelectedChapitreIds([]);
+								router.refresh();
+							} else {
+								alert("Aucune note valide à enregistrer.");
+							}
+						}}
+					>
+						Enregistrer l'entraînement
+					</Button>
                 </Stack>
             </Modal>
 

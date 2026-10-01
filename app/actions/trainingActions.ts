@@ -1,9 +1,9 @@
-'use server';
+'use strict';
 
 import { db } from '@/db';
 import { matieres, chapitres, subjectAnnals, individualNotes } from '@/db/schema';
 import { auth } from '@clerk/nextjs/server';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function actionGetMatieresByFolder(folderId: string) {
     const { userId } = await auth();
@@ -37,37 +37,67 @@ export async function actionGetMatieresByFolder(folderId: string) {
     }
 }
 
-// 2. Enregistrer l'entraînement (Mode Annales ou Mode Chapitre)
+// Fonction utilitaire pour parser la chaîne brute (espaces et fractions)
+function parseNotesString(rawInput: string): { notes: number[]; average: number } {
+    if (!rawInput || typeof rawInput !== 'string') return { notes: [], average: 0 };
+
+    const parts = rawInput.trim().split(/\s+/);
+    const notes: number[] = [];
+    let totalScore = 0;
+    let totalMax = 0;
+
+    for (const part of parts) {
+        if (!part) continue;
+        if (part.includes('/')) {
+            const [valStr, maxStr] = part.split('/');
+            const val = parseFloat(valStr);
+            const max = parseFloat(maxStr);
+            if (!isNaN(val) && !isNaN(max) && max > 0) {
+                const normalized = (val / max) * 20;
+                notes.push(Number(normalized.toFixed(2)));
+                totalScore += normalized;
+                totalMax += 20;
+            }
+        } else {
+            const val = parseFloat(part);
+            if (!isNaN(val)) {
+                notes.push(val);
+                totalScore += val;
+                totalMax += 20;
+            }
+        }
+    }
+
+    if (notes.length === 0 || totalMax === 0) return { notes: [], average: 0 };
+    const average = Number(((totalScore / totalMax) * 20).toFixed(2));
+    return { notes, average };
+}
+
+// Enregistrement unifié avec conservation de la chaîne brute et des notes individuelles
 export async function actionSaveTraining(data: {
     type: 'annales' | 'chapitre';
     folderId: string;
     matiereId: string;
     chapitreId?: string | number | null;
-    title?: string;
-    score: number | '';
-    maxScore: number | '';
+    rawNotesInput: string; // La chaîne brute saisie (ex: "15 25/30")
 }) {
     const { userId } = await auth();
     if (!userId) throw new Error("Non autorisé");
 
     try {
-        const scoreVal = Number(data.score);
-        const maxVal = Number(data.maxScore) || 20;
+        const { notes, average } = parseNotesString(data.rawNotesInput);
 
-        // Sécurité division par zéro
-        if (maxVal === 0) throw new Error("Le score maximum ne peut pas être 0");
-
-        // Normalisation de la note sur 20
-        const converted = (scoreVal / maxVal) * 20;
-        const finalScoreFormatted = Number(converted.toFixed(2));
+        if (notes.length === 0) {
+            throw new Error("Aucune note valide n'a été saisie.");
+        }
 
         if (data.type === 'annales') {
             await db.insert(subjectAnnals).values({
                 clerkId: userId,
                 folderId: data.folderId ? Number(data.folderId) : null,
                 matiereId: Number(data.matiereId),
-                notes: [finalScoreFormatted],
-                average: finalScoreFormatted.toFixed(2),
+                notes: notes, // Tableau JSON brut pour alimenter les graphiques et le .length (QCM)
+                average: average.toFixed(2), // Moyenne pour le positionnement J-day
                 revisionDate: new Date().toISOString(),
             });
         } else {
@@ -75,12 +105,12 @@ export async function actionSaveTraining(data: {
             await db.insert(individualNotes).values({
                 clerkId: userId,
                 chapitreId: String(data.chapitreId),
-                moyenne: finalScoreFormatted.toFixed(2),
-                content: `Entraînement: ${data.score}/${data.maxScore}`,
+                moyenne: average.toFixed(2),
+                content: data.rawNotesInput, // Stocke la chaîne brute saisie
             });
         }
 
-        return { success: true };
+        return { success: true, average };
     } catch (error) {
         console.error("Erreur actionSaveTraining:", error);
         return { success: false, error: String(error) };

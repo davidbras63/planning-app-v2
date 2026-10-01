@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Flex } from "@mantine/core";
+import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Flex, Group, Button } from "@mantine/core";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDisclosure } from "@mantine/hooks";
 
@@ -41,7 +41,6 @@ const sortChartSteps = (data: any[]) => {
 export default function AnalyticsView({
   matieresList = [],
   chapitresList = [],
-  annalesList = [],
   getMatiereData,
   getChapitreData,
   getAnnalesData,
@@ -55,22 +54,19 @@ export default function AnalyticsView({
     folderMatieres.length > 0 ? folderMatieres[0].value : null
   );
 
+  // Bascule globale en haut : 'chapitres' (vue originale) ou 'annales' (global par matière)
+  const [viewMode, setViewMode] = useState<'chapitres' | 'annales'>('chapitres');
+
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
     chartData: [],
     average: 0,
     totalQcm: 0,
   });
 
-  const [annalesInfo, setAnnalesInfo] = useState<{ chartData: any[]; average: number; totalAnnales: number }>({
-    chartData: [],
-    average: 0,
-    totalAnnales: 0,
-  });
+  // Stockage des données d'annales pour toutes les matières en mode global
+  const [allAnnalesData, setAllAnnalesData] = useState<Record<string, { chartData: any[]; average: number; totalAnnales: number }>>({});
 
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
-
-  // Bascule dynamique du focus (false = 70% chapitres / 30% annales, true = inverse)
-  const [focusAnnales, setFocusAnnales] = useState<boolean>(false);
 
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
@@ -80,14 +76,21 @@ export default function AnalyticsView({
       getMatiereData(Number(selectedMatiere)).then((res) => {
         if (res) setMatiereInfo(res);
       });
-
-      if (getAnnalesData) {
-        getAnnalesData(Number(selectedMatiere)).then((res) => {
-          if (res) setAnnalesInfo(res);
-        });
-      }
     }
   }, [selectedMatiere]);
+
+  // Charger les données d'annales de toutes les matières si on bascule sur le mode annales global
+  useEffect(() => {
+    if (viewMode === 'annales' && getAnnalesData) {
+      folderMatieres.forEach((mat) => {
+        getAnnalesData(Number(mat.value)).then((res) => {
+          if (res) {
+            setAllAnnalesData((prev) => ({ ...prev, [mat.value]: res }));
+          }
+        });
+      });
+    }
+  }, [viewMode, folderMatieres]);
 
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
@@ -116,35 +119,42 @@ export default function AnalyticsView({
 
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
-      {/* Titre Principal */}
-      <Title order={2} mb="lg" style={{ color: '#ffffff' }}>
-        Tableau de Suivi & Statistiques
-      </Title>
+      {/* En-tête avec Titre et Boutons de bascule Chapitres / Annales */}
+      <Flex justify="space-between" align="center" mb="lg" wrap="wrap" gap="md">
+        <Title order={2} style={{ color: '#ffffff' }}>
+          Tableau de Suivi & Statistiques
+        </Title>
 
-      {/* Disposition principale modulée selon focusAnnales */}
-      <Flex direction={{ base: 'column', lg: 'row' }} gap="lg" align="flex-start">
-        
-        {/* COLONNE DE GAUCHE : MATIÈRES ET CHAPITRES */}
-        <Box 
-          style={{ 
-            flex: focusAnnales ? '0 0 30%' : '0 0 70%', 
-            minWidth: 0, 
-            width: '100%',
-            transition: 'flex 0.3s ease-in-out',
-            cursor: focusAnnales ? 'pointer' : 'default'
-          }}
-          onClick={() => {
-            if (focusAnnales) setFocusAnnales(false);
-          }}
-        >
-          {focusAnnales && (
-            <Box mb="sm">
-              <Text size="xs" c="#38bdf8" fs="italic">💡 Cliquez ici pour redonner la priorité aux Chapitres (70/30)</Text>
-            </Box>
-          )}
+        <Group bg="rgba(255, 255, 255, 0.05)" p={4} style={{ borderRadius: 8, border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <Button
+            size="xs"
+            variant={viewMode === 'chapitres' ? 'filled' : 'subtle'}
+            color={viewMode === 'chapitres' ? 'blue' : 'gray'}
+            onClick={() => setViewMode('chapitres')}
+            style={{ color: viewMode === 'chapitres' ? '#fff' : '#909296' }}
+          >
+            Mode Chapitres
+          </Button>
+          <Button
+            size="xs"
+            variant={viewMode === 'annales' ? 'filled' : 'subtle'}
+            color={viewMode === 'annales' ? 'rose' : 'gray'}
+            onClick={() => setViewMode('annales')}
+            style={{ 
+              backgroundColor: viewMode === 'annales' ? '#f43f5e' : 'transparent',
+              color: viewMode === 'annales' ? '#fff' : '#909296' 
+            }}
+          >
+            Mode Annales (Global)
+          </Button>
+        </Group>
+      </Flex>
 
-          {/* --- SECTION 1 : VUE MATIÈRE --- */}
-          <Box mb={40}>
+      {/* --- MODE CHAPITRES : TA VUE ORIGINALE STRICTE --- */}
+      {viewMode === 'chapitres' && (
+        <Stack gap="xl">
+          {/* SECTION 1 : VUE MATIÈRE */}
+          <Box>
             <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
               Matières & Révisions J
             </Title>
@@ -155,7 +165,6 @@ export default function AnalyticsView({
               value={selectedMatiere}
               onChange={setSelectedMatiere}
               mb="md"
-              onClick={(e) => e.stopPropagation()}
               styles={{
                 input: { maxWidth: 300, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
                 dropdown: { backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
@@ -169,7 +178,7 @@ export default function AnalyticsView({
                   Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
                 </Text>
                
-                <Box style={{ height: focusAnnales ? 200 : 300, width: "100%", transition: 'height 0.3s ease-in-out' }}>
+                <Box style={{ height: 300, width: "100%" }}>
                   {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sortChartSteps(matiereInfo.chartData)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -195,136 +204,128 @@ export default function AnalyticsView({
             </Card>
           </Box>
 
-          {/* --- SECTION 2 : VUE CHAPITRES --- */}
-          {!focusAnnales && (
-            <Box>
-              <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
-                Chapitres
-              </Title>
-             
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-                {filteredChapitres.map((chap) => {
-                  const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
+          {/* SECTION 2 : VUE CHAPITRES */}
+          <Box>
+            <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
+              Chapitres
+            </Title>
+           
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+              {filteredChapitres.map((chap) => {
+                const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
 
-                  return (
-                    <Card
-                      key={chap.value}
-                      withBorder
-                      shadow="sm"
-                      radius="md"
-                      p="md"
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                        cursor: "pointer",
-                        transition: "transform 0.2s, border-color 0.2s"
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCardClick(chap, chapInfo);
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                        e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      }}
-                    >
-                      <Stack gap="xs">
-                        <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
+                return (
+                  <Card
+                    key={chap.value}
+                    withBorder
+                    shadow="sm"
+                    radius="md"
+                    p="md"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      cursor: "pointer",
+                      transition: "transform 0.2s, border-color 0.2s"
+                    }}
+                    onClick={() => handleCardClick(chap, chapInfo)}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                    }}
+                  >
+                    <Stack gap="xs">
+                      <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
 
-                        <Text size="xs" c="dimmed">
-                          Moyenne : <span style={{ color: '#38bdf8', fontWeight: 700 }}>{chapInfo.average} / 20</span>
+                      <Text size="xs" c="dimmed">
+                        Moyenne : <span style={{ color: '#38bdf8', fontWeight: 700 }}>{chapInfo.average} / 20</span>
+                      </Text>
+
+                      <Box style={{ height: 140 }}>
+                        {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                              <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
+                              <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+                              <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                              <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
+                              <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
+                        )}
+                      </Box>
+
+                      <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                        <Text size="sm" fw={700} c="#38bdf8">
+                          QCM : {chapInfo.totalQcm}
                         </Text>
+                      </Box>
+                    </Stack>
+                  </Card>
+                );
+              })}
+            </SimpleGrid>
+          </Box>
+        </Stack>
+      )}
 
-                        <Box style={{ height: 140 }}>
-                          {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                                <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
-                                <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
-                                <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                                <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                                <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
-                          )}
-                        </Box>
+      {/* --- MODE ANNALES (GLOBAL) : GRILLE SÉPARÉE PAR MATIÈRE --- */}
+      {viewMode === 'annales' && (
+        <Stack gap="xl">
+          <Text size="sm" c="dimmed">
+            Vue d&apos;ensemble des graphiques d&apos;annales pour chaque matière du dossier.
+          </Text>
 
-                        <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                          <Text size="sm" fw={700} c="#38bdf8">
-                            QCM : {chapInfo.totalQcm}
-                          </Text>
-                        </Box>
-                      </Stack>
-                    </Card>
-                  );
-                })}
-              </SimpleGrid>
-            </Box>
-          )}
-        </Box>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+            {folderMatieres.map((mat) => {
+              const matAnnales = allAnnalesData[mat.value] || { chartData: [], average: 0, totalAnnales: 0 };
 
-        {/* COLONNE DE DROITE : ANNALES / EXAMENS */}
-        <Box 
-          style={{ 
-            flex: focusAnnales ? '0 0 70%' : '0 0 30%', 
-            minWidth: '320px', 
-            width: '100%',
-            transition: 'flex 0.3s ease-in-out',
-            cursor: !focusAnnales ? 'pointer' : 'default'
-          }}
-          onClick={() => {
-            if (!focusAnnales) setFocusAnnales(true);
-          }}
-        >
-          {!focusAnnales && (
-            <Box mb="sm">
-              <Text size="xs" c="#f43f5e" fs="italic">💡 Cliquez ici pour passer les Annales en grand (70%)</Text>
-            </Box>
-          )}
+              return (
+                <Card key={mat.value} withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                  <Stack gap="md">
+                    <Flex justify="space-between" align="center">
+                      <Text fw={700} size="md" c="white">
+                        {mat.label}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Moyenne : <span style={{ color: '#f43f5e', fontWeight: 700 }}>{matAnnales.average} / 20</span>
+                      </Text>
+                    </Flex>
 
-          <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
-            Annales & Examens
-          </Title>
+                    <Box style={{ height: 240, width: "100%" }}>
+                      {matAnnales.chartData && matAnnales.chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={matAnnales.chartData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                            <XAxis dataKey="title" stroke="#909296" tick={{ fontSize: 11 }} />
+                            <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 11 }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                            <Line type="monotone" dataKey="score" stroke="#f43f5e" strokeWidth={3} name="Note Annales" dot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Center h="100%"><Text size="sm" c="dimmed">Aucune annale pour cette matière</Text></Center>
+                      )}
+                    </Box>
 
-          <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
-            <Stack gap="md">
-              <Text fw={700} size="md" c="white">
-                Moyenne Annales : <span style={{ color: '#f43f5e' }}>{annalesInfo.average} / 20</span>
-              </Text>
-
-              <Box style={{ height: focusAnnales ? 420 : 260, width: "100%", transition: 'height 0.3s ease-in-out' }}>
-                {annalesInfo?.chartData && annalesInfo.chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={annalesInfo.chartData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                      <XAxis dataKey="title" stroke="#909296" tick={{ fontSize: 11 }} />
-                      <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                      <Line type="monotone" dataKey="score" stroke="#f43f5e" strokeWidth={3} name="Note Annales" dot={{ r: 5 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Center h="100%"><Text size="sm" c="dimmed" ta="center">Aucune annale enregistrée pour cette matière</Text></Center>
-                )}
-              </Box>
-
-              <Box bg="rgba(244, 63, 94, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(244, 63, 94, 0.2)" }}>
-                <Text size="sm" fw={700} c="#f43f5e">
-                  Annales : {annalesInfo.totalAnnales} passées
-                </Text>
-              </Box>
-            </Stack>
-          </Card>
-        </Box>
-
-      </Flex>
+                    <Box bg="rgba(244, 63, 94, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(244, 63, 94, 0.2)" }}>
+                      <Text size="xs" fw={700} c="#f43f5e">
+                        Annales réalisées : {matAnnales.totalAnnales}
+                      </Text>
+                    </Box>
+                  </Stack>
+                </Card>
+              );
+            })}
+          </SimpleGrid>
+        </Stack>
+      )}
 
       {/* --- MODAL DE ZOOM --- */}
       <Modal
