@@ -140,16 +140,17 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         if (!isNaN(val)) {
           allNotes.push(val);
           
-          let step = row.stepName;
-          // Si c'est du training direct et qu'il n'y a pas de stepName, on calcule le J dynamiquement
-          if (!step && row.isDirectTraining && row.createdAt) {
-            if (j0Date) {
+          let step: string | null = null;
+          if (row.isDirectTraining) {
+            if (j0Date && row.createdAt) {
               const noteTime = new Date(row.createdAt).getTime();
               const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
               step = `J${Math.max(0, diffDays)}`;
             } else {
               step = 'J0';
             }
+          } else {
+            step = row.stepName;
           }
 
           const finalStep = step || 'Inconnu';
@@ -225,6 +226,9 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         )
       );
 
+    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
+    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
+
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
@@ -239,12 +243,26 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          const step = row.stepName || (row.isDirectTraining ? 'Entraînement' : 'Inconnu');
-          if (!statsByStep[step]) {
-            statsByStep[step] = { sum: 0, count: 0 };
+          
+          let step: string | null = null;
+          if (row.isDirectTraining) {
+            if (j0Date && row.createdAt) {
+              const noteTime = new Date(row.createdAt).getTime();
+              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
+              step = `J${Math.max(0, diffDays)}`;
+            } else {
+              step = 'J0';
+            }
+          } else {
+            step = row.stepName;
           }
-          statsByStep[step].sum += val;
-          statsByStep[step].count += 1;
+
+          const finalStep = step || 'Inconnu';
+          if (!statsByStep[finalStep]) {
+            statsByStep[finalStep] = { sum: 0, count: 0 };
+          }
+          statsByStep[finalStep].sum += val;
+          statsByStep[finalStep].count += 1;
         }
       }
     });
