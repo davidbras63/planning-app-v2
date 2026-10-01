@@ -1,4 +1,4 @@
-'use strict';
+'use server';
 
 import { db } from '@/db';
 import { matieres, chapitres, subjectAnnals, individualNotes } from '@/db/schema';
