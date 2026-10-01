@@ -3,7 +3,7 @@
 import { db } from '@/db';
 import { matieres, chapitres, subjectAnnals, individualNotes } from '@/db/schema';
 import { auth } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
+import { eq, and, gte, lte } from 'drizzle-orm';
 
 export async function actionGetMatieresByFolder(folderId: string) {
     const { userId } = await auth();
@@ -37,7 +37,81 @@ export async function actionGetMatieresByFolder(folderId: string) {
     }
 }
 
-// Fonction utilitaire pour parser la chaîne brute (espaces et fractions)
+// Récupère les saisies d'annales du jour pour pré-remplir la modale
+export async function actionGetTodayAnnales(folderId: string) {
+    const { userId } = await auth();
+    if (!userId || !folderId) return { success: false, data: {} };
+
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const records = await db
+            .select()
+            .from(subjectAnnals)
+            .where(
+                and(
+                    eq(subjectAnnals.clerkId, userId),
+                    eq(subjectAnnals.folderId, Number(folderId)),
+                    gte(subjectAnnals.createdAt, startOfDay),
+                    lte(subjectAnnals.createdAt, endOfDay)
+                )
+            );
+
+        const mappedData: { [key: string]: string } = {};
+        records.forEach(r => {
+            if (r.matiereId && r.notes) {
+                mappedData[String(r.matiereId)] = Array.isArray(r.notes) ? r.notes.join(' ') : '';
+            }
+        });
+
+        return { success: true, data: mappedData };
+    } catch (error) {
+        console.error("Erreur actionGetTodayAnnales:", error);
+        return { success: false, data: {} };
+    }
+}
+
+// Récupère les saisies de chapitres du jour pour pré-remplir la modale
+export async function actionGetTodayChapitres() {
+    const { userId } = await auth();
+    if (!userId) return { success: false, data: {} };
+
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const records = await db
+            .select()
+            .from(individualNotes)
+            .where(
+                and(
+                    eq(individualNotes.clerkId, userId),
+                    eq(individualNotes.isDirectTraining, true),
+                    gte(individualNotes.createdAt, startOfDay),
+                    lte(individualNotes.createdAt, endOfDay)
+                )
+            );
+
+        const mappedData: { [key: string]: string } = {};
+        records.forEach(r => {
+            if (r.chapitreId && r.content) {
+                mappedData[r.chapitreId] = r.content;
+            }
+        });
+
+        return { success: true, data: mappedData };
+    } catch (error) {
+        console.error("Erreur actionGetTodayChapitres:", error);
+        return { success: false, data: {} };
+    }
+}
+
+// Fonction utilitaire pour parser la chaîne brute
 function parseNotesString(rawInput: string): { notes: number[]; average: number } {
     if (!rawInput || typeof rawInput !== 'string') return { notes: [], average: 0 };
 
@@ -73,13 +147,13 @@ function parseNotesString(rawInput: string): { notes: number[]; average: number 
     return { notes, average };
 }
 
-// Enregistrement unifié avec conservation de la chaîne brute et des notes individuelles
+// Enregistrement unifié avec Upsert par jour (Annales et Chapitres)
 export async function actionSaveTraining(data: {
     type: 'annales' | 'chapitre';
     folderId: string;
     matiereId: string;
     chapitreId?: string | number | null;
-    rawNotesInput: string; // La chaîne brute saisie (ex: "15 25/30")
+    rawNotesInput: string;
 }) {
     const { userId } = await auth();
     if (!userId) throw new Error("Non autorisé");
@@ -91,24 +165,80 @@ export async function actionSaveTraining(data: {
             throw new Error("Aucune note valide n'a été saisie.");
         }
 
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
         if (data.type === 'annales') {
-            await db.insert(subjectAnnals).values({
-                clerkId: userId,
-                folderId: data.folderId ? Number(data.folderId) : null,
-                matiereId: Number(data.matiereId),
-                notes: notes, // Tableau JSON brut pour alimenter les graphiques et le .length (QCM)
-                average: average.toFixed(2), // Moyenne pour le positionnement J-day
-                revisionDate: new Date().toISOString(),
-            });
+            const numFolderId = data.folderId ? Number(data.folderId) : null;
+            const numMatiereId = Number(data.matiereId);
+
+            const existing = await db
+                .select()
+                .from(subjectAnnals)
+                .where(
+                    and(
+                        eq(subjectAnnals.clerkId, userId),
+                        eq(subjectAnnals.matiereId, numMatiereId),
+                        gte(subjectAnnals.createdAt, startOfDay),
+                        lte(subjectAnnals.createdAt, endOfDay)
+                    )
+                );
+
+            if (existing.length > 0) {
+                await db
+                    .update(subjectAnnals)
+                    .set({
+                        notes: notes,
+                        average: average.toFixed(2),
+                        revisionDate: new Date().toISOString(),
+                    })
+                    .where(eq(subjectAnnals.id, existing[0].id));
+            } else {
+                await db.insert(subjectAnnals).values({
+                    clerkId: userId,
+                    folderId: numFolderId,
+                    matiereId: numMatiereId,
+                    notes: notes,
+                    average: average.toFixed(2),
+                    revisionDate: new Date().toISOString(),
+                });
+            }
         } else {
             if (!data.chapitreId) throw new Error("Chapitre manquant");
-            await db.insert(individualNotes).values({
-                clerkId: userId,
-                chapitreId: String(data.chapitreId),
-                moyenne: average.toFixed(2),
-                content: data.rawNotesInput, // Stocke la chaîne brute saisie
-                isDirectTraining: true, // <--- C'est ici qu'on positionne le flag à true !
-            });
+            const strChapitreId = String(data.chapitreId);
+
+            const existingChap = await db
+                .select()
+                .from(individualNotes)
+                .where(
+                    and(
+                        eq(individualNotes.clerkId, userId),
+                        eq(individualNotes.chapitreId, strChapitreId),
+                        eq(individualNotes.isDirectTraining, true),
+                        gte(individualNotes.createdAt, startOfDay),
+                        lte(individualNotes.createdAt, endOfDay)
+                    )
+                );
+
+            if (existingChap.length > 0) {
+                await db
+                    .update(individualNotes)
+                    .set({
+                        moyenne: average.toFixed(2),
+                        content: data.rawNotesInput,
+                    })
+                    .where(eq(individualNotes.id, existingChap[0].id));
+            } else {
+                await db.insert(individualNotes).values({
+                    clerkId: userId,
+                    chapitreId: strChapitreId,
+                    moyenne: average.toFixed(2),
+                    content: data.rawNotesInput,
+                    isDirectTraining: true,
+                });
+            }
         }
 
         return { success: true, average };

@@ -12,7 +12,7 @@ interface AnalyticsViewProps {
   annalesList?: { value: string; label: string; matiereId: number }[];
   getMatiereData: (matiereId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
   getChapitreData: (chapitreId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
-  getAnnalesData?: (matiereId: number) => Promise<{ chartData: any[]; average: number; totalAnnales: number }>;
+  getAnnalesData?: (matiereId: number) => Promise<{ chartData: any[]; subjectAverage: number; totalQcm: number }>;
 }
 
 const sortChartSteps = (data: any[]) => {
@@ -54,7 +54,6 @@ export default function AnalyticsView({
     folderMatieres.length > 0 ? folderMatieres[0].value : null
   );
 
-  // Bascule globale en haut : 'chapitres' (vue originale) ou 'annales' (global par matière)
   const [viewMode, setViewMode] = useState<'chapitres' | 'annales'>('chapitres');
 
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
@@ -63,9 +62,7 @@ export default function AnalyticsView({
     totalQcm: 0,
   });
 
-  // Stockage des données d'annales pour toutes les matières en mode global
-  const [allAnnalesData, setAllAnnalesData] = useState<Record<string, { chartData: any[]; average: number; totalAnnales: number }>>({});
-
+  const [allAnnalesData, setAllAnnalesData] = useState<Record<string, { chartData: any[]; subjectAverage: number; totalQcm: number }>>({});
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
   const [opened, { open, close }] = useDisclosure(false);
@@ -79,7 +76,6 @@ export default function AnalyticsView({
     }
   }, [selectedMatiere]);
 
-  // Charger les données d'annales de toutes les matières si on bascule sur le mode annales global
   useEffect(() => {
     if (viewMode === 'annales' && getAnnalesData) {
       folderMatieres.forEach((mat) => {
@@ -119,7 +115,6 @@ export default function AnalyticsView({
 
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
-      {/* En-tête avec Titre et Boutons de bascule Chapitres / Annales */}
       <Flex justify="space-between" align="center" mb="lg" wrap="wrap" gap="md">
         <Title order={2} style={{ color: '#ffffff' }}>
           Tableau de Suivi & Statistiques
@@ -150,10 +145,9 @@ export default function AnalyticsView({
         </Group>
       </Flex>
 
-      {/* --- MODE CHAPITRES : TA VUE ORIGINALE STRICTE --- */}
+      {/* --- MODE CHAPITRES --- */}
       {viewMode === 'chapitres' && (
         <Stack gap="xl">
-          {/* SECTION 1 : VUE MATIÈRE */}
           <Box>
             <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
               Matières & Révisions J
@@ -204,7 +198,6 @@ export default function AnalyticsView({
             </Card>
           </Box>
 
-          {/* SECTION 2 : VUE CHAPITRES */}
           <Box>
             <Title order={3} mb="md" style={{ color: '#ffffff', fontSize: '18px' }}>
               Chapitres
@@ -275,7 +268,7 @@ export default function AnalyticsView({
         </Stack>
       )}
 
-      {/* --- MODE ANNALES (GLOBAL) : GRILLE SÉPARÉE PAR MATIÈRE --- */}
+      {/* --- MODE ANNALES (GLOBAL) --- */}
       {viewMode === 'annales' && (
         <Stack gap="xl">
           <Text size="sm" c="dimmed">
@@ -284,7 +277,7 @@ export default function AnalyticsView({
 
           <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
             {folderMatieres.map((mat) => {
-              const matAnnales = allAnnalesData[mat.value] || { chartData: [], average: 0, totalAnnales: 0 };
+              const matAnnales = allAnnalesData[mat.value] || { chartData: [], subjectAverage: 0, totalQcm: 0 };
 
               return (
                 <Card key={mat.value} withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
@@ -294,7 +287,7 @@ export default function AnalyticsView({
                         {mat.label}
                       </Text>
                       <Text size="sm" c="dimmed">
-                        Moyenne : <span style={{ color: '#f43f5e', fontWeight: 700 }}>{matAnnales.average} / 20</span>
+                        Moyenne : <span style={{ color: '#f43f5e', fontWeight: 700 }}>{matAnnales.subjectAverage} / 20</span>
                       </Text>
                     </Flex>
 
@@ -303,10 +296,11 @@ export default function AnalyticsView({
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={matAnnales.chartData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                            <XAxis dataKey="title" stroke="#909296" tick={{ fontSize: 11 }} />
+                            <XAxis dataKey="date" stroke="#909296" tick={{ fontSize: 11 }} />
                             <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 11 }} />
                             <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                            <Line type="monotone" dataKey="score" stroke="#f43f5e" strokeWidth={3} name="Note Annales" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="moyenne" stroke="#f43f5e" strokeWidth={3} name="Note Annales" dot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="average" stroke="#38bdf8" strokeWidth={2} strokeDasharray="5 5" name="Moyenne glissante" dot={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
@@ -316,7 +310,7 @@ export default function AnalyticsView({
 
                     <Box bg="rgba(244, 63, 94, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(244, 63, 94, 0.2)" }}>
                       <Text size="xs" fw={700} c="#f43f5e">
-                        Annales réalisées : {matAnnales.totalAnnales}
+                        QCM Annales réalisés : {matAnnales.totalQcm}
                       </Text>
                     </Box>
                   </Stack>
