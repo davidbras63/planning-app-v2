@@ -359,25 +359,36 @@ export default function Sidebar() {
                                         </Table.Tr>
                                     </Table.Thead>
                                     <Table.Tbody>
-                                        {trainingMatieres.map((mat) => {
-                                            const val = annalesInputs[mat.id] || "";
-                                            const avg = calculateAverage(val);
-                                            return (
-                                                <Table.Tr key={mat.id}>
-                                                    <Table.Td fw={500}>{mat.nom}</Table.Td>
-                                                    <Table.Td>
-                                                        <TextInput
-                                                            placeholder="Ex: 15 25/30 14/15"
-                                                            value={val}
-                                                            onChange={(e) => setAnnalesInputs({ ...annalesInputs, [mat.id]: e.currentTarget.value })}
-                                                        />
-                                                    </Table.Td>
-                                                    <Table.Td>
-                                                        {avg !== null ? `${avg} / 20` : '-'}
-                                                    </Table.Td>
-                                                </Table.Tr>
-                                            );
-                                        })}
+                                        {trainingMatieres.map((mat, index) => {
+											const val = annalesInputs[mat.id] || "";
+											const avg = calculateAverage(val);
+											return (
+												<Table.Tr key={mat.id}>
+													<Table.Td fw={500}>{mat.nom}</Table.Td>
+													<Table.Td>
+														<TextInput
+															className="annale-input"
+															placeholder="Ex: 15 25/30 14/15"
+															value={val}
+															onChange={(e) => setAnnalesInputs({ ...annalesInputs, [mat.id]: e.currentTarget.value })}
+															onKeyDown={(e) => {
+																if (e.key === 'Enter') {
+																	e.preventDefault();
+																	const inputs = document.querySelectorAll('.annale-input input');
+																	const nextInput = inputs[index + 1] as HTMLInputElement;
+																	if (nextInput) {
+																		nextInput.focus();
+																	}
+																}
+															}}
+														/>
+													</Table.Td>
+													<Table.Td>
+														{avg !== null ? `${avg} / 20` : '-'}
+													</Table.Td>
+												</Table.Tr>
+											);
+										})}
                                     </Table.Tbody>
                                 </Table>
                             )}
@@ -435,26 +446,37 @@ export default function Sidebar() {
                                                     </Table.Tr>
                                                 </Table.Thead>
                                                 <Table.Tbody>
-                                                    {selectedChapitreIds.map((chapId) => {
-                                                        const chap = availableChapitres.find(c => String(c.id) === chapId);
-                                                        const val = chapitreInputs[chapId] || "";
-                                                        const avg = calculateAverage(val);
-                                                        return (
-                                                            <Table.Tr key={chapId}>
-                                                                <Table.Td fw={500}>{chap?.titre || chap?.name}</Table.Td>
-                                                                <Table.Td>
-                                                                    <TextInput
-                                                                        placeholder="Ex: 14 18/20"
-                                                                        value={val}
-                                                                        onChange={(e) => setChapitreInputs({ ...chapitreInputs, [chapId]: e.currentTarget.value })}
-                                                                    />
-                                                                </Table.Td>
-                                                                <Table.Td>
-                                                                    {avg !== null ? `${avg} / 20` : '-'}
-                                                                </Table.Td>
-                                                            </Table.Tr>
-                                                        );
-                                                    })}
+                                                    {selectedChapitreIds.map((chapId, index) => {
+														const chap = availableChapitres.find(c => String(c.id) === chapId);
+														const val = chapitreInputs[chapId] || "";
+														const avg = calculateAverage(val);
+														return (
+															<Table.Tr key={chapId}>
+																<Table.Td fw={500}>{chap?.titre || chap?.name}</Table.Td>
+																<Table.Td>
+																	<TextInput
+																		className="chapitre-input"
+																		placeholder="Ex: 14 18/20"
+																		value={val}
+																		onChange={(e) => setChapitreInputs({ ...chapitreInputs, [chapId]: e.currentTarget.value })}
+																		onKeyDown={(e) => {
+																			if (e.key === 'Enter') {
+																				e.preventDefault();
+																				const inputs = document.querySelectorAll('.chapitre-input input');
+																				const nextInput = inputs[index + 1] as HTMLInputElement;
+																				if (nextInput) {
+																					nextInput.focus();
+																				}
+																			}
+																		}}
+																	/>
+																</Table.Td>
+																<Table.Td>
+																	{avg !== null ? `${avg} / 20` : '-'}
+																</Table.Td>
+															</Table.Tr>
+														);
+													})}
                                                 </Table.Tbody>
                                             </Table>
                                         </>

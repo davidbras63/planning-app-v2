@@ -71,7 +71,9 @@ export const individualNotes = pgTable('individual_notes', {
     echeanceId: text('echeance_id'), 
     chapitreId: text('chapitre_id'), // <-- Le lien vers le chapitre
     moyenne: numeric('moyenne', { precision: 5, scale: 2 }).default('0'), // <-- La moyenne stockée par échéance
-	isIgnored: boolean('is_ignored').default(false), // <-- Nouveau champ pour ignorer l'affichage du rattrapage
+    isIgnored: boolean('is_ignored').default(false), // <-- Nouveau champ pour ignorer l'affichage du rattrapage
+    // ---> AJOUT ICI : Le drapeau pour l'entraînement direct
+    isDirectTraining: boolean('is_direct_training').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
 });
 

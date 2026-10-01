@@ -107,6 +107,7 @@ export async function actionSaveTraining(data: {
                 chapitreId: String(data.chapitreId),
                 moyenne: average.toFixed(2),
                 content: data.rawNotesInput, // Stocke la chaîne brute saisie
+                isDirectTraining: true, // <--- C'est ici qu'on positionne le flag à true !
             });
         }
 
