@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Trash2, ChevronRight, ChevronDown, Folder, AlertCircle } from 'lucide-react';
 import { Container, Stack, Title, Flex, ActionIcon, Text, Table, Button, Box, Modal, TextInput, Grid } from '@mantine/core';
@@ -19,15 +19,17 @@ export default function Dashboard() {
   const [rattrapages, setRattrapages] = useState<any[]>([]);
   const [expandedMatieres, setExpandedMatieres] = useState<{ [key: string]: boolean }>({});
   
+  // États d'ouverture globaux pour les deux blocs principaux
   const [isFolderOpen, setIsFolderOpen] = useState(false);
   const [isMatieresOpen, setIsMatieresOpen] = useState(false);
 
+  const [, startTransition] = useTransition();
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(folderIdFromUrl || null);
   const [modalOpened, setModalOpened] = useState(false);
   const [activeEcheance, setActiveEcheance] = useState<any>(null);
   const [forcedDateInput, setForcedDateInput] = useState('');
   const [matieresList, setMatieresList] = useState<any[]>([]);
-  
+ 
   const loadAll = async () => {
     if (!folderIdFromUrl) return;
         
@@ -38,6 +40,8 @@ export default function Dashboard() {
         setFoldersList(result.folderList || []);
         setRattrapages(result.rattrapages || []);
         setMatieresList(result.folder?.matieres || []);
+      } else {
+        console.error("Erreur renvoyée par getDashboardData:", result?.error);
       }
     } catch (err) {
       console.error("Erreur catch du dashboard :", err);
@@ -78,13 +82,14 @@ export default function Dashboard() {
   if (!user) return null;
 
   const currentFolderObj = foldersList.find(f => String(f.id) === String(selectedFolderId));
-  // Correction : Plus de "Dossier 3" affiché par défaut, affichage propre et neutre
-  const currentFolderName = currentFolderObj?.name || "Sélectionner un dossier";
+  const currentFolderName = currentFolderObj?.name || (selectedFolderId ? `Dossier ${selectedFolderId}` : "Sélectionner un dossier");
 
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
       <Stack gap="xl">
+        {/* LIGNE DU HAUT : DOSSIER ACTIF ET GESTION DES MATIÈRES CÔTE À CÔTE */}
         <Grid gutter="xl">
+          {/* 1. DOSSIER ACTIF (COLONNE GAUCHE) */}
           <Grid.Col span={{ base: 12, md: 5 }}>
             <Box style={{
               backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -94,6 +99,7 @@ export default function Dashboard() {
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
               height: '100%'
             }}>
+              {/* En-tête cliquable pour ouvrir/fermer le bloc Dossier Actif */}
               <Flex 
                 justify="space-between" 
                 align="center"
@@ -113,6 +119,7 @@ export default function Dashboard() {
                 {isFolderOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
               </Flex>
 
+              {/* Contenu affiché uniquement si ouvert */}
               {isFolderOpen && (
                 <Stack gap="md" mt="md" pt="md" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
                   <Flex align="center" gap="sm">
@@ -182,6 +189,7 @@ export default function Dashboard() {
             </Box>
           </Grid.Col>
 
+          {/* 2. GESTION DES MATIÈRES (COLONNE DROITE) */}
           <Grid.Col span={{ base: 12, md: 7 }}>
             <Box style={{
               backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -190,6 +198,7 @@ export default function Dashboard() {
               padding: '24px',
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
             }}>
+              {/* En-tête cliquable pour ouvrir/fermer le bloc Gestion des Matières */}
               <Flex 
                 justify="space-between" 
                 align="center"
@@ -209,6 +218,7 @@ export default function Dashboard() {
                 {isMatieresOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
               </Flex>
              
+              {/* Contenu affiché uniquement si ouvert, avec défilement interne si trop de matières */}
               {isMatieresOpen && (
                 <Box style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '6px', marginTop: '16px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
                   <Stack gap="md">
@@ -293,6 +303,7 @@ export default function Dashboard() {
           </Grid.Col>
         </Grid>
 
+        {/* TABLEAU DE RATTRAPAGE EN BAS */}
         <Box mt={10}>
           <div style={{
             backgroundColor: 'rgba(15, 23, 42, 0.85)',
@@ -419,6 +430,7 @@ export default function Dashboard() {
         </Box>
       </Stack>
 
+      {/* MODALE DE RÉINTÉGRATION */}
       <Modal 
         opened={modalOpened} 
         onClose={() => setModalOpened(false)} 
