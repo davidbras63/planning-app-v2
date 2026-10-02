@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [foldersList, setFoldersList] = useState<any[]>([]);
   const [rattrapages, setRattrapages] = useState<any[]>([]);
   const [expandedMatieres, setExpandedMatieres] = useState<{ [key: string]: boolean }>({});
+  const [isFolderListOpen, setIsFolderListOpen] = useState(false); // État pour replier/déplier la liste des dossiers
   const [, startTransition] = useTransition();
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(folderIdFromUrl || null);
   const [modalOpened, setModalOpened] = useState(false);
@@ -81,7 +82,7 @@ export default function Dashboard() {
       <Stack gap="xl">
         {/* LIGNE DU HAUT : DOSSIER ACTIF ET GESTION DES MATIÈRES CÔTE À CÔTE */}
         <Grid gutter="xl">
-          {/* DOSSIER ACTIF (COLONNE GAUCHE) */}
+          {/* DOSSIER ACTIF (COLONNE GAUCHE) AVEC ACCORDÉON POUR ÉVITER LA SURCHARGE */}
           <Grid.Col span={{ base: 12, md: 5 }}>
             <Box style={{
               backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -91,19 +92,25 @@ export default function Dashboard() {
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
               height: '100%'
             }}>
-              <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                width: 'fit-content',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}>
-                <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
-                  Dossier actif
+              <Flex 
+                justify="space-between" 
+                align="center" 
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '12px',
+                  padding: '10px 16px',
+                  marginBottom: '20px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+                }}
+                onClick={() => setIsFolderListOpen(!isFolderListOpen)}
+              >
+                <Title order={5} style={{ margin: 0, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Folder size={18} color="#38bdf8" /> Dossier actif
                 </Title>
-              </div>
+                {isFolderListOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
+              </Flex>
 
               <Flex align="center" gap="sm">
                 <div style={{ flex: 1 }}>
@@ -160,10 +167,39 @@ export default function Dashboard() {
                   <Trash2 size={20} />
                 </ActionIcon>
               </Flex>
+
+              {/* LISTE DÉPLIABLE DE TOUS LES DOSSIERS (Évite l'affichage lourd permanent) */}
+              {isFolderListOpen && (
+                <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
+                  {foldersList.length > 0 ? (
+                    foldersList.map((f: any) => (
+                      <Flex 
+                        key={f.id} 
+                        justify="space-between" 
+                        align="center" 
+                        py={6}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          setSelectedFolderId(String(f.id));
+                          router.push(`/protected/dashboard/${f.id}`);
+                          setIsFolderListOpen(false);
+                        }}
+                      >
+                        <Text size="sm" style={{ color: String(f.id) === String(selectedFolderId) ? '#38bdf8' : '#ffffff', fontWeight: String(f.id) === String(selectedFolderId) ? 700 : 400 }}>
+                          📁 {f.name || `Dossier ${f.id}`}
+                        </Text>
+                        <ChevronRight size={14} color="#38bdf8" />
+                      </Flex>
+                    ))
+                  ) : (
+                    <Text size="sm" c="dimmed" fs="italic">Aucun autre dossier</Text>
+                  )}
+                </Stack>
+              )}
             </Box>
           </Grid.Col>
 
-          {/* GESTION DES MATIÈRES (COLONNE DROITE) */}
+          {/* GESTION DES MATIÈRES (COLONNE DROITE) AVEC SCROLL INTERNE ET ACCORDÉONS */}
           <Grid.Col span={{ base: 12, md: 7 }}>
             <Box style={{
               backgroundColor: 'rgba(15, 23, 42, 0.35)',
@@ -186,78 +222,81 @@ export default function Dashboard() {
                 </Title>
               </div>
              
-              <Stack gap="md">
-                {matieresList?.map((matiere: any) => {
-                  const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
-                  const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
+              {/* Conteneur avec hauteur maximale et scroll vertical pour gérer 10-15+ matières proprement */}
+              <Box style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+                <Stack gap="md">
+                  {matieresList?.map((matiere: any) => {
+                    const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
+                    const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
 
-                  return (
-                    <div 
-                      key={matiere.id} 
-                      style={{ 
-                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
-                        border: '1px solid rgba(255, 255, 255, 0.2)', 
-                        borderRadius: '12px', 
-                        padding: '16px'
-                      }}
-                    >
-                      <Flex justify="space-between" align="center">
-                        <Flex
-                          align="center"
-                          style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
-                        >
-                          {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
-                          
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            borderRadius: '6px',
-                            padding: '6px 10px',
-                            marginLeft: '10px',
-                            maxWidth: 'calc(100% - 40px)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            <Text fw={600} size="sm" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
-                          </div>
+                    return (
+                      <div 
+                        key={matiere.id} 
+                        style={{ 
+                          backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                          border: '1px solid rgba(255, 255, 255, 0.2)', 
+                          borderRadius: '12px', 
+                          padding: '16px' 
+                        }}
+                      >
+                        <Flex justify="space-between" align="center">
+                          <Flex
+                            align="center"
+                            style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
+                            onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
+                          >
+                            {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
+                            
+                            <div style={{
+                              display: 'inline-block',
+                              backgroundColor: 'rgba(30, 41, 59, 0.75)',
+                              border: '1px solid rgba(255, 255, 255, 0.25)',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              marginLeft: '10px',
+                              maxWidth: 'calc(100% - 40px)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <Text fw={600} size="sm" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
+                            </div>
+                          </Flex>
+                          <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
+                            <Trash2 size={18} />
+                          </ActionIcon>
                         </Flex>
-                        <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
-                          <Trash2 size={18} />
-                        </ActionIcon>
-                      </Flex>
 
-                      {isMatiereOpen && (
-                        <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
-                          {listChapitres.length > 0 ? (
-                            listChapitres.map((chap: any) => {
-                              const chapId = chap.id;
-                              const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
-                              const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
+                        {isMatiereOpen && (
+                          <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
+                            {listChapitres.length > 0 ? (
+                              listChapitres.map((chap: any) => {
+                                const chapId = chap.id;
+                                const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
+                                const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
 
-                              return (
-                                <Flex key={chapId} justify="space-between" align="center" py={4}>
-                                  <Text size="sm" style={{ color: '#ffffff' }}>
-                                    {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
-                                    {chapTitre}
-                                  </Text>
-                                  <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
-                                    <Trash2 size={15} />
-                                  </ActionIcon>
-                                </Flex>
-                              );
-                            })
-                          ) : (
-                            <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
-                          )}
-                        </Stack>
-                      )}
-                    </div>
-                  );
-                })}
-              </Stack>
+                                return (
+                                  <Flex key={chapId} justify="space-between" align="center" py={4}>
+                                    <Text size="sm" style={{ color: '#ffffff' }}>
+                                      {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
+                                      {chapTitre}
+                                    </Text>
+                                    <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
+                                      <Trash2 size={15} />
+                                    </ActionIcon>
+                                  </Flex>
+                                );
+                              })
+                            ) : (
+                              <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
+                            )}
+                          </Stack>
+                        )}
+                      </div>
+                    );
+                  })}
+                </Stack>
+              </Box>
             </Box>
           </Grid.Col>
         </Grid>
