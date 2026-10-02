@@ -329,7 +329,6 @@ export default function Sidebar() {
                         setOpenedSubject(false);
                         setMatiereName("");
                         
-                        // Met à jour la modale d'entraînement si elle est ouverte sur ce dossier
                         if (openedTraining && trainingFolderId === selectedFolderId) {
                             await refreshTrainingData(selectedFolderId);
                         }
@@ -554,20 +553,17 @@ export default function Sidebar() {
                                 return;
                             }
 
-                            let successCount = 0;
-
                             if (trainingType === 'annales') {
                                 for (const [matiereId, rawInput] of Object.entries(annalesInputs)) {
                                     const avg = calculateAverage(rawInput);
                                     if (avg !== null) {
-                                        const res = await actionSaveTraining({
+                                        await actionSaveTraining({
                                             type: 'annales',
                                             folderId: trainingFolderId,
                                             matiereId,
                                             chapitreId: null,
                                             rawNotesInput: rawInput, 
                                         });
-                                        if (res?.success) successCount++;
                                     }
                                 }
                             } else {
@@ -575,29 +571,29 @@ export default function Sidebar() {
                                     const rawInput = chapitreInputs[chapId] || "";
                                     const avg = calculateAverage(rawInput);
                                     if (avg !== null && trainingMatiereId) {
-                                        const res = await actionSaveTraining({
+                                        await actionSaveTraining({
                                             type: 'chapitre',
                                             folderId: trainingFolderId,
                                             matiereId: trainingMatiereId,
                                             chapitreId: chapId,
                                             rawNotesInput: rawInput,
                                         });
-                                        if (res?.success) successCount++;
                                     }
                                 }
                             }
 
-                            if (successCount > 0) {
-                                alert("Enregistrement réussi !");
-                                closeTraining();
-                            } else {
-                                alert("Aucune note valide à enregistrer.");
-                            }
+                            alert("Entraînements enregistrés avec succès !");
+                            closeTraining();
                         }}
                     >
-                        Valider et enregistrer
+                        Enregistrer tous les entraînements
                     </Button>
                 </Stack>
+            </Modal>
+
+            {/* Modale de Personnalisation */}
+            <Modal opened={openedBackground} onClose={closeBackground} title="Personnalisation de l'arrière-plan" size="md">
+                <BackgroundPicker onClose={closeBackground} />
             </Modal>
         </Box>
     );
