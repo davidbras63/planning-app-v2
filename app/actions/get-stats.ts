@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, asc } from 'drizzle-orm';
 
 // 1. Tri personnalisé pour respecter l'ordre des J et des rattrapages (J3 -> J3R -> J7...)
 function sortEcheances(a: string, b: string) {
@@ -10,6 +10,9 @@ function sortEcheances(a: string, b: string) {
     'J0': 0, 'J1': 1, 'J2': 2, 'J3': 3, 'J3R': 4,
     'J7': 5, 'J7R': 6, 'J14': 7, 'J14R': 8, 'J21': 9, 'J21R': 10
   };
+  const numA = parseInt(a.replace(/\D/g, "")) || 99;
+  const numB = parseInt(b.replace(/\D/g, "")) || 99;
+  if (numA !== numB) return numA - numB;
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
@@ -88,33 +91,58 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
+        isDirectTraining: individualNotes.isDirectTraining,
+        createdAt: individualNotes.createdAt,
+        revisionDate: individualNotes.revisionDate,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
+      .leftJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
           eq(individualNotes.clerkId, clerkId)
         )
-      );
+      )
+      .orderBy(asc(individualNotes.createdAt));
+
+    if (!rawData || rawData.length === 0) {
+      return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
+    }
+
+    const baseDateStr = rawData[0].createdAt || rawData[0].revisionDate;
+    const baseTime = baseDateStr ? new Date(baseDateStr).getTime() : Date.now();
 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
 
     rawData.forEach(row => {
-      // Calcul du total QCM via le contenu de la note
       if (row.content) {
         const notes = row.content.trim().split(/\s+/).filter(Boolean);
         totalQcm += notes.length;
       }
 
-      // Traitement des moyennes pour le graphique
       if (row.moyenne) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          const step = row.stepName || 'Inconnu';
+
+          let step = row.stepName || '';
+
+          // Si le flag isDirectTraining est activé, on calcule le J à la volée
+          if (row.isDirectTraining) {
+            const recordDateStr = row.createdAt || row.revisionDate;
+            if (recordDateStr) {
+              const recordTime = new Date(recordDateStr).getTime();
+              const diffDays = Math.round((recordTime - baseTime) / (1000 * 60 * 60 * 24));
+              step = `J${Math.max(0, diffDays)}`;
+            } else if (!step) {
+              step = 'J0';
+            }
+          } else if (!step) {
+            step = 'J0';
+          }
+
           if (!statsByStep[step]) {
             statsByStep[step] = { sum: 0, count: 0 };
           }
@@ -128,7 +156,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
       : 0;
 
-    // Construction du tableau pour le graphique avec l'average cumulé au fil du temps
     let runningSum = 0;
     let runningCount = 0;
 
@@ -137,7 +164,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     const chartData = sortedSteps.map(step => {
       const stepAvg = statsByStep[step].sum / statsByStep[step].count;
       
-      // Calcul de l'average cumulé (tendance globale jusqu'à cette étape)
       runningSum += statsByStep[step].sum;
       runningCount += statsByStep[step].count;
       const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
@@ -145,7 +171,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       return {
         step,
         moyenne: Number(stepAvg.toFixed(2)),
-        average: Number(runningAverage.toFixed(2)) // La fameuse courbe average par-dessus
+        average: Number(runningAverage.toFixed(2))
       };
     });
 
@@ -179,7 +205,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
       .where(
         and(
           eq(matieres.id, matiereId),
-          eq(matieres.folderId, folderId), // Sécurisation par le folderId de l'URL
+          eq(matieres.folderId, folderId),
           eq(individualNotes.clerkId, clerkId)
         )
       );
