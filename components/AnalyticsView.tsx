@@ -14,7 +14,6 @@ interface AnalyticsViewProps {
   getSubjectAnalyseData?: (matiereId: number, folderId: number) => Promise<{ chartData: any[]; matiereAverage: number; totalQcm: number }>;
 }
 
-// Fonction de tri pour forcer l'ordre des étapes (J0, J7, J7R, J14...)
 const sortChartSteps = (data: any[]) => {
   if (!Array.isArray(data)) return [];
   return [...data].sort((a, b) => {
@@ -48,17 +47,14 @@ export default function AnalyticsView({
   const params = useParams();
   const folderId = Number(params?.folderId);
 
-  // Filter matieres by folder
   const folderMatieres = matieresList.filter((m) => m.folderId === folderId);
 
   const [selectedMatiere, setSelectedMatiere] = useState<string | null>(
     folderMatieres.length > 0 ? folderMatieres[0].value : null
   );
 
-  // Mode d'affichage pour la section Matière ("standard" ou "anal")
   const [analysisMode, setAnalysisMode] = useState<"standard" | "anal">("standard");
 
-  // Etats stockés proprement pour stopper la boucle infinie
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
     chartData: [],
     average: 0,
@@ -67,11 +63,9 @@ export default function AnalyticsView({
 
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
-  // Modal
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
-  // 1. Récupération des données Matière (Standard ou Anal) sans boucler
   useEffect(() => {
     if (selectedMatiere) {
       if (analysisMode === "anal" && getSubjectAnalyseData) {
@@ -92,13 +86,11 @@ export default function AnalyticsView({
     }
   }, [selectedMatiere, analysisMode, folderId]);
 
-  // 2. Récupération des données Chapitres sans boucler
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
 
   useEffect(() => {
-    // Réinitialiser les données des chapitres quand la matière change
     setChapitresData({});
 
     filteredChapitres.forEach((chap) => {
@@ -121,89 +113,58 @@ export default function AnalyticsView({
   };
 
   return (
-    <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
-      <Title order={2} style={{ color: '#ffffff', margin: 0, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+    <Container 'antialiased' WebkitFontSmoothing: fluid p="xl" style="{{" }}>
+      <Title '#ffffff', '24px', '8px', 'center', 'flex', 0, 800 alignItems: color: display: fontWeight: gap: margin: marginBottom: order="{2}" style="{{" }}>
         Tableau de Suivi & Statistiques
       </Title>
 
-      {/* --- SECTION 1 : VUE MATIÈRE --- */}
-      <Box mb={40}>
-        <Group justify="space-between" align="center" mb="16px">
-          <Title order={3} style={{ color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+      <Box mb="{40}">
+        <Group align="center" justify="space-between" mb="16px">
+          <Title '#38bdf8', '1.25rem' '8px', 'center', 'flex', 0, alignItems: color: display: fontSize: gap: margin: order="{3}" style="{{" }}>
             Matière
           </Title>
 
-          {/* Bouton de bascule Mode Standard / Mode Anal */}
           <Group gap="xs">
-            <Button
-              size="xs"
-              variant={analysisMode === "standard" ? "filled" : "outline"}
-              color="cyan"
-              onClick={() => setAnalysisMode("standard")}
+            <Button "filled" "outline"} "standard" : ? color="cyan" onClick="{()" size="xs" variant="{analysisMode"> setAnalysisMode("standard")}
             >
               Standard
             </Button>
-            <Button
-              size="xs"
-              variant={analysisMode === "anal" ? "filled" : "outline"}
-              color="cyan"
-              onClick={() => setAnalysisMode("anal")}
+            <Button "anal" "filled" "outline"} : ? color="cyan" onClick="{()" size="xs" variant="{analysisMode"> setAnalysisMode("anal")}
             >
               Mode Anal
             </Button>
           </Group>
         </Group>
 
-        <Select
-          placeholder="Sélectionner une matière"
-          data={folderMatieres}
-          value={selectedMatiere}
-          onChange={setSelectedMatiere}
-          mb="md"
-          styles={{
-            input: {
-              maxWidth: 300,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderColor: 'rgba(255, 255, 255, 0.15)',
-              color: 'white',
-              borderRadius: '8px'
-            },
-            dropdown: { backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
-            item: { '&[data-selected]': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }
-          }}
-        />
+        <Select '#1a1b1e', '&[data-selected]': '8px' 'rgba(255, 'white' 'white', 0.05)', 0.1)' 0.15)', 255, 300, backgroundColor: borderColor: borderRadius: color: data="{folderMatieres}" dropdown: input: item: maxWidth: mb="md" onChange="{setSelectedMatiere}" placeholder="Sélectionner une matière" styles="{{" value="{selectedMatiere}" { } }, }}/>
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+        <Card '12px' 'rgba(255, 0.03)', 0.1)', 255, backgroundColor: borderColor: borderRadius: p="lg" radius="md" shadow="sm" style="{{" withBorder }}>
           <Stack gap="md">
-            <Text fw={700} size="lg" c="white">
+            <Text c="white" fw="{700}" size="lg">
               {analysisMode === "anal" ? "Analyse Globale Matière (Par Date)" : "Vue Globale Matière"} (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
             </Text>
-           
-            <Box style={{ height: 300, width: "100%" }}>
+            
+            <Box "100%" 300, height: style="{{" width: }}>
               {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart 
-                    data={analysisMode === "standard" ? sortChartSteps(matiereInfo.chartData) : matiereInfo.chartData} 
-                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    {/* En mode anal, on utilise la clé "date" sur l'axe X, sinon "step" */}
-                    <XAxis dataKey={analysisMode === "anal" ? "date" : "step"} stroke="#909296" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                    <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name={analysisMode === "anal" ? "Moyenne Session" : "Moyenne J"} dot={{ r: 4 }} />
+                <ResponsiveContainer height="100%" width="100%">
+                  <LineChart "standard" -10, 20, 5 5, : ? bottom: data="{analysisMode" left: margin="{{" matiereInfo.chartData} right: sortChartSteps(matiereInfo.chartData) top: }}>
+                    <CartesianGrid stroke="rgba(255, 255, 255, 0.1)" strokeDasharray="3 3"/>
+                    <XAxis "anal" "date" "step"} 12 : ? dataKey="{analysisMode" fontSize: stroke="#909296" tick="{{" }}/>
+                    <YAxis 12 20]} domain="{[0," fontSize: stroke="#909296" tick="{{" }}/>
+                    <Tooltip '#1a1b1e', '#fff' 'rgba(255, 0.15)', 255, 8, backgroundColor: borderColor: borderRadius: color: contentStyle="{{" }}/>
+                    <Line "Moyenne "anal" 4 : ? J"} Session" dataKey="moyenne" dot="{{" name="{analysisMode" r: stroke="#38bdf8" strokeWidth="{3}" type="monotone" }}/>
                     {analysisMode === "standard" && (
-                      <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                      <Line dataKey="average" dot="{false}" name="Average" stroke="#f87171" strokeDasharray="5 5" strokeWidth="{2}" type="monotone"/>
                     )}
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <Center h="100%"><Text size="sm" c="dimmed">Aucune donnée disponible pour cette matière</Text></Center>
+                <Center h="100%"><Text c="dimmed" size="sm">Aucune donnée disponible pour cette matière</Text></Center>
               )}
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-              <Text size="sm" fw={700} c="#38bdf8">
+            <Box "1px 0.2)" 189, 248, 6, bg="rgba(56, 189, 248, 0.08)" border: borderRadius: p="xs" rgba(56, solid style="{{" ta="center" }}>
+              <Text c="#38bdf8" fw="{700}" size="sm">
                 QCM : {matiereInfo.totalQcm} réalisés
               </Text>
             </Box>
@@ -211,31 +172,17 @@ export default function AnalyticsView({
         </Card>
       </Box>
 
-      {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
-        <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+        <Title '#38bdf8', '1.25rem' '16px', '8px', 'center', 'flex', 0, alignItems: color: display: fontSize: gap: margin: marginBottom: order="{3}" style="{{" }}>
           Chapitres
         </Title>
-       
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+        
+        <SimpleGrid 1, 2, 4 base: cols="{{" md: sm: spacing="lg" }}>
           {filteredChapitres.map((chap) => {
             const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
 
             return (
-              <Card
-                key={chap.value}
-                withBorder
-                shadow="sm"
-                radius="md"
-                p="md"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  borderColor: 'rgba(255, 255, 255, 0.1)',
-                  cursor: "pointer",
-                  borderRadius: '12px',
-                  transition: "transform 0.2s, border-color 0.2s"
-                }}
-                onClick={() => handleCardClick(chap, chapInfo)}
+              <Card "pointer", "transform '12px', 'rgba(255, 0.03)', 0.1)', 0.2s" 0.2s, 255, backgroundColor: border-color borderColor: borderRadius: cursor: key="{chap.value}" onClick="{()" p="md" radius="md" shadow="sm" style="{{" transition: withBorder }}> handleCardClick(chap, chapInfo)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-3px)";
                   e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
@@ -246,27 +193,27 @@ export default function AnalyticsView({
                 }}
               >
                 <Stack gap="xs">
-                  <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
+                  <Text c="white" fw="{700}" size="sm" truncate>{chap.label}</Text>
 
-                  <Box style={{ height: 140 }}>
+                  <Box 140 height: style="{{" }}>
                     {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                          <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
-                          <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
-                          <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                          <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                      <ResponsiveContainer height="100%" width="100%">
+                        <LineChart -20, 5 5, bottom: data="{sortChartSteps(chapInfo.chartData)}" left: margin="{{" right: top: }}>
+                          <CartesianGrid stroke="rgba(255, 255, 255, 0.1)" strokeDasharray="3 3"/>
+                          <XAxis '#909296' 10, dataKey="step" fill: fontSize: tick="{{" }}/>
+                          <YAxis '#909296' 10, 20]} domain="{[0," fill: fontSize: tick="{{" }}/>
+                          <Tooltip '#1a1b1e', '#fff' 'rgba(255, 0.15)', 255, 8, backgroundColor: borderColor: borderRadius: color: contentStyle="{{" }}/>
+                          <Line dataKey="moyenne" dot="{false}" stroke="#38bdf8" strokeWidth="{2}" type="monotone"/>
+                          <Line dataKey="average" dot="{false}" stroke="#f87171" strokeDasharray="3 3" strokeWidth="{1.5}" type="monotone"/>
                         </LineChart>
                       </ResponsiveContainer>
                     ) : (
-                      <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
+                      <Center h="100%"><Text c="dimmed" size="xs">Aucune note</Text></Center>
                     )}
                   </Box>
 
-                  <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                    <Text size="sm" fw={700} c="#38bdf8">
+                  <Box "1px 0.2)" 189, 248, 6, bg="rgba(56, 189, 248, 0.08)" border: borderRadius: p="xs" rgba(56, solid style="{{" ta="center" }}>
+                    <Text c="#38bdf8" fw="{700}" size="sm">
                       QCM : {chapInfo.totalQcm}
                     </Text>
                   </Box>
@@ -277,11 +224,7 @@ export default function AnalyticsView({
         </SimpleGrid>
       </Box>
 
-      {/* --- MODAL DE ZOOM --- */}
-      <Modal
-        opened={opened}
-        onClose={close}
-        title={<Text fw={700} c="white">{activeChapitreModal?.label || "Détail Chapitre"}</Text>}
+      <Modal c="white" fw="{700}" onClose="{close}" opened="{opened}" title="{<Text">{activeChapitreModal?.label || "Détail Chapitre"}</Text>}
         size="lg"
         centered
         styles={{
@@ -292,25 +235,25 @@ export default function AnalyticsView({
       >
         {activeChapitreModal && (
           <Stack gap="md">
-            <Text size="sm" fw={500} c="white">
+            <Text c="white" fw="{500}" size="sm">
               Moyenne globale du chapitre : <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeChapitreModal.average} / 20</span>
             </Text>
-           
-            <Box style={{ height: 350, width: "100%" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sortChartSteps(activeChapitreModal.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                  <XAxis dataKey="step" stroke="#909296" />
-                  <YAxis domain={[0, 20]] stroke="#909296" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+            
+            <Box "100%" 350, height: style="{{" width: }}>
+              <ResponsiveContainer height="100%" width="100%">
+                <LineChart -10, 20, 5 5, bottom: data="{sortChartSteps(activeChapitreModal.data)}" left: margin="{{" right: top: }}>
+                  <CartesianGrid stroke="rgba(255, 255, 255, 0.1)" strokeDasharray="3 3"/>
+                  <XAxis dataKey="step" stroke="#909296"/>
+                  <YAxis 20]} domain="{[0," stroke="#909296"/>
+                  <Tooltip '#1a1b1e', '#fff' 'rgba(255, 0.15)', 255, 8, backgroundColor: borderColor: borderRadius: color: contentStyle="{{" }}/>
+                  <Line 4 dataKey="moyenne" dot="{{" name="Moyenne J" r: stroke="#38bdf8" strokeWidth="{3}" type="monotone" }}/>
+                  <Line dataKey="average" dot="{false}" name="Average" stroke="#f87171" strokeDasharray="5 5" strokeWidth="{2}" type="monotone"/>
                 </LineChart>
               </ResponsiveContainer>
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-              <Text size="sm" fw={700} c="#38bdf8">
+            <Box "1px 0.2)" 189, 248, 6, bg="rgba(56, 189, 248, 0.08)" border: borderRadius: p="xs" rgba(56, solid style="{{" ta="center" }}>
+              <Text c="#38bdf8" fw="{700}" size="sm">
                 Total QCM réalisés : {activeChapitreModal.totalQcm}
               </Text>
             </Box>
