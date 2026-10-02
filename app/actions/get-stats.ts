@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
-import { eq, and, sql, asc } from 'drizzle-orm';
+import { eq, and, sql, asc, or, isNull } from 'drizzle-orm';
 
 function sortEcheances(a: string, b: string) {
   const order: Record<string, number> = {
@@ -24,10 +24,10 @@ function isTrainingOrUnlinked(echeanceId: unknown): boolean {
 }
 
 /**
- * Données graphiques complètes pour UN CHAPITRE (Ultra-instrumenté)
+ * Données graphiques complètes pour UN CHAPITRE (Incluant le training)
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
-  console.log(`[DEBUG CHAPITRE] Début pour chapitreId=${chapitreId}, clerkId=${clerkId}`);
+  console.log(`[DEBUG CHAPITRE] Début -> chapitreId=${chapitreId}, clerkId=${clerkId}`);
   try {
     const listEcheances = await db
       .select({
@@ -37,8 +37,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       .from(echeances)
       .where(eq(echeances.chapitreId, chapitreId));
 
-    console.log(`[DEBUG CHAPITRE] Échéances trouvées en DB :`, listEcheances);
-
     const echeanceMap = new Map<string, string>();
     listEcheances.forEach(e => {
       if (e.stepName) {
@@ -46,6 +44,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       }
     });
 
+    // Récupération large incluant le chapitre OU les notes orphelines/training liées à ce chapitre
     const rawNotes = await db
       .select({
         id: individualNotes.id,
@@ -64,10 +63,9 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       )
       .orderBy(asc(individualNotes.createdAt));
 
-    console.log(`[DEBUG CHAPITRE] Notes brutes récupérées (${rawNotes.length} lignes) :`, rawNotes);
+    console.log(`[DEBUG CHAPITRE] Notes brutes totales (avec training) : ${rawNotes.length}`, JSON.stringify(rawNotes, null, 2));
 
     if (!rawNotes || rawNotes.length === 0) {
-      console.log(`[DEBUG CHAPITRE] Aucune note trouvée pour ce chapitre.`);
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
     }
 
@@ -77,72 +75,38 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let unlinkedIndex = 0;
 
     rawNotes.forEach((row, index) => {
-      console.log(`\n--- [ROW ${index}] ID: ${row.id} ---`);
-      console.log(`  content:`, row.content);
-      console.log(`  moyenne stockée:`, row.moyenne, `(type: ${typeof row.moyenne})`);
-      console.log(`  echeanceId:`, row.echeanceId, `(isTraining: ${isTrainingOrUnlinked(row.echeanceId)})`);
+      const isTraining = isTrainingOrUnlinked(row.echeanceId);
+      console.log(`[ROW ${index}] ID=${row.id} | echeanceId=${row.echeanceId} (Training/Unlinked: ${isTraining}) | moyenne=${row.moyenne}`);
 
-      // 1. Comptage des QCM
       if (row.content) {
         const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
         totalQcm += items.length;
-        console.log(`  -> QCM comptés: ${items.length} (Total cumulé QCM: ${totalQcm})`);
       }
 
-      // 2. Récupération de la moyenne stockée
-      let rowMoyenne = 0;
-      let hasValidMoyenne = false;
+      if (row.moyenne === null || row.moyenne === undefined || row.moyenne === '') return;
+      const val = parseFloat(String(row.moyenne));
+      if (isNaN(val)) return;
 
-      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
-        const val = parseFloat(String(row.moyenne));
-        if (!isNaN(val)) {
-          rowMoyenne = val;
-          hasValidMoyenne = true;
-          console.log(`  -> Moyenne valide extraite: ${rowMoyenne}`);
-        } else {
-          console.log(`  -> ÉCHEC parseFloat sur moyenne:`, row.moyenne);
-        }
-      } else {
-        console.log(`  -> Champ moyenne vide ou null !`);
-      }
-
-      if (!hasValidMoyenne) {
-        console.log(`  -> Ligne ignorée car pas de moyenne valide.`);
-        return;
-      }
-
-      // 3. Détermination du J (step)
       let step = '';
-      const isTraining = isTrainingOrUnlinked(row.echeanceId);
-      
       if (!isTraining) {
-        const foundStep = echeanceMap.get(row.echeanceId!.toString());
-        if (foundStep) {
-          step = foundStep;
-          console.log(`  -> Échéance liée trouvée, step = ${step}`);
-        } else {
-          console.log(`  -> echeanceId ${row.echeanceId} non trouvé dans la map d'échéances.`);
-        }
+        const foundStep = echeanceMap.get(String(row.echeanceId));
+        if (foundStep) step = foundStep;
       }
 
+      // Si c'est du training ou non lié, on lui assigne un J séquentiel pour qu'il apparaisse dans le graphe
       if (!step) {
         step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
-        console.log(`  -> C'est du training / non lié. Attribution du J séquentiel: ${step} (index: ${unlinkedIndex})`);
+        console.log(`-> Attribué au flux Training/Orphelin -> Step: ${step}`);
         unlinkedIndex++;
       }
 
-      // 4. Intégration stats
-      allNotes.push(rowMoyenne);
+      allNotes.push(val);
       if (!statsByStep[step]) {
         statsByStep[step] = { sum: 0, count: 0 };
       }
-      statsByStep[step].sum += rowMoyenne;
+      statsByStep[step].sum += val;
       statsByStep[step].count += 1;
-      console.log(`  -> Ajouté au step ${step}. Total pour ce step:`, statsByStep[step]);
     });
-
-    console.log(`[DEBUG CHAPITRE] statsByStep final :`, statsByStep);
-    console.log(`[DEBUG CHAPITRE] allNotes global :`, allNotes);
 
     const chapitreAverage = allNotes.length > 0 
       ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
@@ -167,8 +131,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       };
     });
 
-    console.log(`[DEBUG CHAPITRE] chartData final :`, chartData);
-
     return {
       success: true,
       chartData,
@@ -182,11 +144,12 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * Données graphiques complètes pour TOUTE UNE MATIÈRE (Ultra-instrumenté)
+ * Données graphiques complètes pour TOUTE UNE MATIÈRE (Sécurité LeftJoin pour le training)
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
-  console.log(`[DEBUG MATIERE] Début pour matiereId=${matiereId}, folderId=${folderId}, clerkId=${clerkId}`);
+  console.log(`[DEBUG MATIERE] Début -> matiereId=${matiereId}, folderId=${folderId}, clerkId=${clerkId}`);
   try {
+    // Utilisation de LEFT JOIN sur chapitres/echéances pour ne jamais perdre les notes de training rattachées
     const rawData = await db
       .select({
         stepName: echeances.stepName,
@@ -206,46 +169,41 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         )
       );
 
-    console.log(`[DEBUG MATIERE] Lignes brutes récupérées (${rawData.length}) :`, rawData);
+    console.log(`[DEBUG MATIERE] rawData complet avec training :`, rawData.length);
 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
     let unlinkedIndex = 0;
 
-    rawData.forEach((row, index) => {
+    rawData.forEach((row) => {
       if (row.content) {
         const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
         totalQcm += items.length;
       }
 
-      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
-        const val = parseFloat(String(row.moyenne));
-        if (!isNaN(val)) {
-          allNotes.push(val);
-          
-          let step = '';
-          const isTraining = isTrainingOrUnlinked(row.echeanceId);
-          if (!isTraining && row.stepName) {
-            step = row.stepName;
-          }
+      if (row.moyenne === null || row.moyenne === undefined || row.moyenne === '') return;
+      const val = parseFloat(String(row.moyenne));
+      if (isNaN(val)) return;
 
-          if (!step) {
-            step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
-            unlinkedIndex++;
-          }
-
-          if (!statsByStep[step]) {
-            statsByStep[step] = { sum: 0, count: 0 };
-          }
-          statsByStep[step].sum += val;
-          statsByStep[step].count += 1;
-        } else {
-          console.log(`[DEBUG MATIERE] Ligne ${index} : échec parse moyenne`, row.moyenne);
-        }
-      } else {
-        console.log(`[DEBUG MATIERE] Ligne ${index} : moyenne vide`);
+      allNotes.push(val);
+      
+      let step = '';
+      const isTraining = isTrainingOrUnlinked(row.echeanceId);
+      if (!isTraining && row.stepName) {
+        step = row.stepName;
       }
+
+      if (!step) {
+        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
+        unlinkedIndex++;
+      }
+
+      if (!statsByStep[step]) {
+        statsByStep[step] = { sum: 0, count: 0 };
+      }
+      statsByStep[step].sum += val;
+      statsByStep[step].count += 1;
     });
 
     const matiereAverage = allNotes.length > 0 
@@ -270,8 +228,6 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         average: Number(runningAverage.toFixed(2))
       };
     });
-
-    console.log(`[DEBUG MATIERE] chartData final :`, chartData);
 
     return {
       success: true,
