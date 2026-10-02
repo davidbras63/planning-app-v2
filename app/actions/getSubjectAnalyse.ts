@@ -3,12 +3,14 @@
 import { db } from '@/db';
 import { subjectAnalyses } from '@/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
-import { auth } from '@clerk/nextjs/server'; // ou ton helper d'auth serveur
+import { auth } from '@clerk/nextjs/server';
 
 export async function getFolderAnalysesData(folderId: number) {
   try {
     const { userId: clerkId } = await auth();
-    if (!clerkId) return { success: false, data: {} };
+    if (!clerkId) {
+      return { success: false, data: {} };
+    }
 
     const rawData = await db
       .select({
@@ -28,17 +30,23 @@ export async function getFolderAnalysesData(folderId: number) {
       )
       .orderBy(asc(subjectAnalyses.revisionDate));
 
-    // On groupe les résultats par matiereId dans un objet
+    if (!rawData || rawData.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    // Regrouper par matiereId en s'assurant que la clé est une string pour correspondre au front
+    const mapByMatiere: Record<string, any[]> = {};
+    for (const row of rawData) {
+      const mId = String(row.matiereId);
+      if (!mapByMatiere[mId]) {
+        mapByMatiere[mId] = [];
+      }
+      mapByMatiere[mId].push(row);
+    }
+
     const groupedData: Record<string, { chartData: any[]; average: number; totalQcm: number }> = {};
 
-    // Regrouper par matière
-    const mapByMatiere = rawData.reduce((acc: any, row) => {
-      if (!acc[row.matiereId]) acc[row.matiereId] = [];
-      acc[row.matiereId].push(row);
-      return acc;
-    }, {});
-
-    for (const [matiereId, rows] of Object.entries(mapByMatiere) as [string, any[]][]) {
+    for (const [matiereId, rows] of Object.entries(mapByMatiere)) {
       let allAverages: number[] = [];
       let totalQcm = 0;
 
@@ -48,18 +56,29 @@ export async function getFolderAnalysesData(folderId: number) {
           if (Array.isArray(row.notes)) {
             qcmCount = row.notes.length;
           } else if (typeof row.notes === 'string') {
-            const parsed = row.notes.replace(/[\[\]]/g, '').split(',').filter(Boolean);
+            const parsed = row.notes
+              .replace(/[\[\]]/g, '')
+              .split(',')
+              .filter(Boolean);
             qcmCount = parsed.length;
           }
         }
         totalQcm += qcmCount;
 
-        const avgVal = row.average !== null && row.average !== undefined ? parseFloat(String(row.average)) : 0;
-        if (!isNaN(avgVal)) allAverages.push(avgVal);
+        const avgVal =
+          row.average !== null && row.average !== undefined
+            ? parseFloat(String(row.average))
+            : 0;
+        if (!isNaN(avgVal)) {
+          allAverages.push(avgVal);
+        }
 
         const rawDate = row.revisionDate || row.createdAt;
         const formattedDate = rawDate
-          ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+          ? new Date(rawDate).toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+            })
           : '';
 
         return {
@@ -69,9 +88,14 @@ export async function getFolderAnalysesData(folderId: number) {
         };
       });
 
-      const matiereAverage = allAverages.length > 0
-        ? Number((allAverages.reduce((a, b) => a + b, 0) / allAverages.length).toFixed(2))
-        : 0;
+      const matiereAverage =
+        allAverages.length > 0
+          ? Number(
+              (
+                allAverages.reduce((a, b) => a + b, 0) / allAverages.length
+              ).toFixed(2)
+            )
+          : 0;
 
       groupedData[matiereId] = {
         chartData,
@@ -80,9 +104,12 @@ export async function getFolderAnalysesData(folderId: number) {
       };
     }
 
-    return { success: true, data: groupedData };
+    return {
+      success: true,
+      data: groupedData,
+    };
   } catch (error) {
-    console.error('Erreur getFolderAnalysesData :', error);
+    console.error('Erreur dans getFolderAnalysesData :', error);
     return { success: false, data: {} };
   }
 }
