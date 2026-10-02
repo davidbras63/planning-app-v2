@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
 import { eq, and, sql, asc } from 'drizzle-orm';
 
-// 1. Tri personnalisé pour respecter l'ordre des J et des rattrapages (J3 -> J3R -> J7...)
+// Tri personnalisé pour respecter l'ordre des J et des rattrapages
 function sortEcheances(a: string, b: string) {
   const order: Record<string, number> = {
     'J0': 0, 'J1': 1, 'J2': 2, 'J3': 3, 'J3R': 4,
@@ -17,89 +17,35 @@ function sortEcheances(a: string, b: string) {
 }
 
 /**
- * 2. Compte le nombre total de notes (QCM) pour un chapitre
- */
-export async function getChapitreQcmCount(chapitreId: number, clerkId: string) {
-  try {
-    const rows = await db
-      .select({
-        content: individualNotes.content,
-      })
-      .from(individualNotes)
-      .where(
-        and(
-          eq(individualNotes.chapitreId, chapitreId.toString()),
-          eq(individualNotes.clerkId, clerkId)
-        )
-      );
-
-    let totalQcm = 0;
-    rows.forEach((row) => {
-      if (row.content) {
-        const notes = row.content.trim().split(/\s+/).filter(Boolean);
-        totalQcm += notes.length;
-      }
-    });
-
-    return { success: true, totalQcm };
-  } catch (error) {
-    console.error("Erreur comptage QCM chapitre :", error);
-    return { success: false, totalQcm: 0 };
-  }
-}
-
-/**
- * 3. Compte le nombre total de notes (QCM) pour toute une matière
- */
-export async function getMatiereQcmCount(matiereId: number, clerkId: string) {
-  try {
-    const rows = await db
-      .select({
-        content: individualNotes.content,
-      })
-      .from(individualNotes)
-      .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
-      .where(
-        and(
-          eq(chapitres.matiereId, matiereId),
-          eq(individualNotes.clerkId, clerkId)
-        )
-      );
-
-    let totalQcm = 0;
-    rows.forEach((row) => {
-      if (row.content) {
-        const notes = row.content.trim().split(/\s+/).filter(Boolean);
-        totalQcm += notes.length;
-      }
-    });
-
-    return { success: true, totalQcm };
-  } catch (error) {
-    console.error("Erreur comptage QCM matière :", error);
-    return { success: false, totalQcm: 0 };
-  }
-}
-
-/**
- * 4. Données graphiques complètes pour UN CHAPITRE (Courbe J, Average, QCM)
+ * 1. Données graphiques complètes pour UN CHAPITRE 
+ * (Récupère tout : planning + entraînement direct où echeanceId est NULL)
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   try {
-    // Utilisation d'un leftJoin pour récupérer à la fois les notes liées à une échéance et les entraînements directs (echeanceId NULL)
-    const rawData = await db
+    // A. Récupérer les échéances associées à ce chapitre (echeances.chapitreId est un integer)
+    const listEcheances = await db
       .select({
+        id: echeances.id,
         stepName: echeances.stepName,
+      })
+      .from(echeances)
+      .where(eq(echeances.chapitreId, chapitreId));
+
+    // Map pour faire correspondre l'ID de l'échéance (converti en string) à son stepName
+    const echeanceMap = new Map<string, string>();
+    listEcheances.forEach(e => {
+      echeanceMap.set(e.id.toString(), e.stepName || 'J0');
+    });
+
+    // B. Récupérer TOUTES les notes du chapitre (individualNotes.chapitreId est un text)
+    const rawNotes = await db
+      .select({
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
         echeanceId: individualNotes.echeanceId,
         createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
-      .leftJoin(
-        echeances,
-        sql`CAST(${individualNotes.echeanceId} AS TEXT) = CAST(${echeances.id} AS TEXT)`
-      )
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
@@ -108,41 +54,31 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       )
       .orderBy(asc(individualNotes.createdAt));
 
-    if (!rawData || rawData.length === 0) {
+    if (!rawNotes || rawNotes.length === 0) {
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
     }
-
-    // Recherche de la date de référence (le J0 initial) pour caler le calcul dynamique des J des entraînements directs
-    const j0Row = rawData.find(row => row.stepName && row.stepName.toUpperCase() === 'J0');
-    const baseTime = j0Row?.createdAt 
-      ? new Date(j0Row.createdAt).getTime() 
-      : (rawData[0]?.createdAt ? new Date(rawData[0].createdAt).getTime() : Date.now());
 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
 
-    rawData.forEach(row => {
-      // 1. Cumul du QCM pour absolument toutes les notes (échéances + entraînement direct)
+    rawNotes.forEach(row => {
+      // 1. Comptage des QCM (chaque élément séparé par des espaces dans content)
       if (row.content) {
         const notes = row.content.trim().split(/\s+/).filter(Boolean);
         totalQcm += notes.length;
       }
 
-      // 2. Détermination de l'étape J (via stepName de l'échéance ou calcul dynamique si absent)
-      let step = row.stepName;
-      if (!step) {
-        if (row.createdAt) {
-          const recordTime = new Date(row.createdAt).getTime();
-          const diffTime = recordTime - baseTime;
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-          step = `J${Math.max(0, diffDays)}`;
-        } else {
-          step = 'J0';
+      // 2. Détermination de l'étape (step)
+      let step = 'Entraînement';
+      if (row.echeanceId !== null && row.echeanceId !== undefined && row.echeanceId !== '') {
+        const foundStep = echeanceMap.get(row.echeanceId.toString());
+        if (foundStep) {
+          step = foundStep;
         }
       }
 
-      // 3. Traitement de la moyenne pour le graphique
+      // 3. Traitement de la moyenne
       if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
@@ -163,9 +99,8 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 
     let runningSum = 0;
     let runningCount = 0;
-
     const sortedSteps = Object.keys(statsByStep).sort(sortEcheances);
-    
+
     const chartData = sortedSteps.map(step => {
       const stepData = statsByStep[step];
       const stepAvg = stepData.count > 0 ? stepData.sum / stepData.count : 0;
@@ -194,24 +129,26 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * 5. Données graphiques complètes pour TOUTE UNE MATIÈRE (Filtrée par folderId via les tables)
+ * 2. Données graphiques complètes pour TOUTE UNE MATIÈRE
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
   try {
+    // Récupération via jointures propres en castant le chapitreId text en integer pour matcher chapitres.id
     const rawData = await db
       .select({
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
+        echeanceId: individualNotes.echeanceId,
       })
       .from(individualNotes)
-      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
+      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
       .where(
         and(
           eq(matieres.id, matiereId),
-          eq(matieres.folderId, folderId), // Sécurisation par le folderId de l'URL
+          eq(matieres.folderId, folderId),
           eq(individualNotes.clerkId, clerkId)
         )
       );
@@ -230,7 +167,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          const step = row.stepName || 'Inconnu';
+          const step = (row.echeanceId !== null && row.stepName) ? row.stepName : 'Entraînement';
           if (!statsByStep[step]) {
             statsByStep[step] = { sum: 0, count: 0 };
           }
