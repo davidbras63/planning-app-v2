@@ -104,16 +104,16 @@ export default function AnalyticsView({
   };
 
   return (
-    <Container fluid p="xl">
-      <Title order={2} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Tableau de Suivi & Statistiques
- </Title>
+    <Container fluid p="xl" style={{ backgroundColor: '#020617', minHeight: '100vh', color: '#f8fafc' }}>
+      <Title order={2} c="white" style={{ margin: 0, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+        Tableau de Suivi & Statistiques
+      </Title>
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Matière
-</Title>
+        <Title order={3} c="#38bdf8" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+          Matière
+        </Title>
         <Select
           placeholder="Sélectionner une matière"
           data={folderMatieres}
@@ -123,17 +123,18 @@ export default function AnalyticsView({
           styles={{
             input: {
               maxWidth: 300,
-              backgroundColor: '#0f172a', // Fond sombre
-              borderColor: '#334155', // Bordure foncée
-              color: 'white' // Texte blanc
+              backgroundColor: '#0f172a',
+              borderColor: '#334155',
+              color: 'white',
+              borderRadius: '8px'
             },
             dropdown: { backgroundColor: '#0f172a', borderColor: '#334155', color: 'white' },
             item: { '&[data-selected]': { backgroundColor: '#1e293b' } }
           }}
         />
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }}>
-          <Stack gap="xs">
+        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}>
+          <Stack gap="md">
             <Text fw={700} size="lg" c="white">Vue Globale Matière (Moyenne: {matiereInfo.average} / 20)</Text>
            
             <Box style={{ height: 300, width: "100%" }}>
@@ -153,7 +154,7 @@ export default function AnalyticsView({
               )}
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
               <Text size="sm" fw={700} c="#38bdf8">
                 QCM : {matiereInfo.totalQcm} réalisés
               </Text>
@@ -164,9 +165,9 @@ export default function AnalyticsView({
 
       {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
-        <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
- Chapitres
-</Title>
+        <Title order={3} c="#38bdf8" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+          Chapitres
+        </Title>
        
         <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
           {filteredChapitres.map((chap) => {
@@ -183,6 +184,7 @@ export default function AnalyticsView({
                   backgroundColor: '#0f172a',
                   borderColor: '#1e293b',
                   cursor: "pointer",
+                  borderRadius: '12px',
                   transition: "transform 0.2s, border-color 0.2s"
                 }}
                 onClick={() => handleCardClick(chap, chapInfo)}
@@ -215,8 +217,8 @@ export default function AnalyticsView({
                     )}
                   </Box>
 
-                  <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
-<Text size="sm" fw={700} c="#38bdf8">
+                  <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                    <Text size="sm" fw={700} c="#38bdf8">
                       QCM : {chapInfo.totalQcm}
                     </Text>
                   </Box>
@@ -235,7 +237,7 @@ export default function AnalyticsView({
         size="lg"
         centered
         styles={{
-          content: { backgroundColor: '#0f172a', border: '1px solid #1e293b' },
+          content: { backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' },
           header: { backgroundColor: '#0f172a' },
           close: { color: 'white' }
         }}
@@ -257,7 +259,7 @@ export default function AnalyticsView({
               </ResponsiveContainer>
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
               <Text size="sm" fw={700} c="#38bdf8">
                 Total QCM réalisés : {activeChapitreModal.totalQcm}
               </Text>
