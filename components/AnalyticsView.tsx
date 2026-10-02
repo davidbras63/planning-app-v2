@@ -104,14 +104,14 @@ export default function AnalyticsView({
   };
 
   return (
-    <Container fluid p="xl" style={{ backgroundColor: '#020617', minHeight: '100vh', color: '#f8fafc' }}>
-      <Title order={2} c="white" style={{ margin: 0, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
+    <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
+      <Title order={2} style={{ color: '#ffffff', margin: 0, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
         Tableau de Suivi & Statistiques
       </Title>
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
-        <Title order={3} c="#38bdf8" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+        <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
           Matière
         </Title>
         <Select
@@ -123,28 +123,30 @@ export default function AnalyticsView({
           styles={{
             input: {
               maxWidth: 300,
-              backgroundColor: '#0f172a',
-              borderColor: '#334155',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
               color: 'white',
               borderRadius: '8px'
             },
-            dropdown: { backgroundColor: '#0f172a', borderColor: '#334155', color: 'white' },
-            item: { '&[data-selected]': { backgroundColor: '#1e293b' } }
+            dropdown: { backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
+            item: { '&[data-selected]': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }
           }}
         />
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px' }}>
+        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
           <Stack gap="md">
-            <Text fw={700} size="lg" c="white">Vue Globale Matière (Moyenne: {matiereInfo.average} / 20)</Text>
+            <Text fw={700} size="lg" c="white">
+              Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
+            </Text>
            
             <Box style={{ height: 300, width: "100%" }}>
               {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={sortChartSteps(matiereInfo.chartData)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="step" stroke="#94a3b8" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 20]} stroke="#94a3b8" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 8, color: '#fff' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                    <XAxis dataKey="step" stroke="#909296" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                     <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
                     <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
                   </LineChart>
@@ -154,7 +156,7 @@ export default function AnalyticsView({
               )}
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
               <Text size="sm" fw={700} c="#38bdf8">
                 QCM : {matiereInfo.totalQcm} réalisés
               </Text>
@@ -165,7 +167,7 @@ export default function AnalyticsView({
 
       {/* --- SECTION 2 : VUE CHAPITRES --- */}
       <Box>
-        <Title order={3} c="#38bdf8" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+        <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
           Chapitres
         </Title>
        
@@ -181,8 +183,8 @@ export default function AnalyticsView({
                 radius="md"
                 p="md"
                 style={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#1e293b',
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
                   cursor: "pointer",
                   borderRadius: '12px',
                   transition: "transform 0.2s, border-color 0.2s"
@@ -190,11 +192,11 @@ export default function AnalyticsView({
                 onClick={() => handleCardClick(chap, chapInfo)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.borderColor = "#38bdf8";
+                  e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "#1e293b";
+                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
                 }}
               >
                 <Stack gap="xs">
@@ -204,10 +206,10 @@ export default function AnalyticsView({
                     {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                          <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                          <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 8, color: '#fff' }} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                          <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
+                          <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+                          <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                           <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
                           <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
                         </LineChart>
@@ -217,7 +219,7 @@ export default function AnalyticsView({
                     )}
                   </Box>
 
-                  <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                  <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
                     <Text size="sm" fw={700} c="#38bdf8">
                       QCM : {chapInfo.totalQcm}
                     </Text>
@@ -237,29 +239,31 @@ export default function AnalyticsView({
         size="lg"
         centered
         styles={{
-          content: { backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' },
-          header: { backgroundColor: '#0f172a' },
+          content: { backgroundColor: '#1a1b1e', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '12px' },
+          header: { backgroundColor: 'transparent' },
           close: { color: 'white' }
         }}
       >
         {activeChapitreModal && (
           <Stack gap="md">
-            <Text size="sm" fw={500} c="gray.3">Moyenne globale du chapitre : {activeChapitreModal.average} / 20</Text>
+            <Text size="sm" fw={500} c="white">
+              Moyenne globale du chapitre : <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeChapitreModal.average} / 20</span>
+            </Text>
            
             <Box style={{ height: 350, width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={sortChartSteps(activeChapitreModal.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="step" stroke="#94a3b8" />
-                  <YAxis domain={[0, 20]} stroke="#94a3b8" />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: 8, color: '#fff' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                  <XAxis dataKey="step" stroke="#909296" />
+                  <YAxis domain={[0, 20]} stroke="#909296" />
+                  <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                   <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
                   <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.1)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+            <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
               <Text size="sm" fw={700} c="#38bdf8">
                 Total QCM réalisés : {activeChapitreModal.totalQcm}
               </Text>
