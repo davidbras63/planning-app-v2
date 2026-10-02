@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Flex, Group, Button } from "@mantine/core";
+import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Flex, Group, Button, Loader } from "@mantine/core";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDisclosure } from "@mantine/hooks";
 
@@ -61,47 +61,90 @@ export default function AnalyticsView({
     average: 0,
     totalQcm: 0,
   });
+  const [loadingMatiere, setLoadingMatiere] = useState(false);
 
   const [allAnnalesData, setAllAnnalesData] = useState<Record<string, { chartData: any[]; subjectAverage: number; totalQcm: number }>>({});
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
+  const [loadingChapitres, setLoadingChapitres] = useState(false);
 
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
+  // Charger les données de la matière sélectionnée avec gestion d'erreur et loader
   useEffect(() => {
-    if (selectedMatiere) {
-      getMatiereData(Number(selectedMatiere)).then((res) => {
-        if (res) setMatiereInfo(res);
-      });
-    }
-  }, [selectedMatiere]);
+    if (!selectedMatiere) return;
+    let isMounted = true;
+    setLoadingMatiere(true);
 
+    getMatiereData(Number(selectedMatiere))
+      .then((res) => {
+        if (isMounted && res) {
+          setMatiereInfo(res);
+        }
+      })
+      .catch((err) => {
+        console.error("Erreur chargement données matière :", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingMatiere(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedMatiere, getMatiereData]);
+
+  // Charger les annales globales si le mode annales est actif
   useEffect(() => {
     if (viewMode === 'annales' && getAnnalesData) {
       folderMatieres.forEach((mat) => {
-        getAnnalesData(Number(mat.value)).then((res) => {
-          if (res) {
-            setAllAnnalesData((prev) => ({ ...prev, [mat.value]: res }));
-          }
-        });
+        getAnnalesData(Number(mat.value))
+          .then((res) => {
+            if (res) {
+              setAllAnnalesData((prev) => ({ ...prev, [mat.value]: res }));
+            }
+          })
+          .catch((err) => {
+            console.error(`Erreur chargement annales pour la matière ${mat.value} :`, err);
+          });
       });
     }
-  }, [viewMode, folderMatieres]);
+  }, [viewMode, folderMatieres, getAnnalesData]);
 
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
 
+  // Charger les données des chapitres de la matière avec gestion sécurisée
   useEffect(() => {
+    let isMounted = true;
     setChapitresData({});
-    filteredChapitres.forEach((chap) => {
-      getChapitreData(Number(chap.value)).then((res) => {
-        if (res) {
-          setChapitresData((prev) => ({ ...prev, [chap.value]: res }));
+    setLoadingChapitres(true);
+
+    Promise.all(
+      filteredChapitres.map(async (chap) => {
+        try {
+          const res = await getChapitreData(Number(chap.value));
+          return { id: chap.value, res };
+        } catch (err) {
+          console.error(`Erreur chargement chapitre ${chap.value} :`, err);
+          return { id: chap.value, res: null };
         }
+      })
+    ).then((results) => {
+      if (!isMounted) return;
+      const newChapData: Record<string, any> = {};
+      results.forEach(({ id, res }) => {
+        if (res) newChapData[id] = res;
       });
+      setChapitresData(newChapData);
+      setLoadingChapitres(false);
     });
-  }, [selectedMatiere, chapitresList.length]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedMatiere, chapitresList, getChapitreData]);
 
   const handleCardClick = (chap: { value: string; label: string }, chapInfo: any) => {
     setActiveChapitreModal({
@@ -172,8 +215,10 @@ export default function AnalyticsView({
                   Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
                 </Text>
                
-                <Box style={{ height: 300, width: "100%" }}>
-                  {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
+                <Box style={{ height: 300, width: "100%", position: 'relative' }}>
+                  {loadingMatiere ? (
+                    <Center h="100%"><Loader color="blue" size="sm" /></Center>
+                  ) : matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={sortChartSteps(matiereInfo.chartData)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
@@ -203,67 +248,71 @@ export default function AnalyticsView({
               Chapitres
             </Title>
            
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {filteredChapitres.map((chap) => {
-                const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
+            {loadingChapitres ? (
+              <Center p="xl"><Loader color="blue" /></Center>
+            ) : (
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                {filteredChapitres.map((chap) => {
+                  const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
 
-                return (
-                  <Card
-                    key={chap.value}
-                    withBorder
-                    shadow="sm"
-                    radius="md"
-                    p="md"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
-                      cursor: "pointer",
-                      transition: "transform 0.2s, border-color 0.2s"
-                    }}
-                    onClick={() => handleCardClick(chap, chapInfo)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-3px)";
-                      e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                    }}
-                  >
-                    <Stack gap="xs">
-                      <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
+                  return (
+                    <Card
+                      key={chap.value}
+                      withBorder
+                      shadow="sm"
+                      radius="md"
+                      p="md"
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        cursor: "pointer",
+                        transition: "transform 0.2s, border-color 0.2s"
+                      }}
+                      onClick={() => handleCardClick(chap, chapInfo)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-3px)";
+                        e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      }}
+                    >
+                      <Stack gap="xs">
+                        <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
 
-                      <Text size="xs" c="dimmed">
-                        Moyenne : <span style={{ color: '#38bdf8', fontWeight: 700 }}>{chapInfo.average} / 20</span>
-                      </Text>
-
-                      <Box style={{ height: 140 }}>
-                        {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                              <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
-                              <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
-                              <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                              <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                              <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        ) : (
-                          <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
-                        )}
-                      </Box>
-
-                      <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                        <Text size="sm" fw={700} c="#38bdf8">
-                          QCM : {chapInfo.totalQcm}
+                        <Text size="xs" c="dimmed">
+                          Moyenne : <span style={{ color: '#38bdf8', fontWeight: 700 }}>{chapInfo.average} / 20</span>
                         </Text>
-                      </Box>
-                    </Stack>
-                  </Card>
-                );
-              })}
-            </SimpleGrid>
+
+                        <Box style={{ height: 140 }}>
+                          {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                                <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
+                                <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                                <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
+                                <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
+                          )}
+                        </Box>
+
+                        <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 4, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                          <Text size="sm" fw={700} c="#38bdf8">
+                            QCM : {chapInfo.totalQcm}
+                          </Text>
+                        </Box>
+                      </Stack>
+                    </Card>
+                  );
+                })}
+              </SimpleGrid>
+            )}
           </Box>
         </Stack>
       )}

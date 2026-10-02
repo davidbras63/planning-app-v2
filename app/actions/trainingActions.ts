@@ -37,7 +37,7 @@ export async function actionGetMatieresByFolder(folderId: string) {
     }
 }
 
-// Récupère les saisies d'annales du jour pour pré-remplir la modale
+// Récupère les saisies d'annales du jour pour pré-remplir la modale depuis la table dédiée subjectAnnals
 export async function actionGetTodayAnnales(folderId: string) {
     const { userId } = await auth();
     if (!userId || !folderId) return { success: false, data: {} };
@@ -111,17 +111,16 @@ export async function actionGetTodayChapitres() {
     }
 }
 
-// Fonction utilitaire pour parser la chaîne brute
-function parseNotesString(rawInput: string): { notes: number[]; average: number } {
-    if (!rawInput || typeof rawInput !== 'string') return { notes: [], average: 0 };
+// Fonction utilitaire pour parser la chaîne brute et compter les QCM / notes
+function parseNotesString(rawInput: string): { notes: number[]; average: number; qcmCount: number } {
+    if (!rawInput || typeof rawInput !== 'string') return { notes: [], average: 0, qcmCount: 0 };
 
-    const parts = rawInput.trim().split(/\s+/);
+    const parts = rawInput.trim().split(/\s+/).filter(Boolean);
     const notes: number[] = [];
     let totalScore = 0;
     let totalMax = 0;
 
     for (const part of parts) {
-        if (!part) continue;
         if (part.includes('/')) {
             const [valStr, maxStr] = part.split('/');
             const val = parseFloat(valStr);
@@ -142,12 +141,12 @@ function parseNotesString(rawInput: string): { notes: number[]; average: number 
         }
     }
 
-    if (notes.length === 0 || totalMax === 0) return { notes: [], average: 0 };
+    if (notes.length === 0 || totalMax === 0) return { notes: [], average: 0, qcmCount: 0 };
     const average = Number(((totalScore / totalMax) * 20).toFixed(2));
-    return { notes, average };
+    return { notes, average, qcmCount: parts.length };
 }
 
-// Enregistrement unifié avec Upsert par jour (Annales et Chapitres)
+// Enregistrement unifié avec Upsert par jour (Annales et Chapitres avec calcul exact du J pour le training)
 export async function actionSaveTraining(data: {
     type: 'annales' | 'chapitre';
     folderId: string;
@@ -159,7 +158,7 @@ export async function actionSaveTraining(data: {
     if (!userId) throw new Error("Non autorisé");
 
     try {
-        const { notes, average } = parseNotesString(data.rawNotesInput);
+        const { notes, average, qcmCount } = parseNotesString(data.rawNotesInput);
 
         if (notes.length === 0) {
             throw new Error("Aucune note valide n'a été saisie.");
@@ -209,6 +208,24 @@ export async function actionSaveTraining(data: {
             if (!data.chapitreId) throw new Error("Chapitre manquant");
             const strChapitreId = String(data.chapitreId);
 
+            // Récupération de la date de création / J0 du chapitre pour calculer le J exact du training
+            const chapitreRecord = await db
+                .select()
+                .from(chapitres)
+                .where(eq(chapitres.id, Number(strChapitreId)))
+                .limit(1);
+
+            let calculatedStepName = "J0";
+            if (chapitreRecord.length > 0 && chapitreRecord[0].createdAt) {
+                const chapitreDate = new Date(chapitreRecord[0].createdAt);
+                chapitreDate.setHours(0, 0, 0, 0);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diffTime = today.getTime() - chapitreDate.getTime();
+                const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+                calculatedStepName = `J${diffDays}`;
+            }
+
             const existingChap = await db
                 .select()
                 .from(individualNotes)
@@ -228,6 +245,7 @@ export async function actionSaveTraining(data: {
                     .set({
                         moyenne: average.toFixed(2),
                         content: data.rawNotesInput,
+                        stepName: calculatedStepName,
                     })
                     .where(eq(individualNotes.id, existingChap[0].id));
             } else {
@@ -237,11 +255,12 @@ export async function actionSaveTraining(data: {
                     moyenne: average.toFixed(2),
                     content: data.rawNotesInput,
                     isDirectTraining: true,
+                    stepName: calculatedStepName,
                 });
             }
         }
 
-        return { success: true, average };
+        return { success: true, average, qcmCount };
     } catch (error) {
         console.error("Erreur actionSaveTraining:", error);
         return { success: false, error: String(error) };
