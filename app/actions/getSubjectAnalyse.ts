@@ -1,23 +1,25 @@
 'use server';
 
 import { db } from '@/db';
-import { subjectAnalyses } from '@/db/schema';
+import { subjectAnnals } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
-export async function getFolderAnalysesData(folderId: number) {
+export async function getFolderAnalysesData(folderId: number | string) {
   try {
+    const numericFolderId = Number(folderId);
+
     const rawData = await db
       .select({
-        id: subjectAnalyses.id,
-        matiereId: subjectAnalyses.matiereId,
-        notes: subjectAnalyses.notes,
-        average: subjectAnalyses.average,
-        revisionDate: subjectAnalyses.revisionDate,
-        createdAt: subjectAnalyses.createdAt,
+        id: subjectAnnals.id,
+        matiereId: subjectAnnals.matiereId,
+        notes: subjectAnnals.notes,
+        average: subjectAnnals.average,
+        revisionDate: subjectAnnals.revisionDate,
+        createdAt: subjectAnnals.createdAt,
       })
-      .from(subjectAnalyses)
-      .where(eq(subjectAnalyses.folderId, folderId))
-      .orderBy(asc(subjectAnalyses.revisionDate));
+      .from(subjectAnnals)
+      .where(eq(subjectAnnals.folderId, numericFolderId))
+      .orderBy(asc(subjectAnnals.revisionDate));
 
     if (!rawData || rawData.length === 0) {
       return { success: true, data: {} };
