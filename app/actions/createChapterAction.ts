@@ -25,12 +25,22 @@ export async function createChapterAction(input: any) {
       return { success: false, error: "Paramètres ou matière manquants pour créer le chapitre." };
     }
 
-    const dateJ0 = new Date(dateJ0Str);
+    // Parse sécurisé en heure locale pour éviter le décalage UTC
+    const [yearJ0, monthJ0, dayJ0] = dateJ0Str.split('-').map(Number);
+    const dateJ0 = new Date(yearJ0, monthJ0 - 1, dayJ0);
+    
     if (isNaN(dateJ0.getTime())) {
       return { success: false, error: "Format de date J0 invalide." };
     }
 
-    const dateExamen = dateExamenStr ? new Date(dateExamenStr) : null;
+    let dateExamen: Date | null = null;
+    if (dateExamenStr) {
+      const [yearEx, monthEx, dayEx] = dateExamenStr.split('-').map(Number);
+      dateExamen = new Date(yearEx, monthEx - 1, dayEx);
+      if (isNaN(dateExamen.getTime())) {
+        dateExamen = null;
+      }
+    }
 
     let cadencier: number[] = [];
     if (userId) {
