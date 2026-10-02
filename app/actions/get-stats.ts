@@ -94,9 +94,10 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         isDirectTraining: individualNotes.isDirectTraining,
         createdAt: individualNotes.createdAt,
         revisionDate: individualNotes.revisionDate,
+        echeanceId: individualNotes.echeanceId,
       })
       .from(individualNotes)
-      .leftJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
+      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS TEXT)`, sql`CAST(${echeances.id} AS TEXT)`))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
@@ -109,6 +110,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
     }
 
+    // Récupération de la date de base pour calculer les J du training direct si besoin
     const baseDateStr = rawData[0].createdAt || rawData[0].revisionDate;
     const baseTime = baseDateStr ? new Date(baseDateStr).getTime() : Date.now();
 
@@ -117,30 +119,30 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     const statsByStep: Record<string, { sum: number; count: number }> = {};
 
     rawData.forEach(row => {
+      // Calcul du total QCM via le contenu de la note
       if (row.content) {
         const notes = row.content.trim().split(/\s+/).filter(Boolean);
         totalQcm += notes.length;
       }
 
+      // Traitement des moyennes pour le graphique
       if (row.moyenne) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
 
-          let step = row.stepName || '';
+          let step = row.stepName;
 
-          // Si le flag isDirectTraining est activé, on calcule le J à la volée
-          if (row.isDirectTraining) {
+          // Si pas de stepName (cas du training direct avec echeanceId null), on calcule le J à la volée
+          if (!step) {
             const recordDateStr = row.createdAt || row.revisionDate;
             if (recordDateStr) {
               const recordTime = new Date(recordDateStr).getTime();
               const diffDays = Math.round((recordTime - baseTime) / (1000 * 60 * 60 * 24));
               step = `J${Math.max(0, diffDays)}`;
-            } else if (!step) {
+            } else {
               step = 'J0';
             }
-          } else if (!step) {
-            step = 'J0';
           }
 
           if (!statsByStep[step]) {
@@ -156,6 +158,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
       : 0;
 
+    // Construction du tableau pour le graphique avec l'average cumulé au fil du temps
     let runningSum = 0;
     let runningCount = 0;
 
@@ -164,6 +167,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     const chartData = sortedSteps.map(step => {
       const stepAvg = statsByStep[step].sum / statsByStep[step].count;
       
+      // Calcul de l'average cumulé (tendance globale jusqu'à cette étape)
       runningSum += statsByStep[step].sum;
       runningCount += statsByStep[step].count;
       const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
@@ -171,7 +175,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       return {
         step,
         moyenne: Number(stepAvg.toFixed(2)),
-        average: Number(runningAverage.toFixed(2))
+        average: Number(runningAverage.toFixed(2)) // La fameuse courbe average par-dessus
       };
     });
 
@@ -205,7 +209,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
       .where(
         and(
           eq(matieres.id, matiereId),
-          eq(matieres.folderId, folderId),
+          eq(matieres.folderId, folderId), // Sécurisation par le folderId de l'URL
           eq(individualNotes.clerkId, clerkId)
         )
       );
