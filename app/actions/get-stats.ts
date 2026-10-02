@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres, subjectAnnals } from '@/db/schema';
-import { eq, and, sql, isNull, or, desc } from 'drizzle-orm';
+import { eq, and, sql, isNull, or } from 'drizzle-orm';
 
 // Tri dynamique et universel pour n'importe quel J (J3, J7, J7R, J9, J14, J30, J60...)
 function sortEcheances(a: string, b: string) {
@@ -73,7 +73,7 @@ export async function getMatiereQcmCount(matiereId: number, clerkId: string, isD
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .where(
         and(
-          eq(chapitres.matiereId, matiereId),
+          eq(chapitres.matiereId, Number(matiereId)),
           eq(individualNotes.clerkId, clerkId),
           isDirectTraining 
             ? eq(individualNotes.isDirectTraining, true) 
@@ -121,7 +121,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         )
       );
 
-    // Recherche de la date de référence J0 pour le calcul dynamique en mode training
     const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
     const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
 
@@ -217,8 +216,8 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
       .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
       .where(
         and(
-          eq(matieres.id, matiereId),
-          eq(matieres.folderId, folderId),
+          eq(matieres.id, Number(matiereId)),
+          eq(matieres.folderId, Number(folderId)),
           eq(individualNotes.clerkId, clerkId),
           isDirectTraining 
             ? eq(individualNotes.isDirectTraining, true) 
@@ -315,7 +314,7 @@ export async function getSubjectAnalGraphData(matiereId: number, clerkId: string
       .from(subjectAnnals)
       .where(
         and(
-          eq(subjectAnnals.matiereId, matiereId),
+          eq(subjectAnnals.matiereId, Number(matiereId)),
           eq(subjectAnnals.clerkId, clerkId)
         )
       )
@@ -327,8 +326,13 @@ export async function getSubjectAnalGraphData(matiereId: number, clerkId: string
     let runningCount = 0;
 
     const chartData = rawData.map((row) => {
-      if (row.notes && Array.isArray(row.notes)) {
-        totalQcm += row.notes.length;
+      if (row.notes) {
+        if (Array.isArray(row.notes)) {
+          totalQcm += row.notes.length;
+        } else if (typeof row.notes === 'string') {
+          const parsedNotes = (row.notes as string).trim().split(/\s+/).filter(Boolean);
+          totalQcm += parsedNotes.length;
+        }
       }
 
       const val = row.average !== null && row.average !== undefined ? parseFloat(row.average) : 0;
