@@ -55,44 +55,58 @@ export default function AnalyticsView({
 
   const [analysisMode, setAnalysisMode] = useState<"standard" | "anal">("standard");
 
+  // Mode Standard : Données de la matière sélectionnée
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
     chartData: [],
     average: 0,
     totalQcm: 0,
   });
 
+  // Mode Anal : Données de toutes les matières stockées par ID
+  const [subjectsAnalysesData, setSubjectsAnalysesData] = useState<Record<string, any>>({});
+
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
+  // 1. Récupération Mode Standard
   useEffect(() => {
-    if (selectedMatiere) {
-      if (analysisMode === "anal" && getSubjectAnalyseData) {
-        getSubjectAnalyseData(Number(selectedMatiere), folderId).then((res) => {
+    if (analysisMode === "standard" && selectedMatiere) {
+      getMatiereData(Number(selectedMatiere)).then((res) => {
+        if (res) setMatiereInfo(res);
+      });
+    }
+  }, [selectedMatiere, analysisMode]);
+
+  // 1b. Récupération Mode Anal (charge toutes les matières du dossier en même temps)
+  useEffect(() => {
+    if (analysisMode === "anal" && getSubjectAnalyseData) {
+      setSubjectsAnalysesData({});
+      folderMatieres.forEach((mat) => {
+        getSubjectAnalyseData(Number(mat.value), folderId).then((res) => {
           if (res) {
-            setMatiereInfo({
-              chartData: res.chartData,
-              average: res.matiereAverage,
-              totalQcm: res.totalQcm,
-            });
+            setSubjectsAnalysesData((prev) => ({
+              ...prev,
+              [mat.value]: {
+                chartData: res.chartData,
+                average: res.matiereAverage,
+                totalQcm: res.totalQcm,
+              },
+            }));
           }
         });
-      } else {
-        getMatiereData(Number(selectedMatiere)).then((res) => {
-          if (res) setMatiereInfo(res);
-        });
-      }
+      });
     }
-  }, [selectedMatiere, analysisMode, folderId]);
+  }, [analysisMode, folderId, folderMatieres]);
 
+  // 2. Récupération des données Chapitres
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
 
   useEffect(() => {
     setChapitresData({});
-
     filteredChapitres.forEach((chap) => {
       getChapitreData(Number(chap.value)).then((res) => {
         if (res) {
@@ -118,11 +132,11 @@ export default function AnalyticsView({
         Tableau de Suivi & Statistiques
       </Title>
 
-      {/* --- SECTION 1 : VUE MATIÈRE --- */}
+      {/* --- SECTION 1 : VUE MATIÈRE (STANDARD OU ANAL GLOBAL) --- */}
       <Box mb={40}>
         <Group justify="space-between" align="center" mb="16px">
           <Title order={3} style={{ color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
-            Matière
+            {analysisMode === "anal" ? "Analyse Globale des Matières (Par Date)" : "Matière"}
           </Title>
 
           <Group gap="xs">
@@ -145,127 +159,179 @@ export default function AnalyticsView({
           </Group>
         </Group>
 
-        <Select
-          placeholder="Sélectionner une matière"
-          data={folderMatieres}
-          value={selectedMatiere}
-          onChange={setSelectedMatiere}
-          mb="md"
-          styles={{
-            input: {
-              maxWidth: 300,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderColor: 'rgba(255, 255, 255, 0.15)',
-              color: 'white',
-              borderRadius: '8px'
-            },
-            dropdown: { backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
-            item: { '&[data-selected]': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }
-          }}
-        />
+        {/* Si Mode Standard : Select + Grande carte unique */}
+        {analysisMode === "standard" ? (
+          <>
+            <Select
+              placeholder="Sélectionner une matière"
+              data={folderMatieres}
+              value={selectedMatiere}
+              onChange={setSelectedMatiere}
+              mb="md"
+              styles={{
+                input: {
+                  maxWidth: 300,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                  color: 'white',
+                  borderRadius: '8px'
+                },
+                dropdown: { backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', color: 'white' },
+                item: { '&[data-selected]': { backgroundColor: 'rgba(255, 255, 255, 0.1)' } }
+              }}
+            />
 
-        <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
-          <Stack gap="md">
-            <Text fw={700} size="lg" c="white">
-              {analysisMode === "anal" ? "Analyse Globale Matière (Par Date)" : "Vue Globale Matière"} (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
-            </Text>
-           
-            <Box style={{ height: 300, width: "100%" }}>
-              {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart 
-                    data={analysisMode === "standard" ? sortChartSteps(matiereInfo.chartData) : matiereInfo.chartData} 
-                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis dataKey={analysisMode === "anal" ? "date" : "step"} stroke="#909296" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                    <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name={analysisMode === "anal" ? "Moyenne Session" : "Moyenne J"} dot={{ r: 4 }} />
-                    {analysisMode === "standard" && (
-                      <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <Center h="100%"><Text size="sm" c="dimmed">Aucune donnée disponible pour cette matière</Text></Center>
-              )}
-            </Box>
+            <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+              <Stack gap="md">
+                <Text fw={700} size="lg" c="white">
+                  Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
+                </Text>
+               
+                <Box style={{ height: 300, width: "100%" }}>
+                  {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={sortChartSteps(matiereInfo.chartData)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                        <XAxis dataKey="step" stroke="#909296" tick={{ fontSize: 12 }} />
+                        <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                        <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
+                        <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <Center h="100%"><Text size="sm" c="dimmed">Aucune donnée disponible pour cette matière</Text></Center>
+                  )}
+                </Box>
 
-            <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-              <Text size="sm" fw={700} c="#38bdf8">
-                QCM : {matiereInfo.totalQcm} réalisés
-              </Text>
-            </Box>
-          </Stack>
-        </Card>
-      </Box>
+                <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                  <Text size="sm" fw={700} c="#38bdf8">
+                    QCM : {matiereInfo.totalQcm} réalisés
+                  </Text>
+                </Box>
+              </Stack>
+            </Card>
+          </>
+        ) : (
+          /* Si Mode Anal : Grille de toutes les matières (style chapitres) */
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+            {folderMatieres.map((mat) => {
+              const matInfo = subjectsAnalysesData[mat.value] || { chartData: [], average: 0, totalQcm: 0 };
 
-      {/* --- SECTION 2 : VUE CHAPITRES --- */}
-      <Box>
-        <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
-          Chapitres
-        </Title>
-       
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-          {filteredChapitres.map((chap) => {
-            const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
-
-            return (
-              <Card
-                key={chap.value}
-                withBorder
-                shadow="sm"
-                radius="md"
-                p="md"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  borderColor: 'rgba(255, 255, 255, 0.1)',
-                  cursor: "pointer",
-                  borderRadius: '12px',
-                  transition: "transform 0.2s, border-color 0.2s"
-                }}
-                onClick={() => handleCardClick(chap, chapInfo)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                }}
-              >
-                <Stack gap="xs">
-                  <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
-
-                  <Box style={{ height: 140 }}>
-                    {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                          <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
-                          <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
-                          <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                          <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                          <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
-                    )}
-                  </Box>
-
-                  <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
-                    <Text size="sm" fw={700} c="#38bdf8">
-                      QCM : {chapInfo.totalQcm}
+              return (
+                <Card
+                  key={mat.value}
+                  withBorder
+                  shadow="sm"
+                  radius="md"
+                  p="md"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px'
+                  }}
+                >
+                  <Stack gap="xs">
+                    <Text fw={700} size="md" truncate c="white">
+                      {mat.label} (Moy: <span style={{ color: '#38bdf8' }}>{matInfo.average}/20</span>)
                     </Text>
-                  </Box>
-                </Stack>
-              </Card>
-            );
-          })}
-        </SimpleGrid>
+
+                    <Box style={{ height: 180 }}>
+                      {matInfo?.chartData && matInfo.chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={matInfo.chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#909296' }} />
+                            <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Center h="100%"><Text size="xs" c="dimmed">Aucune donnée</Text></Center>
+                      )}
+                    </Box>
+
+                    <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                      <Text size="sm" fw={700} c="#38bdf8">
+                        QCM : {matInfo.totalQcm}
+                      </Text>
+                    </Box>
+                  </Stack>
+                </Card>
+              );
+            })}
+          </SimpleGrid>
+        )}
       </Box>
+
+      {/* --- SECTION 2 : VUE CHAPITRES (Uniquement en mode standard ou filtré) --- */}
+      {analysisMode === "standard" && (
+        <Box>
+          <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+            Chapitres
+          </Title>
+         
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+            {filteredChapitres.map((chap) => {
+              const chapInfo = chapitresData[chap.value] || { chartData: [], average: 0, totalQcm: 0 };
+
+              return (
+                <Card
+                  key={chap.value}
+                  withBorder
+                  shadow="sm"
+                  radius="md"
+                  p="md"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    cursor: "pointer",
+                    borderRadius: '12px',
+                    transition: "transform 0.2s, border-color 0.2s"
+                  }}
+                  onClick={() => handleCardClick(chap, chapInfo)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                  }}
+                >
+                  <Stack gap="xs">
+                    <Text fw={700} size="sm" truncate c="white">{chap.label}</Text>
+
+                    <Box style={{ height: 140 }}>
+                      {chapInfo?.chartData && chapInfo.chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={sortChartSteps(chapInfo.chartData)} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+                            <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
+                            <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+                            <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Center h="100%"><Text size="xs" c="dimmed">Aucune note</Text></Center>
+                      )}
+                    </Box>
+
+                    <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
+                      <Text size="sm" fw={700} c="#38bdf8">
+                        QCM : {chapInfo.totalQcm}
+                      </Text>
+                    </Box>
+                  </Stack>
+                </Card>
+              );
+            })}
+          </SimpleGrid>
+        </Box>
+      )}
 
       {/* --- MODAL DE ZOOM --- */}
       <Modal
