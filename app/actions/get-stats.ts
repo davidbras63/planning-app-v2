@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
-import { eq, and, sql, asc, or, isNull } from 'drizzle-orm';
+import { eq, and, sql, asc, inArray } from 'drizzle-orm';
 
 function sortEcheances(a: string, b: string) {
   const order: Record<string, number> = {
@@ -15,8 +15,6 @@ function sortEcheances(a: string, b: string) {
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
-const DEFAULT_J_SEQUENCE = ['J0', 'J1', 'J2', 'J3', 'J7', 'J14', 'J21', 'J28', 'J45', 'J60', 'J90'];
-
 function isTrainingOrUnlinked(echeanceId: unknown): boolean {
   if (echeanceId === null || echeanceId === undefined) return true;
   const str = String(echeanceId).trim().toLowerCase();
@@ -24,23 +22,34 @@ function isTrainingOrUnlinked(echeanceId: unknown): boolean {
 }
 
 /**
- * Données graphiques complètes pour UN CHAPITRE (Incluant le training)
+ * Données graphiques complètes pour UN CHAPITRE (Calcul dynamique du J pour le training)
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   console.log(`[DEBUG CHAPITRE] Début -> chapitreId=${chapitreId}, clerkId=${clerkId}`);
   try {
+    // 1. Récupérer toutes les échéances du chapitre pour mapper les ID et trouver la date du J0 de référence
     const listEcheances = await db
       .select({
         id: echeances.id,
         stepName: echeances.stepName,
+        date: echeances.date,
+        cycleDay: echeances.cycleDay,
       })
       .from(echeances)
       .where(eq(echeances.chapitreId, chapitreId));
 
     const echeanceMap = new Map<string, string>();
+    let j0Date: Date | null = null;
+
     listEcheances.forEach(e => {
       if (e.stepName) {
         echeanceMap.set(e.id.toString(), e.stepName);
+      }
+      // Détection du J0 de référence (cycleDay === 0 ou stepName === 'J0')
+      if (e.cycleDay === 0 || e.stepName === 'J0') {
+        if (e.date) {
+          j0Date = new Date(e.date);
+        }
       }
     });
 
@@ -63,7 +72,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       )
       .orderBy(asc(individualNotes.createdAt));
 
-    console.log(`[DEBUG CHAPITRE] Notes brutes totales (avec training) : ${rawNotes.length}`, JSON.stringify(rawNotes, null, 2));
+    console.log(`[DEBUG CHAPITRE] Notes brutes totales (avec training) : ${rawNotes.length}`);
 
     if (!rawNotes || rawNotes.length === 0) {
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
@@ -72,11 +81,9 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
-    let unlinkedIndex = 0;
 
     rawNotes.forEach((row, index) => {
       const isTraining = isTrainingOrUnlinked(row.echeanceId);
-      console.log(`[ROW ${index}] ID=${row.id} | echeanceId=${row.echeanceId} (Training/Unlinked: ${isTraining}) | moyenne=${row.moyenne}`);
 
       if (row.content) {
         const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
@@ -93,11 +100,19 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         if (foundStep) step = foundStep;
       }
 
-      // Si c'est du training ou non lié, on lui assigne un J séquentiel pour qu'il apparaisse dans le graphe
+      // Si c'est du training ou non lié : calcul dynamique du J basé sur le J0 du chapitre
       if (!step) {
-        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
-        console.log(`-> Attribué au flux Training/Orphelin -> Step: ${step}`);
-        unlinkedIndex++;
+        if (j0Date && row.createdAt) {
+          const trainingDate = new Date(row.createdAt);
+          const diffTime = trainingDate.getTime() - j0Date.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          // Si le training est antérieur ou égal à J0, on met J0 ou J, sinon J + diffDays
+          step = diffDays >= 0 ? `J${diffDays}` : `J0`;
+        } else {
+          // Fallback de sécurité si J0 introuvable en base
+          step = `J_rec_${row.id}`;
+        }
+        console.log(`-> Training ID ${row.id} calculé -> Step: ${step}`);
       }
 
       allNotes.push(val);
@@ -144,18 +159,58 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * Données graphiques complètes pour TOUTE UNE MATIÈRE (Sécurité LeftJoin pour le training)
+ * Données graphiques complètes pour TOUTE UNE MATIÈRE (Calcul dynamique du J unifié)
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
   console.log(`[DEBUG MATIERE] Début -> matiereId=${matiereId}, folderId=${folderId}, clerkId=${clerkId}`);
   try {
-    // Utilisation de LEFT JOIN sur chapitres/echéances pour ne jamais perdre les notes de training rattachées
+    // Récupérer tous les chapitres de la matière pour avoir leurs J0 respectifs
+    const chapitresList = await db
+      .select({ id: chapitres.id })
+      .from(chapitres)
+      .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
+      .where(and(eq(matieres.id, matiereId), eq(matieres.folderId, folderId)));
+
+    const chapitreIds = chapitresList.map(c => c.id);
+
+    if (chapitreIds.length === 0) {
+      return { success: true, chartData: [], matiereAverage: 0, totalQcm: 0 };
+    }
+
+    // Récupérer toutes les échéances de ces chapitres pour cartographier les J0 par chapitre_id
+    const allEcheances = await db
+      .select({
+        chapitreId: echeances.chapitreId,
+        id: echeances.id,
+        stepName: echeances.stepName,
+        date: echeances.date,
+        cycleDay: echeances.cycleDay,
+      })
+      .from(echeances)
+      .where(inArray(echeances.chapitreId, chapitreIds));
+
+    const echeanceMap = new Map<string, string>();
+    const chapitreJ0Map = new Map<number, Date>();
+
+    allEcheances.forEach(e => {
+      if (e.stepName) {
+        echeanceMap.set(e.id.toString(), e.stepName);
+      }
+      if (e.chapitreId !== null && (e.cycleDay === 0 || e.stepName === 'J0')) {
+        if (e.date) {
+          chapitreJ0Map.set(e.chapitreId, new Date(e.date));
+        }
+      }
+    });
+
     const rawData = await db
       .select({
+        chapitreId: individualNotes.chapitreId,
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
         echeanceId: individualNotes.echeanceId,
+        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
       .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
@@ -169,12 +224,9 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         )
       );
 
-    console.log(`[DEBUG MATIERE] rawData complet avec training :`, rawData.length);
-
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
-    let unlinkedIndex = 0;
 
     rawData.forEach((row) => {
       if (row.content) {
@@ -194,9 +246,19 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         step = row.stepName;
       }
 
+      // Calcul dynamique du J pour les entraînements au niveau matière
       if (!step) {
-        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
-        unlinkedIndex++;
+        const chapIdNum = row.chapitreId ? Number(row.chapitreId) : null;
+        const j0Date = chapIdNum !== null ? chapitreJ0Map.get(chapIdNum) : null;
+
+        if (j0Date && row.createdAt) {
+          const trainingDate = new Date(row.createdAt);
+          const diffTime = trainingDate.getTime() - j0Date.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          step = diffDays >= 0 ? `J${diffDays}` : `J0`;
+        } else {
+          step = `J_rec_${row.chapitreId || 0}`;
+        }
       }
 
       if (!statsByStep[step]) {
