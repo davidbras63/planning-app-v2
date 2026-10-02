@@ -56,9 +56,26 @@ export default function Sidebar() {
         return urlFolderId || (folders.length > 0 ? folders[0].value : null);
     }, [urlFolderId, folders]);
 
-    const [openedTraining, { open: baseOpenTraining, close: closeTraining }] = useDisclosure(false);
+    // Fonction de rechargement des données de la modale en direct
+    const refreshTrainingData = async (targetFolderId: string) => {
+        if (!targetFolderId) return;
+        const res = await actionGetMatieresByFolder(targetFolderId);
+        if (res?.success && res.matieres) {
+            setTrainingMatieres(res.matieres);
+        } else {
+            setTrainingMatieres([]);
+        }
+
+        const todayAnnalesRes = await actionGetTodayAnnales(targetFolderId);
+        if (todayAnnalesRes?.success && todayAnnalesRes.data) {
+            setAnnalesInputs(todayAnnalesRes.data);
+        } else {
+            setAnnalesInputs({});
+        }
+    };
+
+    const [openedTraining, { open: baseOpenTraining, close: baseCloseTraining }] = useDisclosure(false);
     
-    // MODIFICATION : Rechargement automatique des dossiers, matières ET récupération des notes du jour
     const openTraining = async () => {
         const dataFolders = await actionGetFolders();
         let activeFolders = folders;
@@ -70,19 +87,9 @@ export default function Sidebar() {
         const targetFolder = trainingFolderId || currentFolderId || (activeFolders.length > 0 ? activeFolders[0].value : null);
         if (targetFolder) {
             setTrainingFolderId(targetFolder);
-            const res = await actionGetMatieresByFolder(targetFolder);
-            if (res?.success && res.matieres) {
-                setTrainingMatieres(res.matieres);
-            }
-
-            // Récupération des notes d'annales déjà saisies aujourd'hui pour ce dossier
-            const todayAnnalesRes = await actionGetTodayAnnales(targetFolder);
-            if (todayAnnalesRes?.success && todayAnnalesRes.data) {
-                setAnnalesInputs(todayAnnalesRes.data);
-            }
+            await refreshTrainingData(targetFolder);
         }
 
-        // Récupération des notes de chapitres déjà saisies aujourd'hui
         const todayChapRes = await actionGetTodayChapitres();
         if (todayChapRes?.success && todayChapRes.data) {
             setChapitreInputs(todayChapRes.data);
@@ -93,6 +100,12 @@ export default function Sidebar() {
         }
 
         baseOpenTraining();
+    };
+
+    // Fermeture de la modale avec rafraîchissement global des graphiques et pages
+    const closeTraining = () => {
+        baseCloseTraining();
+        router.refresh();
     };
 
     const [openedBackground, { open: openBackground, close: closeBackground }] = useDisclosure(false);
@@ -115,7 +128,6 @@ export default function Sidebar() {
         return () => { isMounted = false; };
     }, []);
 
-    // Chargement dynamique des matières et de leurs chapitres selon le dossier
     useEffect(() => {
         let isMounted = true;
         const fetchMatieres = async () => {
@@ -137,7 +149,6 @@ export default function Sidebar() {
                 setAvailableChapitres([]);
                 setSelectedChapitreIds([]);
                 
-                // Charger également les annales du jour pour ce dossier
                 const todayAnnalesRes = await actionGetTodayAnnales(trainingFolderId);
                 if (todayAnnalesRes?.success && todayAnnalesRes.data) {
                     setAnnalesInputs(todayAnnalesRes.data);
@@ -150,7 +161,6 @@ export default function Sidebar() {
         return () => { isMounted = false; };
     }, [trainingFolderId]);
 
-    // Chargement des chapitres quand on sélectionne une matière en mode chapitre
     useEffect(() => {
         if (!trainingMatiereId) {
             setAvailableChapitres([]);
@@ -172,7 +182,6 @@ export default function Sidebar() {
         }
     }, [trainingMatiereId, trainingMatieres, chapitreInputs]);
 
-    // Fonction utilitaire pour parser et calculer la moyenne d'une saisie libre (ex: "15 25/30 14/15")
     const calculateAverage = (rawInput: string) => {
         if (!rawInput.trim()) return null;
         const parts = rawInput.trim().split(/\s+/);
@@ -220,6 +229,7 @@ export default function Sidebar() {
                         <ActionIcon onClick={() => setIsOpen(!isOpen)} variant="subtle"><ChevronLeft size={18} /></ActionIcon>
                     </Flex>
 
+                    {/* Navigation directe et instantanée */}
                     <Link href={currentFolderId ? `/protected/dashboard/${currentFolderId}` : "/protected/dashboard"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><LayoutDashboard size={20} />{isOpen && "Dashboard"}</Link>
                     <Link href={currentFolderId ? `/protected/planning/${currentFolderId}` : "/protected/planning"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Calendar size={20} />{isOpen && "Planning"}</Link>
                     <Link href={currentFolderId ? `/protected/graphiques/${currentFolderId}` : "/protected/graphiques"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><BarChart3 size={20} />{isOpen && "Graphiques"}</Link>
@@ -271,7 +281,7 @@ export default function Sidebar() {
                     <LogOut size={20} /> {isOpen && "Déconnexion"}
                 </Box>
             </Stack>
-           
+            
             <Modal opened={openedFolder} onClose={() => setOpenedFolder(false)} title="Nouveau Dossier">
                 <Stack gap="md">
                     <TextInput 
@@ -318,6 +328,11 @@ export default function Sidebar() {
                         await actionCreateMatiere(matiereName, selectedFolderId);
                         setOpenedSubject(false);
                         setMatiereName("");
+                        
+                        // Met à jour la modale d'entraînement si elle est ouverte sur ce dossier
+                        if (openedTraining && trainingFolderId === selectedFolderId) {
+                            await refreshTrainingData(selectedFolderId);
+                        }
                         router.refresh();
                     }}>
                         Créer la matière
@@ -382,7 +397,10 @@ export default function Sidebar() {
                         placeholder="Sélectionne un dossier"
                         data={folders}
                         value={trainingFolderId}
-                        onChange={setTrainingFolderId}
+                        onChange={(val) => {
+                            setTrainingFolderId(val);
+                            if (val) refreshTrainingData(val);
+                        }}
                         clearable
                     />
 
@@ -570,23 +588,17 @@ export default function Sidebar() {
                             }
 
                             if (successCount > 0) {
-                                alert("Entraînements enregistrés avec succès !");
+                                alert("Enregistrement réussi !");
                                 closeTraining();
-                                setAnnalesInputs({});
-                                setChapitreInputs({});
-                                setSelectedChapitreIds([]);
-                                router.refresh();
                             } else {
                                 alert("Aucune note valide à enregistrer.");
                             }
                         }}
                     >
-                        Enregistrer l'entraînement
+                        Valider et enregistrer
                     </Button>
                 </Stack>
             </Modal>
-
-            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
         </Box>
     );
 }
