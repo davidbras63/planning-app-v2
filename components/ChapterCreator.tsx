@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { TextInput, Select, Button, Stack, Notification, Paper, Title, Group } from '@mantine/core';
+import { TextInput, Select, Button, Stack, Notification, Group, Title } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { createChapterAction } from '@/app/actions/createChapterAction';
 import { useParams } from 'next/navigation';
@@ -30,10 +30,10 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
         async function loadData() {
             try {
                 const resMatieres = await fetch(`/api/matieres?folderId=${folderId}`);
-				if (resMatieres.ok) {
-					const data = await resMatieres.json();
-					setMatieres(Array.isArray(data) ? data : data.matieres || []);
-				}
+                if (resMatieres.ok) {
+                    const data = await resMatieres.json();
+                    setMatieres(Array.isArray(data) ? data : data.matieres || []);
+                }
             } catch (e) {
                 console.error("Erreur matières", e);
             }
@@ -69,15 +69,15 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
         }
 
         if (cadencier.length === 0) {
-			alert(`Vous n'avez pas encore paramétré votre profil. Veuillez aller dans l'onglet Paramètres pour :
+            alert(`Vous n'avez pas encore paramétré votre profil. Veuillez aller dans l'onglet Paramètres pour :
 
-		1. Vérifier ou modifier votre cadencier de révision.
-		2. Régler vos seuils de notes basses.
-		3. Renseigner votre nombre de cours maximum par jour (la limite de saturation quotidienne : si une journée atteint ce quota, le système bloque la réintégration automatique pour éviter la surcharge et cherche le jour suivant).
+1. Vérifier ou modifier votre cadencier de révision.
+2. Régler vos seuils de notes basses.
+3. Renseigner votre nombre de cours maximum par jour (la limite de saturation quotidienne : si une journée atteint ce quota, le système bloque la réintégration automatique pour éviter la surcharge et cherche le jour suivant).
 
-		Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
-			return;
-		}
+Une fois vos réglages enregistrés, vous pourrez créer votre chapitre.`);
+            return;
+        }
 
         try {
             setLoading(true);
@@ -97,6 +97,10 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
             });
             setSuccessMessage(true);
 
+            if (onCreated) {
+                onCreated();
+            }
+
             window.location.reload();
 
             setTimeout(() => setSuccessMessage(false), 4000);
@@ -109,15 +113,31 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
     };
 
     return (
-        <Stack gap="xs" maw="100%" w="100%" mx="auto">
+        <Stack gap="xs" maw="100%" w="100%" mx="auto" style={{ WebkitFontSmoothing: 'antialiased' }}>
+            {/* Le bandeau titre opaque et sombre, exactement harmonisé avec le reste */}
             <div style={{
                 backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
-                padding: '16px',
-                marginBottom: '20px',
-                WebkitFontSmoothing: 'antialiased'
+                padding: '12px 20px',
+                marginBottom: '16px',
+                marginTop: '10px',
+                width: 'fit-content',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            }}>
+                <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
+                    Création d'un nouveau chapitre
+                </Title>
+            </div>
+
+            {/* Le cadre stylisé du formulaire */}
+            <div style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.35)', 
+                borderRadius: '16px', 
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                padding: '24px',
+                marginBottom: '20px'
             }}>
                 {successMessage && (
                     <Notification color="teal" title="Succès !" mb="sm" onClose={() => setSuccessMessage(false)}>
@@ -198,8 +218,8 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
                         size="xs"
                         style={{
                             height: '30px',
-                            backgroundColor: '#38bdf8', // Le même bleu électrique lumineux que les badges J
-                            color: '#0f172a', // Texte sombre bien contrasté
+                            backgroundColor: '#38bdf8', 
+                            color: '#0f172a', 
                             fontWeight: 800,
                             boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)',
                             border: 'none'
@@ -211,5 +231,4 @@ export default function ChapterCreator({ onCreated }: ChapterCreatorProps) {
             </div>
         </Stack>
     );
-
 }

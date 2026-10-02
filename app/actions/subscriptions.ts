@@ -70,7 +70,15 @@ export async function handleLemonSqueezyWebhook(event: any) {
     `);
     console.log("✅ Abonnement mis en pause (via portail Lemon Squeezy). Le period_end reste inchangé pour laisser l'accès actif jusqu'à son terme.");
   }
-
+  // --- GESTION DE LA REPRISE DE PAUSE (UNPAUSE) ---
+  else if (eventName === 'subscription_unpaused') {
+    await db.execute(sql`
+      UPDATE users
+      SET status = 'active'
+      WHERE clerk_id = ${clerkId}
+    `);
+    console.log("✅ Abonnement réactivé suite à la levée de la pause (via portail Lemon Squeezy).");
+  }
   else if (eventName === 'subscription_payment_success') {
     const now = new Date();
    
@@ -93,6 +101,9 @@ export async function handleLemonSqueezyWebhook(event: any) {
       return;
     }
 
+    // --- CORRECTION DU CALCUL DES 30 JOURS ---
+    // Si la période actuelle est encore valide (future), on s'appuie dessus. 
+    // Si elle est dépassée (passée), on repart de la date d'aujourd'hui (now).
     const baseDate = currentPeriodEnd > now ? currentPeriodEnd : now;
     const newPeriodEnd = new Date(baseDate);
     newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
@@ -109,6 +120,8 @@ export async function handleLemonSqueezyWebhook(event: any) {
     } catch (dbError) {
       console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
     }
+
+    // Le reste de l'envoi d'e-mail ne change pas...
 
     if (eventName === 'subscription_created' || attributes?.billing_reason === 'initial') {
         try {
