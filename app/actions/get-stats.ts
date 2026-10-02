@@ -4,7 +4,6 @@ import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
 import { eq, and, sql, asc } from 'drizzle-orm';
 
-// Tri personnalisé pour respecter l'ordre des J et des rattrapages
 function sortEcheances(a: string, b: string) {
   const order: Record<string, number> = {
     'J0': 0, 'J1': 1, 'J2': 2, 'J3': 3, 'J3R': 4,
@@ -16,41 +15,13 @@ function sortEcheances(a: string, b: string) {
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
-// Séquence standard des J par défaut si aucune échéance n'est liée
 const DEFAULT_J_SEQUENCE = ['J0', 'J1', 'J2', 'J3', 'J7', 'J14', 'J21', 'J28', 'J45', 'J60', 'J90'];
 
 /**
- * Fonction ultra-robuste pour compter les QCM peu importe le format du contenu (JSON, virgules, espaces)
- */
-function parseQcmCount(content: string | null): number {
-  if (!content) return 0;
-  const trimmed = content.trim();
-  if (!trimmed) return 0;
-
-  // 1. Si c'est un tableau ou un objet JSON stocké en string
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (Array.isArray(parsed)) {
-      return parsed.length;
-    }
-    if (typeof parsed === 'object' && parsed !== null) {
-      return Object.keys(parsed).length;
-    }
-  } catch (e) {
-    // Ce n'est pas du JSON, on continue vers le parsing textuel
-  }
-
-  // 2. Sinon, découpage par espaces, virgules ou retours à la ligne
-  const items = trimmed.split(/[\s,]+/).filter(Boolean);
-  return items.length;
-}
-
-/**
- * Données graphiques complètes pour UN CHAPITRE 
+ * Données graphiques complètes pour UN CHAPITRE
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   try {
-    // A. Récupérer les échéances associées à ce chapitre
     const listEcheances = await db
       .select({
         id: echeances.id,
@@ -66,7 +37,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       }
     });
 
-    // B. Récupération robuste de TOUTES les notes du chapitre
     const rawNotes = await db
       .select({
         moyenne: individualNotes.moyenne,
@@ -93,10 +63,11 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let unlinkedIndex = 0;
 
     rawNotes.forEach(row => {
-      // 1. Comptage blindé des QCM
-      totalQcm += parseQcmCount(row.content);
+      if (row.content) {
+        const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
+        totalQcm += items.length;
+      }
 
-      // 2. Détermination ou calcul du J pour le positionnement graphique
       let step = '';
       if (row.echeanceId !== null && row.echeanceId !== undefined && row.echeanceId !== '') {
         const foundStep = echeanceMap.get(row.echeanceId.toString());
@@ -110,7 +81,6 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         unlinkedIndex++;
       }
 
-      // 3. Traitement de la moyenne
       if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
@@ -157,5 +127,94 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
   } catch (error) {
     console.error("Erreur graph chapitre :", error);
     return { success: false, chartData: [], chapitreAverage: 0, totalQcm: 0 };
+  }
+}
+
+/**
+ * Données graphiques complètes pour TOUTE UNE MATIÈRE (Exportée pour éviter le crash du build)
+ */
+export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
+  try {
+    const rawData = await db
+      .select({
+        stepName: echeances.stepName,
+        moyenne: individualNotes.moyenne,
+        content: individualNotes.content,
+        echeanceId: individualNotes.echeanceId,
+      })
+      .from(individualNotes)
+      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
+      .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
+      .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
+      .where(
+        and(
+          eq(matieres.id, matiereId),
+          eq(matieres.folderId, folderId),
+          eq(individualNotes.clerkId, clerkId)
+        )
+      );
+
+    let allNotes: number[] = [];
+    let totalQcm = 0;
+    const statsByStep: Record<string, { sum: number; count: number }> = {};
+    let unlinkedIndex = 0;
+
+    rawData.forEach(row => {
+      if (row.content) {
+        const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
+        totalQcm += items.length;
+      }
+
+      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
+        const val = parseFloat(row.moyenne);
+        if (!isNaN(val)) {
+          allNotes.push(val);
+          let step = (row.echeanceId !== null && row.stepName) ? row.stepName : '';
+          if (!step) {
+            step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
+            unlinkedIndex++;
+          }
+
+          if (!statsByStep[step]) {
+            statsByStep[step] = { sum: 0, count: 0 };
+          }
+          statsByStep[step].sum += val;
+          statsByStep[step].count += 1;
+        }
+      }
+    });
+
+    const matiereAverage = allNotes.length > 0 
+      ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
+      : 0;
+
+    let runningSum = 0;
+    let runningCount = 0;
+    const sortedSteps = Object.keys(statsByStep).sort(sortEcheances);
+
+    const chartData = sortedSteps.map(step => {
+      const dataStep = statsByStep[step];
+      const stepAvg = dataStep.count > 0 ? dataStep.sum / dataStep.count : 0;
+      
+      runningSum += dataStep.sum;
+      runningCount += dataStep.count;
+      const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
+
+      return {
+        step,
+        moyenne: Number(stepAvg.toFixed(2)),
+        average: Number(runningAverage.toFixed(2))
+      };
+    });
+
+    return {
+      success: true,
+      chartData,
+      matiereAverage,
+      totalQcm,
+    };
+  } catch (error) {
+    console.error("Erreur graph matière :", error);
+    return { success: false, chartData: [], matiereAverage: 0, totalQcm: 0 };
   }
 }
