@@ -82,7 +82,6 @@ export async function getFolderAnalysesData(folderId: number | string) {
         return {
           date: formattedDate,
           moyenne: Number(avgVal.toFixed(2)),
-		  
           qcmCount,
         };
       });
@@ -96,8 +95,14 @@ export async function getFolderAnalysesData(folderId: number | string) {
             )
           : 0;
 
+      // 🔴 ON AJOUTE LA PROPRIÉTÉ "average" DANS CHAQUE POINT DU CHARTDATA POUR QUE RECHARTS PUISSE LA TRACER
+      const chartDataWithAverage = chartData.map(item => ({
+        ...item,
+        average: matiereAverage,
+      }));
+
       groupedData[matiereId] = {
-        chartData,
+        chartData: chartDataWithAverage,
         average: matiereAverage,
         totalQcm,
       };

@@ -224,6 +224,7 @@ export default function AnalyticsView({
                             <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                             <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
+							<Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
