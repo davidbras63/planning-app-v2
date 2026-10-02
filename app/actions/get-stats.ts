@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
-import { eq, and, sql, asc } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 // 1. Tri personnalisé pour respecter l'ordre des J et des rattrapages (J3 -> J3R -> J7...)
 function sortEcheances(a: string, b: string) {
@@ -10,9 +10,6 @@ function sortEcheances(a: string, b: string) {
     'J0': 0, 'J1': 1, 'J2': 2, 'J3': 3, 'J3R': 4,
     'J7': 5, 'J7R': 6, 'J14': 7, 'J14R': 8, 'J21': 9, 'J21R': 10
   };
-  const numA = parseInt(a.replace(/\D/g, "")) || 99;
-  const numB = parseInt(b.replace(/\D/g, "")) || 99;
-  if (numA !== numB) return numA - numB;
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
@@ -91,28 +88,15 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
-        isDirectTraining: individualNotes.isDirectTraining,
-        createdAt: individualNotes.createdAt,
-        revisionDate: individualNotes.revisionDate,
-        echeanceId: individualNotes.echeanceId,
       })
       .from(individualNotes)
-      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS TEXT)`, sql`CAST(${echeances.id} AS TEXT)`))
+      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
           eq(individualNotes.clerkId, clerkId)
         )
-      )
-      .orderBy(asc(individualNotes.createdAt));
-
-    if (!rawData || rawData.length === 0) {
-      return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
-    }
-
-    // Récupération de la date de base pour calculer les J du training direct si besoin
-    const baseDateStr = rawData[0].createdAt || rawData[0].revisionDate;
-    const baseTime = baseDateStr ? new Date(baseDateStr).getTime() : Date.now();
+      );
 
     let allNotes: number[] = [];
     let totalQcm = 0;
@@ -130,21 +114,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-
-          let step = row.stepName;
-
-          // Si pas de stepName (cas du training direct avec echeanceId null), on calcule le J à la volée
-          if (!step) {
-            const recordDateStr = row.createdAt || row.revisionDate;
-            if (recordDateStr) {
-              const recordTime = new Date(recordDateStr).getTime();
-              const diffDays = Math.round((recordTime - baseTime) / (1000 * 60 * 60 * 24));
-              step = `J${Math.max(0, diffDays)}`;
-            } else {
-              step = 'J0';
-            }
-          }
-
+          const step = row.stepName || 'Inconnu';
           if (!statsByStep[step]) {
             statsByStep[step] = { sum: 0, count: 0 };
           }
