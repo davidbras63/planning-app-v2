@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal } from "@mantine/core";
+import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Group, Button } from "@mantine/core";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDisclosure } from "@mantine/hooks";
 
@@ -11,6 +11,7 @@ interface AnalyticsViewProps {
   chapitresList: { value: string; label: string; matiereId: number }[];
   getMatiereData: (matiereId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
   getChapitreData: (chapitreId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
+  getSubjectAnalyseData?: (matiereId: number, folderId: number) => Promise<{ chartData: any[]; matiereAverage: number; totalQcm: number }>;
 }
 
 // Fonction de tri pour forcer l'ordre des étapes (J0, J7, J7R, J14...)
@@ -42,6 +43,7 @@ export default function AnalyticsView({
   chapitresList = [],
   getMatiereData,
   getChapitreData,
+  getSubjectAnalyseData,
 }: AnalyticsViewProps) {
   const params = useParams();
   const folderId = Number(params?.folderId);
@@ -52,6 +54,9 @@ export default function AnalyticsView({
   const [selectedMatiere, setSelectedMatiere] = useState<string | null>(
     folderMatieres.length > 0 ? folderMatieres[0].value : null
   );
+
+  // Mode d'affichage pour la section Matière ("standard" ou "anal")
+  const [analysisMode, setAnalysisMode] = useState<"standard" | "anal">("standard");
 
   // Etats stockés proprement pour stopper la boucle infinie
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
@@ -66,14 +71,26 @@ export default function AnalyticsView({
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
-  // 1. Récupération des données Matière sans boucler
+  // 1. Récupération des données Matière (Standard ou Anal) sans boucler
   useEffect(() => {
     if (selectedMatiere) {
-      getMatiereData(Number(selectedMatiere)).then((res) => {
-        if (res) setMatiereInfo(res);
-      });
+      if (analysisMode === "anal" && getSubjectAnalyseData) {
+        getSubjectAnalyseData(Number(selectedMatiere), folderId).then((res) => {
+          if (res) {
+            setMatiereInfo({
+              chartData: res.chartData,
+              average: res.matiereAverage,
+              totalQcm: res.totalQcm,
+            });
+          }
+        });
+      } else {
+        getMatiereData(Number(selectedMatiere)).then((res) => {
+          if (res) setMatiereInfo(res);
+        });
+      }
     }
-  }, [selectedMatiere]);
+  }, [selectedMatiere, analysisMode, folderId]);
 
   // 2. Récupération des données Chapitres sans boucler
   const filteredChapitres = chapitresList.filter(
@@ -91,7 +108,7 @@ export default function AnalyticsView({
         }
       });
     });
-  }, [selectedMatiere, chapitresList.length]); // Ajout de chapitresList.length pour le rechargement initial
+  }, [selectedMatiere, chapitresList.length]);
 
   const handleCardClick = (chap: { value: string; label: string }, chapInfo: any) => {
     setActiveChapitreModal({
@@ -111,9 +128,32 @@ export default function AnalyticsView({
 
       {/* --- SECTION 1 : VUE MATIÈRE --- */}
       <Box mb={40}>
-        <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
-          Matière
-        </Title>
+        <Group justify="space-between" align="center" mb="16px">
+          <Title order={3} style={{ color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
+            Matière
+          </Title>
+
+          {/* Bouton de bascule Mode Standard / Mode Anal */}
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant={analysisMode === "standard" ? "filled" : "outline"}
+              color="cyan"
+              onClick={() => setAnalysisMode("standard")}
+            >
+              Standard
+            </Button>
+            <Button
+              size="xs"
+              variant={analysisMode === "anal" ? "filled" : "outline"}
+              color="cyan"
+              onClick={() => setAnalysisMode("anal")}
+            >
+              Mode Anal
+            </Button>
+          </Group>
+        </Group>
+
         <Select
           placeholder="Sélectionner une matière"
           data={folderMatieres}
@@ -136,19 +176,25 @@ export default function AnalyticsView({
         <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
           <Stack gap="md">
             <Text fw={700} size="lg" c="white">
-              Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
+              {analysisMode === "anal" ? "Analyse Globale Matière (Par Date)" : "Vue Globale Matière"} (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
             </Text>
            
             <Box style={{ height: 300, width: "100%" }}>
               {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={sortChartSteps(matiereInfo.chartData)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <LineChart 
+                    data={analysisMode === "standard" ? sortChartSteps(matiereInfo.chartData) : matiereInfo.chartData} 
+                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis dataKey="step" stroke="#909296" tick={{ fontSize: 12 }} />
+                    {/* En mode anal, on utilise la clé "date" sur l'axe X, sinon "step" */}
+                    <XAxis dataKey={analysisMode === "anal" ? "date" : "step"} stroke="#909296" tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                    <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                    <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name={analysisMode === "anal" ? "Moyenne Session" : "Moyenne J"} dot={{ r: 4 }} />
+                    {analysisMode === "standard" && (
+                      <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                    )}
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
@@ -255,7 +301,7 @@ export default function AnalyticsView({
                 <LineChart data={sortChartSteps(activeChapitreModal.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
                   <XAxis dataKey="step" stroke="#909296" />
-                  <YAxis domain={[0, 20]} stroke="#909296" />
+                  <YAxis domain={[0, 20]] stroke="#909296" />
                   <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                   <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
                   <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
