@@ -2,16 +2,10 @@
 
 import { db } from '@/db';
 import { subjectAnalyses } from '@/db/schema';
-import { eq, and, asc } from 'drizzle-orm';
-import { auth } from '@clerk/nextjs/server';
+import { eq, asc } from 'drizzle-orm';
 
 export async function getFolderAnalysesData(folderId: number) {
   try {
-    const { userId: clerkId } = await auth();
-    if (!clerkId) {
-      return { success: false, data: {} };
-    }
-
     const rawData = await db
       .select({
         id: subjectAnalyses.id,
@@ -22,19 +16,13 @@ export async function getFolderAnalysesData(folderId: number) {
         createdAt: subjectAnalyses.createdAt,
       })
       .from(subjectAnalyses)
-      .where(
-        and(
-          eq(subjectAnalyses.folderId, folderId),
-          eq(subjectAnalyses.clerkId, clerkId)
-        )
-      )
+      .where(eq(subjectAnalyses.folderId, folderId))
       .orderBy(asc(subjectAnalyses.revisionDate));
 
     if (!rawData || rawData.length === 0) {
       return { success: true, data: {} };
     }
 
-    // Regrouper par matiereId en s'assurant que la clé est une string pour correspondre au front
     const mapByMatiere: Record<string, any[]> = {};
     for (const row of rawData) {
       const mId = String(row.matiereId);
