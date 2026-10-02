@@ -5,13 +5,14 @@ import { useParams } from "next/navigation";
 import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Group, Button } from "@mantine/core";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDisclosure } from "@mantine/hooks";
+import { useUser } from "@clerk/nextjs";
 
 interface AnalyticsViewProps {
   matieresList: { value: string; label: string; folderId: number }[];
   chapitresList: { value: string; label: string; matiereId: number }[];
   getMatiereData: (matiereId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
   getChapitreData: (chapitreId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
-  getSubjectAnalyseData?: (matiereId: number, folderId: number) => Promise<{ chartData: any[]; matiereAverage: number; totalQcm: number }>;
+  getSubjectAnalyseData?: (matiereId: number, folderId: number, clerkId: string) => Promise<{ chartData: any[]; matiereAverage: number; totalQcm: number }>;
 }
 
 const sortChartSteps = (data: any[]) => {
@@ -46,6 +47,8 @@ export default function AnalyticsView({
 }: AnalyticsViewProps) {
   const params = useParams();
   const folderId = Number(params?.folderId);
+  const { user } = useUser();
+  const clerkId = user?.id;
 
   const folderMatieres = matieresList.filter((m) => m.folderId === folderId);
 
@@ -79,13 +82,13 @@ export default function AnalyticsView({
     }
   }, [selectedMatiere, analysisMode]);
 
-  // 1b. Récupération Mode Anal (charge toutes les matières du dossier en même temps)
+  // 1b. Récupération Mode Anal (charge toutes les matières du dossier en même temps avec le clerkId)
   useEffect(() => {
-    if (analysisMode === "anal" && getSubjectAnalyseData) {
+    if (analysisMode === "anal" && getSubjectAnalyseData && clerkId) {
       setSubjectsAnalysesData({});
       folderMatieres.forEach((mat) => {
-        getSubjectAnalyseData(Number(mat.value), folderId).then((res) => {
-          if (res) {
+        getSubjectAnalyseData(Number(mat.value), folderId, clerkId).then((res: any) => {
+          if (res && res.success) {
             setSubjectsAnalysesData((prev) => ({
               ...prev,
               [mat.value]: {
@@ -98,7 +101,7 @@ export default function AnalyticsView({
         });
       });
     }
-  }, [analysisMode, folderId, folderMatieres]);
+  }, [analysisMode, folderId, folderMatieres, clerkId, getSubjectAnalyseData]);
 
   // 2. Récupération des données Chapitres
   const filteredChapitres = chapitresList.filter(
