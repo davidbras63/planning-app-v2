@@ -12,129 +12,122 @@ export async function getDashboardData(folderId: string) {
 
         const numericFolderId = parseInt(folderId, 10);
 
-  const folderData = await db.query.folders.findFirst({
-    where: eq(folders.id, numericFolderId),
-    with: {
-      matieres: {
-        with: {
-          chapitres: {
+        const folderData = await db.query.folders.findFirst({
+            where: eq(folders.id, numericFolderId),
             with: {
-              echeances: true,
+                matieres: {
+                    with: {
+                        chapitres: {
+                            with: {
+                                echeances: true,
+                            },
+                        },
+                    },
+                },
             },
-          },
-        },
-      },
-    },
-  });
- 
-  const allFolders = await db.query.folders.findMany({
-    where: eq(folders.clerkId, userId ?? ""),
-  })
-  
-  // Récupération des seuils bas de la table settings
-  const userSettings = await db.query.settings.findFirst({
-		where: and(
-			eq(settings.clerkId, userId ?? ""),
-			eq(settings.folderId, Number(folderId))
-		),
-  });
+        });
+        
+        const allFolders = await db.query.folders.findMany({
+            where: eq(folders.clerkId, userId ?? ""),
+        });
+        
+        const userSettings = await db.query.settings.findFirst({
+            where: and(
+                eq(settings.clerkId, userId ?? ""),
+                eq(settings.folderId, Number(folderId))
+            ),
+        });
 
-  let seuilBasTable: number[] = [];
-  try {
-    const rawSeuil = userSettings?.seuilBasNote;
-    if (Array.isArray(rawSeuil)) {
-      seuilBasTable = rawSeuil;
-    } else if (typeof rawSeuil === 'string') {
-      seuilBasTable = JSON.parse(rawSeuil);
-    }
-  } catch (e) {
-    console.error("Erreur de parsing seuilBasNote:", e);
-  }
+        let seuilBasTable: number[] = [];
+        try {
+            const rawSeuil = userSettings?.seuilBasNote;
+            if (Array.isArray(rawSeuil)) {
+                seuilBasTable = rawSeuil;
+            } else if (typeof rawSeuil === 'string') {
+                seuilBasTable = JSON.parse(rawSeuil);
+            }
+        } catch (e) {
+            console.error("Erreur de parsing seuilBasNote:", e);
+        }
 
-  // On récupère directement les notes individuelles en ciblant la colonne moyenne
-  const notesList = await db.query.individualNotes.findMany({
-    where: eq(individualNotes.clerkId, userId ?? ""),
-})
+        // On indexe tout ce qui est dans le dossier pour y accéder instantanément sans requêtes SQL supplémentaires
+        const chapitreMap = new Map<number, { chapitre: any; echeancesMap: Map<number, any>; allEcheances: any[] }>();
+        if (folderData?.matieres) {
+            for (const matiere of folderData.matieres) {
+                if (matiere.chapitres) {
+                    for (const chap of matiere.chapitres) {
+                        const echeancesMap = new Map<number, any>();
+                        if (chap.echeances) {
+                            for (const ech of chap.echeances) {
+                                echeancesMap.set(ech.id, ech);
+                            }
+                        }
+                        chapitreMap.set(chap.id, {
+                            chapitre: chap,
+                            echeancesMap,
+                            allEcheances: chap.echeances || []
+                        });
+                    }
+                }
+            }
+        }
 
-  const rattrapages = [];
-  for (const note of notesList) {
-    if (note.isIgnored) continue;  
-    
-    const chap = await db.query.chapitres.findFirst({
-      where: eq(chapitres.id, Number(note.chapitreId)),
-    });
+        const notesList = await db.query.individualNotes.findMany({
+            where: eq(individualNotes.clerkId, userId ?? ""),
+        });
 
-    // --- AJOUT : Si le chapitre n'existe pas ou n'appartient pas au dossier actif, on l'ignore ---
-    if (!chap) continue;
-    
-    // On va vérifier si la matière de ce chapitre appartient bien à notre dossier actif
-    const matiereAssociee = await db.query.matieres.findFirst({
-      where: and(
-        eq(matieres.id, Number(chap.matiereId)),
-        eq(matieres.folderId, numericFolderId)
-      ),
-    });
+        const rattrapages = [];
+        for (const note of notesList) {
+            if (note.isIgnored) continue;  
+            
+            const chapIdNum = Number(note.chapitreId);
+            const chapData = chapitreMap.get(chapIdNum);
 
-    if (!matiereAssociee) continue; // Si la matière n'est pas dans ce dossier, on passe au suivant !
-    // ------------------------------------------------------------------------------------------
+            // Si le chapitre n'est pas dans ce dossier, on ignore
+            if (!chapData) continue;
 
-    // 1. Déclaration de 'ech' tout en haut de la boucle...
-    const ech = note.echeanceId ? await db.query.echeances.findFirst({
-      where: eq(echeances.id, Number(note.echeanceId)),
-    }) : null;
+            const chap = chapData.chapitre;
 
+            const ech = note.echeanceId ? chapData.echeancesMap.get(Number(note.echeanceId)) : null;
 
-    // 2. Filtre pour savoir si l'échéance de rattrapage ("R") a déjà été créée
-    let dejaReintegre = false;
-    if (ech && ech.stepName) {
-      const stepRecherche = ech.stepName.includes("R") ? ech.stepName : `${ech.stepName} R`;
-      const rExiste = await db.query.echeances.findFirst({
-        where: and(
-          eq(echeances.chapitreId, Number(note.chapitreId)),
-          eq(echeances.stepName, stepRecherche)
-        )
-      });
-      if (rExiste) {
-        dejaReintegre = true;
-      }
-    }
+            let dejaReintegre = false;
+            if (ech && ech.stepName) {
+                const stepRecherche = ech.stepName.includes("R") ? ech.stepName : `${ech.stepName} R`;
+                const rExiste = chapData.allEcheances.some((e: any) => e.stepName === stepRecherche);
+                if (rExiste) {
+                    dejaReintegre = true;
+                }
+            }
 
-    // 3. Si le "R" existe déjà, on saute cette ligne pour l'effacer du tableau de rattrapage
-    if (dejaReintegre) {
-      continue;
-    }
+            if (dejaReintegre) {
+                continue;
+            }
 
-	
+            const moyenneNum = Number(note.moyenne || 0);
+            const indexCadencier = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
 
-    // La moyenne de la note individuelle
-    const moyenneNum = Number(note.moyenne || 0);
-   
-    // Récupération du J via l'échéance liée (ech est parfaitement défini ici)
-    const indexCadencier = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
+            let seuilBasActif = null;
+            if (seuilBasTable[indexCadencier] !== undefined) {
+                seuilBasActif = Number(seuilBasTable[indexCadencier]);
+            }
 
-    let seuilBasActif = null;
-    if (seuilBasTable[indexCadencier] !== undefined) {
-      seuilBasActif = Number(seuilBasTable[indexCadencier]);
-    }
+            if (seuilBasActif !== null && moyenneNum > 0 && moyenneNum < seuilBasActif) {
+                rattrapages.push({
+                    id: note.id,
+                    echeanceId: note.echeanceId,
+                    chapitreId: note.chapitreId,
+                    moyenne: note.moyenne,
+                    titre: chap?.titre || "Chapitre inconnu",
+                    cycleDay: indexCadencier,
+                    date: ech?.date || null,
+                    stepName: ech?.stepName || null,
+                });
+            }
+        }
 
-    // Comparaison de la moyenne de la note avec le seuil bas du J correspondant
-    if (seuilBasActif !== null && moyenneNum > 0 && moyenneNum < seuilBasActif) {
-      rattrapages.push({
-        id: note.id,
-        echeanceId: note.echeanceId,
-        chapitreId: note.chapitreId,
-        moyenne: note.moyenne,
-        titre: chap?.titre || "Chapitre inconnu",
-        cycleDay: indexCadencier,
-        date: ech?.date || null,
-        stepName: ech?.stepName || null,
-      });
-    }
-  }
-
-  return {
+        return {
             folder: folderData,
-			folderList: allFolders,
+            folderList: allFolders,
             rattrapages: rattrapages,
         };
     } catch (error) {
