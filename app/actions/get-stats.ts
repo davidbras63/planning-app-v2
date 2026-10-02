@@ -16,13 +16,41 @@ function sortEcheances(a: string, b: string) {
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
+// Séquence standard des J par défaut si aucune échéance n'est liée
+const DEFAULT_J_SEQUENCE = ['J0', 'J1', 'J2', 'J3', 'J7', 'J14', 'J21', 'J28', 'J45', 'J60', 'J90'];
+
 /**
- * 1. Données graphiques complètes pour UN CHAPITRE 
- * (Récupère tout : planning + entraînement direct où echeanceId est NULL)
+ * Fonction ultra-robuste pour compter les QCM peu importe le format du contenu (JSON, virgules, espaces)
+ */
+function parseQcmCount(content: string | null): number {
+  if (!content) return 0;
+  const trimmed = content.trim();
+  if (!trimmed) return 0;
+
+  // 1. Si c'est un tableau ou un objet JSON stocké en string
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.length;
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return Object.keys(parsed).length;
+    }
+  } catch (e) {
+    // Ce n'est pas du JSON, on continue vers le parsing textuel
+  }
+
+  // 2. Sinon, découpage par espaces, virgules ou retours à la ligne
+  const items = trimmed.split(/[\s,]+/).filter(Boolean);
+  return items.length;
+}
+
+/**
+ * Données graphiques complètes pour UN CHAPITRE 
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   try {
-    // A. Récupérer les échéances associées à ce chapitre (echeances.chapitreId est un integer)
+    // A. Récupérer les échéances associées à ce chapitre
     const listEcheances = await db
       .select({
         id: echeances.id,
@@ -31,13 +59,14 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       .from(echeances)
       .where(eq(echeances.chapitreId, chapitreId));
 
-    // Map pour faire correspondre l'ID de l'échéance (converti en string) à son stepName
     const echeanceMap = new Map<string, string>();
     listEcheances.forEach(e => {
-      echeanceMap.set(e.id.toString(), e.stepName || 'J0');
+      if (e.stepName) {
+        echeanceMap.set(e.id.toString(), e.stepName);
+      }
     });
 
-    // B. Récupérer TOUTES les notes du chapitre (individualNotes.chapitreId est un text)
+    // B. Récupération robuste de TOUTES les notes du chapitre
     const rawNotes = await db
       .select({
         moyenne: individualNotes.moyenne,
@@ -48,7 +77,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       .from(individualNotes)
       .where(
         and(
-          eq(individualNotes.chapitreId, chapitreId.toString()),
+          sql`CAST(TRIM(${individualNotes.chapitreId}) AS TEXT) = ${chapitreId.toString().trim()}`,
           eq(individualNotes.clerkId, clerkId)
         )
       )
@@ -61,21 +90,24 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
+    let unlinkedIndex = 0;
 
     rawNotes.forEach(row => {
-      // 1. Comptage des QCM (chaque élément séparé par des espaces dans content)
-      if (row.content) {
-        const notes = row.content.trim().split(/\s+/).filter(Boolean);
-        totalQcm += notes.length;
-      }
+      // 1. Comptage blindé des QCM
+      totalQcm += parseQcmCount(row.content);
 
-      // 2. Détermination de l'étape (step)
-      let step = 'Entraînement';
+      // 2. Détermination ou calcul du J pour le positionnement graphique
+      let step = '';
       if (row.echeanceId !== null && row.echeanceId !== undefined && row.echeanceId !== '') {
         const foundStep = echeanceMap.get(row.echeanceId.toString());
         if (foundStep) {
           step = foundStep;
         }
+      }
+      
+      if (!step) {
+        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
+        unlinkedIndex++;
       }
 
       // 3. Traitement de la moyenne
@@ -125,89 +157,5 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
   } catch (error) {
     console.error("Erreur graph chapitre :", error);
     return { success: false, chartData: [], chapitreAverage: 0, totalQcm: 0 };
-  }
-}
-
-/**
- * 2. Données graphiques complètes pour TOUTE UNE MATIÈRE
- */
-export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
-  try {
-    // Récupération via jointures propres en castant le chapitreId text en integer pour matcher chapitres.id
-    const rawData = await db
-      .select({
-        stepName: echeances.stepName,
-        moyenne: individualNotes.moyenne,
-        content: individualNotes.content,
-        echeanceId: individualNotes.echeanceId,
-      })
-      .from(individualNotes)
-      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
-      .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
-      .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
-      .where(
-        and(
-          eq(matieres.id, matiereId),
-          eq(matieres.folderId, folderId),
-          eq(individualNotes.clerkId, clerkId)
-        )
-      );
-
-    let allNotes: number[] = [];
-    let totalQcm = 0;
-    const statsByStep: Record<string, { sum: number; count: number }> = {};
-
-    rawData.forEach(row => {
-      if (row.content) {
-        const notes = row.content.trim().split(/\s+/).filter(Boolean);
-        totalQcm += notes.length;
-      }
-
-      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
-        const val = parseFloat(row.moyenne);
-        if (!isNaN(val)) {
-          allNotes.push(val);
-          const step = (row.echeanceId !== null && row.stepName) ? row.stepName : 'Entraînement';
-          if (!statsByStep[step]) {
-            statsByStep[step] = { sum: 0, count: 0 };
-          }
-          statsByStep[step].sum += val;
-          statsByStep[step].count += 1;
-        }
-      }
-    });
-
-    const matiereAverage = allNotes.length > 0 
-      ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
-      : 0;
-
-    let runningSum = 0;
-    let runningCount = 0;
-    const sortedSteps = Object.keys(statsByStep).sort(sortEcheances);
-
-    const chartData = sortedSteps.map(step => {
-      const dataStep = statsByStep[step];
-      const stepAvg = dataStep.count > 0 ? dataStep.sum / dataStep.count : 0;
-      
-      runningSum += dataStep.sum;
-      runningCount += dataStep.count;
-      const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
-
-      return {
-        step,
-        moyenne: Number(stepAvg.toFixed(2)),
-        average: Number(runningAverage.toFixed(2))
-      };
-    });
-
-    return {
-      success: true,
-      chartData,
-      matiereAverage,
-      totalQcm,
-    };
-  } catch (error) {
-    console.error("Erreur graph matière :", error);
-    return { success: false, chartData: [], matiereAverage: 0, totalQcm: 0 };
   }
 }
