@@ -82,6 +82,7 @@ export async function getFolderAnalysesData(folderId: number | string) {
         return {
           date: formattedDate,
           moyenne: Number(avgVal.toFixed(2)),
+		  average: matiereAverage,
           qcmCount,
         };
       });
