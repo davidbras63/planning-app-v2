@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
-import { eq, and, sql, asc } from 'drizzle-orm';
+import { eq, and, sql, asc, or, isNull } from 'drizzle-orm';
 
 function sortEcheances(a: string, b: string) {
   const order: Record<string, number> = {
@@ -15,6 +15,8 @@ function sortEcheances(a: string, b: string) {
   return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
+const DEFAULT_J_SEQUENCE = ['J0', 'J1', 'J2', 'J3', 'J7', 'J14', 'J21', 'J28', 'J45', 'J60', 'J90'];
+
 function isTrainingOrUnlinked(echeanceId: unknown): boolean {
   if (echeanceId === null || echeanceId === undefined) return true;
   const str = String(echeanceId).trim().toLowerCase();
@@ -22,7 +24,7 @@ function isTrainingOrUnlinked(echeanceId: unknown): boolean {
 }
 
 /**
- * Données graphiques complètes pour UN CHAPITRE
+ * Données graphiques complètes pour UN CHAPITRE (Incluant le training)
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   console.log(`[DEBUG CHAPITRE] Début -> chapitreId=${chapitreId}, clerkId=${clerkId}`);
@@ -31,23 +33,18 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       .select({
         id: echeances.id,
         stepName: echeances.stepName,
-        dueDate: echeances.dueDate,
       })
       .from(echeances)
       .where(eq(echeances.chapitreId, chapitreId));
 
     const echeanceMap = new Map<string, string>();
-    let j0Date: Date | null = null;
-
     listEcheances.forEach(e => {
-      if (e.id) {
+      if (e.stepName) {
         echeanceMap.set(e.id.toString(), e.stepName);
-      }
-      if (e.stepName === 'J0' && e.dueDate) {
-        j0Date = new Date(e.dueDate);
       }
     });
 
+    // Récupération large incluant le chapitre OU les notes orphelines/training liées à ce chapitre
     const rawNotes = await db
       .select({
         id: individualNotes.id,
@@ -66,9 +63,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       )
       .orderBy(asc(individualNotes.createdAt));
 
-    if (!j0Date && rawNotes.length > 0) {
-      j0Date = new Date(rawNotes[0].createdAt);
-    }
+    console.log(`[DEBUG CHAPITRE] Notes brutes totales (avec training) : ${rawNotes.length}`, JSON.stringify(rawNotes, null, 2));
 
     if (!rawNotes || rawNotes.length === 0) {
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
@@ -77,9 +72,11 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
+    let unlinkedIndex = 0;
 
-    rawNotes.forEach((row) => {
+    rawNotes.forEach((row, index) => {
       const isTraining = isTrainingOrUnlinked(row.echeanceId);
+      console.log(`[ROW ${index}] ID=${row.id} | echeanceId=${row.echeanceId} (Training/Unlinked: ${isTraining}) | moyenne=${row.moyenne}`);
 
       if (row.content) {
         const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
@@ -96,22 +93,11 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         if (foundStep) step = foundStep;
       }
 
-      // Si c'est du training, on calcule le J par rapport à l'écart de date avec J0
+      // Si c'est du training ou non lié, on lui assigne un J séquentiel pour qu'il apparaisse dans le graphe
       if (!step) {
-        if (j0Date && row.createdAt) {
-          const diffDays = Math.round((new Date(row.createdAt).getTime() - new Date(j0Date).getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (diffDays <= 0) step = 'J0';
-          else if (diffDays === 1) step = 'J1';
-          else if (diffDays === 2) step = 'J2';
-          else if (diffDays <= 4) step = 'J3';
-          else if (diffDays <= 10) step = 'J7';
-          else if (diffDays <= 18) step = 'J14';
-          else if (diffDays <= 25) step = 'J21';
-          else step = `J${diffDays}`;
-        } else {
-          step = 'J0';
-        }
+        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
+        console.log(`-> Attribué au flux Training/Orphelin -> Step: ${step}`);
+        unlinkedIndex++;
       }
 
       allNotes.push(val);
@@ -158,19 +144,18 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * Données graphiques complètes pour TOUTE UNE MATIÈRE
+ * Données graphiques complètes pour TOUTE UNE MATIÈRE (Sécurité LeftJoin pour le training)
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
   console.log(`[DEBUG MATIERE] Début -> matiereId=${matiereId}, folderId=${folderId}, clerkId=${clerkId}`);
   try {
+    // Utilisation de LEFT JOIN sur chapitres/echéances pour ne jamais perdre les notes de training rattachées
     const rawData = await db
       .select({
         stepName: echeances.stepName,
-        dueDate: echeances.dueDate,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
         echeanceId: individualNotes.echeanceId,
-        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
       .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
@@ -184,9 +169,12 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         )
       );
 
+    console.log(`[DEBUG MATIERE] rawData complet avec training :`, rawData.length);
+
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
+    let unlinkedIndex = 0;
 
     rawData.forEach((row) => {
       if (row.content) {
@@ -207,8 +195,8 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
       }
 
       if (!step) {
-        // En l'absence d'échéance liée, on positionne par défaut sur J0 ou une estimation standard
-        step = 'J0';
+        step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
+        unlinkedIndex++;
       }
 
       if (!statsByStep[step]) {
