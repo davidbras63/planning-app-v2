@@ -1,22 +1,19 @@
 'use server';
 
 import { db } from '@/db';
-import { subjectAnalyses } from '@/db/schema'; // Vérifie que ton import de schéma pointe bien vers ta table
+import { subjectAnalyses } from '@/db/schema';
 import { eq, and, asc } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server'; // ou ton helper d'auth serveur
 
-export async function getSubjectAnalyseGraphData(
-  matiereId: number,
-  folderId: number,
-  clerkId: string
-) {
-  console.log(
-    `[ACTION] getSubjectAnalyseGraphData -> matiereId=${matiereId}, folderId=${folderId}, clerkId=${clerkId}`
-  );
-
+export async function getFolderAnalysesData(folderId: number) {
   try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) return { success: false, data: {} };
+
     const rawData = await db
       .select({
         id: subjectAnalyses.id,
+        matiereId: subjectAnalyses.matiereId,
         notes: subjectAnalyses.notes,
         average: subjectAnalyses.average,
         revisionDate: subjectAnalyses.revisionDate,
@@ -25,77 +22,67 @@ export async function getSubjectAnalyseGraphData(
       .from(subjectAnalyses)
       .where(
         and(
-          eq(subjectAnalyses.matiereId, matiereId),
           eq(subjectAnalyses.folderId, folderId),
           eq(subjectAnalyses.clerkId, clerkId)
         )
       )
-      .orderBy(asc(subjectAnalyses.revisionDate)); // Tri chronologique pour mettre les dates en abscisse
+      .orderBy(asc(subjectAnalyses.revisionDate));
 
-    if (!rawData || rawData.length === 0) {
-      return { success: true, chartData: [], matiereAverage: 0, totalQcm: 0 };
-    }
+    // On groupe les résultats par matiereId dans un objet
+    const groupedData: Record<string, { chartData: any[]; average: number; totalQcm: number }> = {};
 
-    let allAverages: number[] = [];
-    let totalQcm = 0;
+    // Regrouper par matière
+    const mapByMatiere = rawData.reduce((acc: any, row) => {
+      if (!acc[row.matiereId]) acc[row.matiereId] = [];
+      acc[row.matiereId].push(row);
+      return acc;
+    }, {});
 
-    const chartData = rawData.map((row) => {
-      // Calcul du nombre de QCM à partir de la colonne notes
-      let qcmCount = 0;
-      if (row.notes) {
-        if (Array.isArray(row.notes)) {
-          qcmCount = row.notes.length;
-        } else if (typeof row.notes === 'string') {
-          const parsed = row.notes
-            .replace(/[\[\]]/g, '')
-            .split(',')
-            .filter(Boolean);
-          qcmCount = parsed.length;
+    for (const [matiereId, rows] of Object.entries(mapByMatiere) as [string, any[]][]) {
+      let allAverages: number[] = [];
+      let totalQcm = 0;
+
+      const chartData = rows.map((row) => {
+        let qcmCount = 0;
+        if (row.notes) {
+          if (Array.isArray(row.notes)) {
+            qcmCount = row.notes.length;
+          } else if (typeof row.notes === 'string') {
+            const parsed = row.notes.replace(/[\[\]]/g, '').split(',').filter(Boolean);
+            qcmCount = parsed.length;
+          }
         }
-      }
-      totalQcm += qcmCount;
+        totalQcm += qcmCount;
 
-      const avgVal =
-        row.average !== null && row.average !== undefined
-          ? parseFloat(String(row.average))
-          : 0;
-      if (!isNaN(avgVal)) {
-        allAverages.push(avgVal);
-      }
+        const avgVal = row.average !== null && row.average !== undefined ? parseFloat(String(row.average)) : 0;
+        if (!isNaN(avgVal)) allAverages.push(avgVal);
 
-      // Formatage de la date pour l'axe des abscisses (ex: "02/10")
-      const rawDate = row.revisionDate || row.createdAt;
-      const formattedDate = rawDate
-        ? new Date(rawDate).toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-          })
-        : '';
+        const rawDate = row.revisionDate || row.createdAt;
+        const formattedDate = rawDate
+          ? new Date(rawDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+          : '';
 
-      return {
-        date: formattedDate,
-        moyenne: Number(avgVal.toFixed(2)),
-        qcmCount,
-      };
-    });
+        return {
+          date: formattedDate,
+          moyenne: Number(avgVal.toFixed(2)),
+          qcmCount,
+        };
+      });
 
-    const matiereAverage =
-      allAverages.length > 0
-        ? Number(
-            (
-              allAverages.reduce((a, b) => a + b, 0) / allAverages.length
-            ).toFixed(2)
-          )
+      const matiereAverage = allAverages.length > 0
+        ? Number((allAverages.reduce((a, b) => a + b, 0) / allAverages.length).toFixed(2))
         : 0;
 
-    return {
-      success: true,
-      chartData,
-      matiereAverage,
-      totalQcm,
-    };
+      groupedData[matiereId] = {
+        chartData,
+        average: matiereAverage,
+        totalQcm,
+      };
+    }
+
+    return { success: true, data: groupedData };
   } catch (error) {
-    console.error('Erreur dans getSubjectAnalyseGraphData :', error);
-    return { success: false, chartData: [], matiereAverage: 0, totalQcm: 0 };
+    console.error('Erreur getFolderAnalysesData :', error);
+    return { success: false, data: {} };
   }
 }

@@ -5,14 +5,13 @@ import { useParams } from "next/navigation";
 import { Container, Title, Select, Card, Text, Stack, Box, Center, SimpleGrid, Modal, Group, Button } from "@mantine/core";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDisclosure } from "@mantine/hooks";
-import { useUser } from "@clerk/nextjs";
 
 interface AnalyticsViewProps {
   matieresList: { value: string; label: string; folderId: number }[];
   chapitresList: { value: string; label: string; matiereId: number }[];
   getMatiereData: (matiereId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
   getChapitreData: (chapitreId: number) => Promise<{ chartData: any[]; average: number; totalQcm: number }>;
-  getSubjectAnalyseData?: (matiereId: number, folderId: number, clerkId: string) => Promise<{ chartData: any[]; matiereAverage: number; totalQcm: number }>;
+  getFolderAnalysesData?: (folderId: number) => Promise<{ success: boolean; data: Record<string, any> }>;
 }
 
 const sortChartSteps = (data: any[]) => {
@@ -20,20 +19,13 @@ const sortChartSteps = (data: any[]) => {
   return [...data].sort((a, b) => {
     const stepA = String(a.step || "");
     const stepB = String(b.step || "");
-
     const numA = parseInt(stepA.replace(/\D/g, "")) || 0;
     const numB = parseInt(stepB.replace(/\D/g, "")) || 0;
-
-    if (numA !== numB) {
-      return numA - numB;
-    }
-
+    if (numA !== numB) return numA - numB;
     const hasRA = stepA.includes("R");
     const hasRB = stepB.includes("R");
-
     if (!hasRA && hasRB) return -1;
     if (hasRA && !hasRB) return 1;
-
     return 0;
   });
 };
@@ -43,12 +35,10 @@ export default function AnalyticsView({
   chapitresList = [],
   getMatiereData,
   getChapitreData,
-  getSubjectAnalyseData,
+  getFolderAnalysesData,
 }: AnalyticsViewProps) {
   const params = useParams();
   const folderId = Number(params?.folderId);
-  const { user } = useUser();
-  const clerkId = user?.id;
 
   const folderMatieres = matieresList.filter((m) => m.folderId === folderId);
 
@@ -57,53 +47,38 @@ export default function AnalyticsView({
   );
 
   const [analysisMode, setAnalysisMode] = useState<"standard" | "anal">("standard");
-
-  // Mode Standard : Données de la matière sélectionnée
   const [matiereInfo, setMatiereInfo] = useState<{ chartData: any[]; average: number; totalQcm: number }>({
     chartData: [],
     average: 0,
     totalQcm: 0,
   });
 
-  // Mode Anal : Données de toutes les matières stockées par ID
   const [subjectsAnalysesData, setSubjectsAnalysesData] = useState<Record<string, any>>({});
-
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
   const [opened, { open, close }] = useDisclosure(false);
   const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
-  // 1. Récupération Mode Standard
+  // Standard mode fetch
   useEffect(() => {
     if (analysisMode === "standard" && selectedMatiere) {
       getMatiereData(Number(selectedMatiere)).then((res) => {
         if (res) setMatiereInfo(res);
       });
     }
-  }, [selectedMatiere, analysisMode]);
+  }, [selectedMatiere, analysisMode, getMatiereData]);
 
-  // 1b. Récupération Mode Anal (charge toutes les matières du dossier en même temps avec le clerkId)
+  // Mode Anal : UNE SEULE REQUÊTE POUR TOUT LE DOSSIER
   useEffect(() => {
-    if (analysisMode === "anal" && getSubjectAnalyseData && clerkId) {
-      setSubjectsAnalysesData({});
-      folderMatieres.forEach((mat) => {
-        getSubjectAnalyseData(Number(mat.value), folderId, clerkId).then((res: any) => {
-          if (res && res.success) {
-            setSubjectsAnalysesData((prev) => ({
-              ...prev,
-              [mat.value]: {
-                chartData: res.chartData,
-                average: res.matiereAverage,
-                totalQcm: res.totalQcm,
-              },
-            }));
-          }
-        });
+    if (analysisMode === "anal" && getFolderAnalysesData) {
+      getFolderAnalysesData(folderId).then((res) => {
+        if (res && res.success) {
+          setSubjectsAnalysesData(res.data);
+        }
       });
     }
-  }, [analysisMode, folderId, folderMatieres, clerkId, getSubjectAnalyseData]);
+  }, [analysisMode, folderId, getFolderAnalysesData]);
 
-  // 2. Récupération des données Chapitres
   const filteredChapitres = chapitresList.filter(
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
@@ -117,7 +92,7 @@ export default function AnalyticsView({
         }
       });
     });
-  }, [selectedMatiere, chapitresList.length]);
+  }, [selectedMatiere, chapitresList.length, getChapitreData]);
 
   const handleCardClick = (chap: { value: string; label: string }, chapInfo: any) => {
     setActiveChapitreModal({
@@ -135,7 +110,6 @@ export default function AnalyticsView({
         Tableau de Suivi & Statistiques
       </Title>
 
-      {/* --- SECTION 1 : VUE MATIÈRE (STANDARD OU ANAL GLOBAL) --- */}
       <Box mb={40}>
         <Group justify="space-between" align="center" mb="16px">
           <Title order={3} style={{ color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
@@ -162,7 +136,6 @@ export default function AnalyticsView({
           </Group>
         </Group>
 
-        {/* Si Mode Standard : Select + Grande carte unique */}
         {analysisMode === "standard" ? (
           <>
             <Select
@@ -216,7 +189,6 @@ export default function AnalyticsView({
             </Card>
           </>
         ) : (
-          /* Si Mode Anal : Grille de toutes les matières (style chapitres) */
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
             {folderMatieres.map((mat) => {
               const matInfo = subjectsAnalysesData[mat.value] || { chartData: [], average: 0, totalQcm: 0 };
@@ -268,7 +240,7 @@ export default function AnalyticsView({
         )}
       </Box>
 
-      {/* --- SECTION 2 : VUE CHAPITRES (Uniquement en mode standard ou filtré) --- */}
+      {/* --- SECTION 2 : VUE CHAPITRES --- */}
       {analysisMode === "standard" && (
         <Box>
           <Title order={3} style={{ color: '#38bdf8', margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.25rem' }}>
