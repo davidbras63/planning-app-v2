@@ -191,7 +191,11 @@ export default function AnalyticsView({
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
             {folderMatieres.map((mat) => {
-              const matInfo = subjectsAnalysesData[mat.value] || { chartData: [], average: 0, totalQcm: 0 };
+			  // On cherche la clé en string ET en number pour être sûr de tomber dessus
+			  const matInfo = subjectsAnalysesData[mat.value] 
+				|| subjectsAnalysesData[String(mat.value)] 
+				|| subjectsAnalysesData[Number(mat.value)] 
+				|| { chartData: [], average: 0, totalQcm: 0 };
 
               return (
                 <Card
