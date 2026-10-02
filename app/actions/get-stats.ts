@@ -3,7 +3,6 @@
 import { db } from '@/db';
 import { echeances, individualNotes, chapitres, matieres, subjectAnnals } from '@/db/schema';
 import { eq, and, sql, isNull, or } from 'drizzle-orm';
-import { auth } from '@clerk/nextjs/server';
 
 // Tri dynamique et universel pour n'importe quel J (J3, J7, J7R, J9, J14, J30, J60...)
 function sortEcheances(a: string, b: string) {
@@ -102,15 +101,6 @@ export async function getMatiereQcmCount(matiereId: number, clerkId: string, isD
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string, isDirectTraining: boolean = false) {
   try {
-    // Récupérer d'abord la date de création du chapitre pour un calcul propre du J en entraînement direct
-    const chapRecord = await db
-      .select({ createdAt: chapitres.createdAt })
-      .from(chapitres)
-      .where(eq(chapitres.id, Number(chapitreId)))
-      .limit(1);
-
-    const chapCreatedAt = chapRecord.length > 0 && chapRecord[0].createdAt ? new Date(chapRecord[0].createdAt).getTime() : null;
-
     const rawData = await db
       .select({
         stepName: echeances.stepName,
@@ -131,6 +121,9 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         )
       );
 
+    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
+    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
+
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
@@ -148,9 +141,9 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
           
           let step: string | null = null;
           if (row.isDirectTraining) {
-            if (chapCreatedAt && row.createdAt) {
+            if (j0Date && row.createdAt) {
               const noteTime = new Date(row.createdAt).getTime();
-              const diffDays = Math.round((noteTime - chapCreatedAt) / (1000 * 60 * 60 * 24));
+              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
               step = `J${Math.max(0, diffDays)}`;
             } else {
               step = 'J0';
@@ -216,7 +209,6 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         content: individualNotes.content,
         isDirectTraining: individualNotes.isDirectTraining,
         createdAt: individualNotes.createdAt,
-        chapitreCreatedAt: chapitres.createdAt,
       })
       .from(individualNotes)
       .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
@@ -232,6 +224,9 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
             : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
         )
       );
+
+    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
+    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
 
     let allNotes: number[] = [];
     let totalQcm = 0;
@@ -250,10 +245,9 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
           
           let step: string | null = null;
           if (row.isDirectTraining) {
-            if (row.chapitreCreatedAt && row.createdAt) {
-              const chapTime = new Date(row.chapitreCreatedAt).getTime();
+            if (j0Date && row.createdAt) {
               const noteTime = new Date(row.createdAt).getTime();
-              const diffDays = Math.round((noteTime - chapTime) / (1000 * 60 * 60 * 24));
+              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
               step = `J${Math.max(0, diffDays)}`;
             } else {
               step = 'J0';
@@ -309,10 +303,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
 /**
  * 6. Données graphiques et analytiques pour la vue "anal" (basée sur subjectAnnals)
  */
-export async function getSubjectAnalGraphData(matiereId: number) {
-  const { userId } = await auth();
-  if (!userId) return { success: false, chartData: [], subjectAverage: 0, totalQcm: 0 };
-
+export async function getSubjectAnalGraphData(matiereId: number, clerkId: string) {
   try {
     const rawData = await db
       .select({
@@ -324,7 +315,7 @@ export async function getSubjectAnalGraphData(matiereId: number) {
       .where(
         and(
           eq(subjectAnnals.matiereId, Number(matiereId)),
-          eq(subjectAnnals.clerkId, userId)
+          eq(subjectAnnals.clerkId, clerkId)
         )
       )
       .orderBy(subjectAnnals.createdAt);
