@@ -86,29 +86,20 @@ export async function getMatiereQcmCount(matiereId: number, clerkId: string) {
  */
 export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   try {
-    // Étape A : On récupère toutes les échéances de ce chapitre pour faire le mapping proprement en JS
-    const chapitreEcheances = await db
+    // Utilisation d'un leftJoin pour récupérer à la fois les notes liées à une échéance et les entraînements directs (echeanceId NULL)
+    const rawData = await db
       .select({
-        id: echeances.id,
         stepName: echeances.stepName,
-      })
-      .from(echeances)
-      .where(eq(echeances.chapitreId, chapitreId));
-
-    const echeanceMap = new Map<string, string>();
-    chapitreEcheances.forEach(e => {
-      echeanceMap.set(e.id.toString(), e.stepName);
-    });
-
-    // Étape B : On récupère TOUTES les notes du chapitre directes depuis individualNotes (sans aucune jointure SQL de merde)
-    const rawNotes = await db
-      .select({
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
         echeanceId: individualNotes.echeanceId,
         createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
+      .leftJoin(
+        echeances,
+        sql`CAST(${individualNotes.echeanceId} AS TEXT) = CAST(${echeances.id} AS TEXT)`
+      )
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
@@ -117,41 +108,45 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       )
       .orderBy(asc(individualNotes.createdAt));
 
-    if (!rawNotes || rawNotes.length === 0) {
+    if (!rawData || rawData.length === 0) {
       return { success: true, chartData: [], chapitreAverage: 0, totalQcm: 0 };
     }
 
-    // Date de référence (le premier J0 ou la première note) pour le calcul dynamique du J des entraînements sans echeanceId
-    const firstNoteWithEcheance = rawNotes.find(r => r.echeanceId && echeanceMap.get(r.echeanceId) === 'J0');
-    const baseTime = firstNoteWithEcheance?.createdAt 
-      ? new Date(firstNoteWithEcheance.createdAt).getTime() 
-      : (rawNotes[0]?.createdAt ? new Date(rawNotes[0].createdAt).getTime() : Date.now());
+    // Recherche de la date de référence (le J0 initial) pour caler le calcul dynamique des J des entraînements directs
+    const j0Row = rawData.find(row => row.stepName && row.stepName.toUpperCase() === 'J0');
+    const baseTime = j0Row?.createdAt 
+      ? new Date(j0Row.createdAt).getTime() 
+      : (rawData[0]?.createdAt ? new Date(rawData[0].createdAt).getTime() : Date.now());
 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
 
-    rawNotes.forEach(row => {
-      // Cumul QCM pour absolument toutes les notes
+    rawData.forEach(row => {
+      // 1. Cumul du QCM pour absolument toutes les notes (échéances + entraînement direct)
       if (row.content) {
         const notes = row.content.trim().split(/\s+/).filter(Boolean);
         totalQcm += notes.length;
       }
 
-      if (row.moyenne) {
+      // 2. Détermination de l'étape J (via stepName de l'échéance ou calcul dynamique si absent)
+      let step = row.stepName;
+      if (!step) {
+        if (row.createdAt) {
+          const recordTime = new Date(row.createdAt).getTime();
+          const diffTime = recordTime - baseTime;
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          step = `J${Math.max(0, diffDays)}`;
+        } else {
+          step = 'J0';
+        }
+      }
+
+      // 3. Traitement de la moyenne pour le graphique
+      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-
-          let step = 'J0';
-          if (row.echeanceId) {
-            step = echeanceMap.get(row.echeanceId) || 'Inconnu';
-          } else if (row.createdAt) {
-            // Entraînement direct : calcul dynamique du J par rapport à la base
-            const recordTime = new Date(row.createdAt).getTime();
-            const diffDays = Math.round((recordTime - baseTime) / (1000 * 60 * 60 * 24));
-            step = `J${Math.max(0, diffDays)}`;
-          }
 
           if (!statsByStep[step]) {
             statsByStep[step] = { sum: 0, count: 0 };
@@ -172,10 +167,11 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     const sortedSteps = Object.keys(statsByStep).sort(sortEcheances);
     
     const chartData = sortedSteps.map(step => {
-      const stepAvg = statsByStep[step].sum / statsByStep[step].count;
+      const stepData = statsByStep[step];
+      const stepAvg = stepData.count > 0 ? stepData.sum / stepData.count : 0;
       
-      runningSum += statsByStep[step].sum;
-      runningCount += statsByStep[step].count;
+      runningSum += stepData.sum;
+      runningCount += stepData.count;
       const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
 
       return {
@@ -230,7 +226,7 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         totalQcm += notes.length;
       }
 
-      if (row.moyenne) {
+      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
@@ -253,10 +249,11 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
     const sortedSteps = Object.keys(statsByStep).sort(sortEcheances);
 
     const chartData = sortedSteps.map(step => {
-      const stepAvg = statsByStep[step].sum / statsByStep[step].count;
+      const dataStep = statsByStep[step];
+      const stepAvg = dataStep.count > 0 ? dataStep.sum / dataStep.count : 0;
       
-      runningSum += statsByStep[step].sum;
-      runningCount += statsByStep[step].count;
+      runningSum += dataStep.sum;
+      runningCount += dataStep.count;
       const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
 
       return {
