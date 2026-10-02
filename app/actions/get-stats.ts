@@ -1,34 +1,22 @@
 'use server';
 
 import { db } from '@/db';
-import { echeances, individualNotes, chapitres, matieres, subjectAnnals } from '@/db/schema';
-import { eq, and, sql, isNull, or } from 'drizzle-orm';
+import { echeances, individualNotes, chapitres, matieres } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
-// Tri dynamique et universel pour n'importe quel J (J3, J7, J7R, J9, J14, J30, J60...)
+// 1. Tri personnalisé pour respecter l'ordre des J et des rattrapages (J3 -> J3R -> J7...)
 function sortEcheances(a: string, b: string) {
-  const stepA = String(a || "");
-  const stepB = String(b || "");
-
-  const numA = parseInt(stepA.replace(/\D/g, "")) || 0;
-  const numB = parseInt(stepB.replace(/\D/g, "")) || 0;
-
-  if (numA !== numB) {
-    return numA - numB;
-  }
-
-  const hasRA = stepA.includes("R");
-  const hasRB = stepB.includes("R");
-
-  if (!hasRA && hasRB) return -1;
-  if (hasRA && !hasRB) return 1;
-
-  return 0;
+  const order: Record<string, number> = {
+    'J0': 0, 'J1': 1, 'J2': 2, 'J3': 3, 'J3R': 4,
+    'J7': 5, 'J7R': 6, 'J14': 7, 'J14R': 8, 'J21': 9, 'J21R': 10
+  };
+  return (order[a] ?? 99) - (order[b] ?? 99);
 }
 
 /**
  * 2. Compte le nombre total de notes (QCM) pour un chapitre
  */
-export async function getChapitreQcmCount(chapitreId: number, clerkId: string, isDirectTraining: boolean = false) {
+export async function getChapitreQcmCount(chapitreId: number, clerkId: string) {
   try {
     const rows = await db
       .select({
@@ -38,10 +26,7 @@ export async function getChapitreQcmCount(chapitreId: number, clerkId: string, i
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
-          eq(individualNotes.clerkId, clerkId),
-          isDirectTraining 
-            ? eq(individualNotes.isDirectTraining, true) 
-            : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
+          eq(individualNotes.clerkId, clerkId)
         )
       );
 
@@ -63,7 +48,7 @@ export async function getChapitreQcmCount(chapitreId: number, clerkId: string, i
 /**
  * 3. Compte le nombre total de notes (QCM) pour toute une matière
  */
-export async function getMatiereQcmCount(matiereId: number, clerkId: string, isDirectTraining: boolean = false) {
+export async function getMatiereQcmCount(matiereId: number, clerkId: string) {
   try {
     const rows = await db
       .select({
@@ -73,11 +58,8 @@ export async function getMatiereQcmCount(matiereId: number, clerkId: string, isD
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .where(
         and(
-          eq(chapitres.matiereId, Number(matiereId)),
-          eq(individualNotes.clerkId, clerkId),
-          isDirectTraining 
-            ? eq(individualNotes.isDirectTraining, true) 
-            : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
+          eq(chapitres.matiereId, matiereId),
+          eq(individualNotes.clerkId, clerkId)
         )
       );
 
@@ -99,65 +81,45 @@ export async function getMatiereQcmCount(matiereId: number, clerkId: string, isD
 /**
  * 4. Données graphiques complètes pour UN CHAPITRE (Courbe J, Average, QCM)
  */
-export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string, isDirectTraining: boolean = false) {
+export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: string) {
   try {
     const rawData = await db
       .select({
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
-        isDirectTraining: individualNotes.isDirectTraining,
-        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
-      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
+      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
       .where(
         and(
           eq(individualNotes.chapitreId, chapitreId.toString()),
-          eq(individualNotes.clerkId, clerkId),
-          isDirectTraining 
-            ? eq(individualNotes.isDirectTraining, true) 
-            : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
+          eq(individualNotes.clerkId, clerkId)
         )
       );
-
-    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
-    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
 
     let allNotes: number[] = [];
     let totalQcm = 0;
     const statsByStep: Record<string, { sum: number; count: number }> = {};
 
     rawData.forEach(row => {
+      // Calcul du total QCM via le contenu de la note
       if (row.content) {
         const notes = row.content.trim().split(/\s+/).filter(Boolean);
         totalQcm += notes.length;
       }
 
-      if (row.moyenne !== null && row.moyenne !== undefined) {
+      // Traitement des moyennes pour le graphique
+      if (row.moyenne) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          
-          let step: string | null = null;
-          if (row.isDirectTraining) {
-            if (j0Date && row.createdAt) {
-              const noteTime = new Date(row.createdAt).getTime();
-              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
-              step = `J${Math.max(0, diffDays)}`;
-            } else {
-              step = 'J0';
-            }
-          } else {
-            step = row.stepName;
+          const step = row.stepName || 'Inconnu';
+          if (!statsByStep[step]) {
+            statsByStep[step] = { sum: 0, count: 0 };
           }
-
-          const finalStep = step || 'Inconnu';
-          if (!statsByStep[finalStep]) {
-            statsByStep[finalStep] = { sum: 0, count: 0 };
-          }
-          statsByStep[finalStep].sum += val;
-          statsByStep[finalStep].count += 1;
+          statsByStep[step].sum += val;
+          statsByStep[step].count += 1;
         }
       }
     });
@@ -166,6 +128,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
       : 0;
 
+    // Construction du tableau pour le graphique avec l'average cumulé au fil du temps
     let runningSum = 0;
     let runningCount = 0;
 
@@ -174,6 +137,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     const chartData = sortedSteps.map(step => {
       const stepAvg = statsByStep[step].sum / statsByStep[step].count;
       
+      // Calcul de l'average cumulé (tendance globale jusqu'à cette étape)
       runningSum += statsByStep[step].sum;
       runningCount += statsByStep[step].count;
       const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
@@ -181,7 +145,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
       return {
         step,
         moyenne: Number(stepAvg.toFixed(2)),
-        average: Number(runningAverage.toFixed(2))
+        average: Number(runningAverage.toFixed(2)) // La fameuse courbe average par-dessus
       };
     });
 
@@ -198,35 +162,27 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * 5. Données graphiques complètes pour TOUTE UNE MATIÈRE
+ * 5. Données graphiques complètes pour TOUTE UNE MATIÈRE (Filtrée par folderId via les tables)
  */
-export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string, isDirectTraining: boolean = false) {
+export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
   try {
     const rawData = await db
       .select({
         stepName: echeances.stepName,
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
-        isDirectTraining: individualNotes.isDirectTraining,
-        createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
-      .leftJoin(echeances, eq(sql`CAST(${individualNotes.echeanceId} AS INTEGER)`, echeances.id))
+      .innerJoin(echeances, eq(individualNotes.echeanceId, sql`CAST(${echeances.id} AS TEXT)`.inlineParams()))
       .innerJoin(chapitres, eq(sql`CAST(${individualNotes.chapitreId} AS INTEGER)`, chapitres.id))
       .innerJoin(matieres, eq(chapitres.matiereId, matieres.id))
       .where(
         and(
-          eq(matieres.id, Number(matiereId)),
-          eq(matieres.folderId, Number(folderId)),
-          eq(individualNotes.clerkId, clerkId),
-          isDirectTraining 
-            ? eq(individualNotes.isDirectTraining, true) 
-            : or(eq(individualNotes.isDirectTraining, false), isNull(individualNotes.isDirectTraining))
+          eq(matieres.id, matiereId),
+          eq(matieres.folderId, folderId), // Sécurisation par le folderId de l'URL
+          eq(individualNotes.clerkId, clerkId)
         )
       );
-
-    const j0Record = rawData.find(r => r.stepName && r.stepName.toUpperCase() === 'J0' && r.createdAt);
-    const j0Date = j0Record && j0Record.createdAt ? new Date(j0Record.createdAt).getTime() : null;
 
     let allNotes: number[] = [];
     let totalQcm = 0;
@@ -238,30 +194,16 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
         totalQcm += notes.length;
       }
 
-      if (row.moyenne !== null && row.moyenne !== undefined) {
+      if (row.moyenne) {
         const val = parseFloat(row.moyenne);
         if (!isNaN(val)) {
           allNotes.push(val);
-          
-          let step: string | null = null;
-          if (row.isDirectTraining) {
-            if (j0Date && row.createdAt) {
-              const noteTime = new Date(row.createdAt).getTime();
-              const diffDays = Math.round((noteTime - j0Date) / (1000 * 60 * 60 * 24));
-              step = `J${Math.max(0, diffDays)}`;
-            } else {
-              step = 'J0';
-            }
-          } else {
-            step = row.stepName;
+          const step = row.stepName || 'Inconnu';
+          if (!statsByStep[step]) {
+            statsByStep[step] = { sum: 0, count: 0 };
           }
-
-          const finalStep = step || 'Inconnu';
-          if (!statsByStep[finalStep]) {
-            statsByStep[finalStep] = { sum: 0, count: 0 };
-          }
-          statsByStep[finalStep].sum += val;
-          statsByStep[finalStep].count += 1;
+          statsByStep[step].sum += val;
+          statsByStep[step].count += 1;
         }
       }
     });
@@ -297,81 +239,5 @@ export async function getMatiereGraphDataComplete(matiereId: number, folderId: n
   } catch (error) {
     console.error("Erreur graph matière :", error);
     return { success: false, chartData: [], matiereAverage: 0, totalQcm: 0 };
-  }
-}
-
-/**
- * 6. Données graphiques et analytiques pour la vue "anal" (basée sur subjectAnnals)
- */
-export async function getSubjectAnalGraphData(matiereId: number, clerkId: string) {
-  try {
-    const rawData = await db
-      .select({
-        createdAt: subjectAnnals.createdAt,
-        average: subjectAnnals.average,
-        notes: subjectAnnals.notes,
-      })
-      .from(subjectAnnals)
-      .where(
-        and(
-          eq(subjectAnnals.matiereId, Number(matiereId)),
-          eq(subjectAnnals.clerkId, clerkId)
-        )
-      )
-      .orderBy(subjectAnnals.createdAt);
-
-    let allNotes: number[] = [];
-    let totalQcm = 0;
-    let runningSum = 0;
-    let runningCount = 0;
-
-    const chartData = rawData.map((row) => {
-      if (row.notes) {
-        if (Array.isArray(row.notes)) {
-          totalQcm += row.notes.length;
-        } else if (typeof row.notes === 'string') {
-          const parsedNotes = (row.notes as string).trim().split(/\s+/).filter(Boolean);
-          totalQcm += parsedNotes.length;
-        }
-      }
-
-      const val = row.average !== null && row.average !== undefined ? parseFloat(row.average) : 0;
-      if (!isNaN(val) && row.average !== null) {
-        allNotes.push(val);
-        runningSum += val;
-        runningCount += 1;
-      }
-
-      const runningAverage = runningCount > 0 ? runningSum / runningCount : 0;
-
-      const abscissaDate = row.createdAt 
-        ? new Date(row.createdAt).toLocaleDateString('fr-FR', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric' 
-          }) 
-        : 'Inconnue';
-
-      return {
-        date: abscissaDate,
-        moyenne: Number(val.toFixed(2)),
-        average: Number(runningAverage.toFixed(2)),
-        totalQcmCumul: totalQcm
-      };
-    });
-
-    const subjectAverage = allNotes.length > 0 
-      ? Number((allNotes.reduce((a, b) => a + b, 0) / allNotes.length).toFixed(2)) 
-      : 0;
-
-    return {
-      success: true,
-      chartData,
-      subjectAverage,
-      totalQcm,
-    };
-  } catch (error) {
-    console.error("Erreur graph subject annals :", error);
-    return { success: false, chartData: [], subjectAverage: 0, totalQcm: 0 };
   }
 }

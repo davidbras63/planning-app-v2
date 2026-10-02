@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Trash2, ChevronRight, ChevronDown, Folder, AlertCircle } from 'lucide-react';
-import { Container, Stack, Title, Flex, ActionIcon, Text, Table, Button, Box, Select, Modal, TextInput, Grid } from '@mantine/core';
+import { Container, Stack, Title, Flex, ActionIcon, Text, Table, Button, Box, Select, Modal, TextInput } from '@mantine/core';
 import { getDashboardData, deleteDashboardItem, deleteFolderAction } from '@/app/actions/dashboardActions';
 import { actionTenterReintegration, actionForcerReintegration, actionIgnorerRattrapage } from '@/app/actions/reintegration';
 import { useRouter, useParams } from 'next/navigation';
@@ -27,7 +27,7 @@ export default function Dashboard() {
  
   const loadAll = async () => {
     if (!folderIdFromUrl) return;
-        
+       
     try {
       const result = await getDashboardData(folderIdFromUrl);
       if (result && !result.error) {
@@ -79,220 +79,157 @@ export default function Dashboard() {
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
       <Stack gap="xl">
-        {/* LIGNE DU HAUT : DOSSIER ACTIF ET GESTION DES MATIÈRES CÔTE À CÔTE */}
-        <Grid gutter="xl">
-          {/* DOSSIER ACTIF (COLONNE GAUCHE) */}
-          <Grid.Col span={{ base: 12, md: 5 }}>
-            <Box style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.35)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '16px',
-              padding: '24px',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-              height: '100%'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                width: 'fit-content',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}>
-                <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
-                  Dossier actif
-                </Title>
-              </div>
-
-              <Flex align="center" gap="sm">
-                <div style={{ flex: 1 }}>
-                  <Select
-                    size="md"
-                    placeholder="Sélectionner un dossier"
-                    data={foldersList.map((folder: any) => ({
-                      value: String(folder.id),
-                      label: folder.name || `Dossier ${folder.id}`,
-                    }))}
-                    value={selectedFolderId}
-                    onChange={(value) => {
-                      if (value) {
-                        setSelectedFolderId(value);
-                        router.push(`/protected/dashboard/${value}`);
-                      }
-                    }}
-                    styles={{
-                      input: {
-                        backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                        color: '#ffffff',
-                      },
-                      dropdown: {
-                        backgroundColor: '#0f172a',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                        color: '#ffffff',
-                      }
-                    }}
-                  />
-                </div>
-                <ActionIcon
-                  color="red"
-                  variant="subtle"
-                  size="lg"
-                  style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.35)', flexShrink: 0 }}
-                  onClick={async () => {
-                    if (!selectedFolderId) return;
-                    if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
-                      const res = await deleteFolderAction(selectedFolderId);
-                      if (res && res.success) {
-                        const remainingFolders = foldersList.filter(f => String(f.id) !== selectedFolderId);
-                        if (remainingFolders.length > 0) {
-                          router.push(`/protected/dashboard/${remainingFolders[0].id}`);
-                        } else {
-                          router.push(`/protected/dashboard`);
-                        }
-                      } else {
-                        alert("Erreur lors de la suppression du dossier.");
-                      }
+        {/* DOSSIER ACTIF */}
+        <Box>
+          <div style={{ marginBottom: '30px' }}>
+            <Flex align="flex-end" gap="sm">
+              <div style={{ flex: 1 }}>
+                <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '8px' }}>
+				Dossier actif
+				</Title>
+                <Select
+                  size="md"
+                  placeholder="Sélectionner un dossier"
+                  data={foldersList.map((folder: any) => ({
+                    value: String(folder.id),
+                    label: folder.name || `Dossier ${folder.id}`,
+                  }))}
+                  value={selectedFolderId}
+                  onChange={(value) => {
+                    if (value) {
+                      setSelectedFolderId(value);
+                      router.push(`/protected/dashboard/${value}`);
                     }
                   }}
-                >
-                  <Trash2 size={20} />
-                </ActionIcon>
-              </Flex>
-            </Box>
-          </Grid.Col>
-
-          {/* GESTION DES MATIÈRES (COLONNE DROITE) */}
-          <Grid.Col span={{ base: 12, md: 7 }}>
-            <Box style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.35)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '16px',
-              padding: '24px',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                width: 'fit-content',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}>
-                <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
-                  <Folder size={18} color="#38bdf8" /> Gestion des Matières
-                </Title>
+                  styles={{
+                    input: {
+                      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      color: '#ffffff',
+                    },
+                    dropdown: {
+                      backgroundColor: '#0f172a',
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                      color: '#ffffff',
+                    }
+                  }}
+                />
               </div>
-             
-              <Stack gap="md">
-                {matieresList?.map((matiere: any) => {
-                  const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
-                  const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
-
-                  return (
-                    <div 
-                      key={matiere.id} 
-                      style={{ 
-                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
-                        border: '1px solid rgba(255, 255, 255, 0.2)', 
-                        borderRadius: '12px', 
-                        padding: '16px'
-                      }}
-                    >
-                      <Flex justify="space-between" align="center">
-                        <Flex
-                          align="center"
-                          style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
-                        >
-                          {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
-                          
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            borderRadius: '6px',
-                            padding: '6px 10px',
-                            marginLeft: '10px',
-                            maxWidth: 'calc(100% - 40px)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            <Text fw={600} size="sm" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
-                          </div>
-                        </Flex>
-                        <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
-                          <Trash2 size={18} />
-                        </ActionIcon>
-                      </Flex>
-
-                      {isMatiereOpen && (
-                        <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
-                          {listChapitres.length > 0 ? (
-                            listChapitres.map((chap: any) => {
-                              const chapId = chap.id;
-                              const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
-                              const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
-
-                              return (
-                                <Flex key={chapId} justify="space-between" align="center" py={4}>
-                                  <Text size="sm" style={{ color: '#ffffff' }}>
-                                    {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
-                                    {chapTitre}
-                                  </Text>
-                                  <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
-                                    <Trash2 size={15} />
-                                  </ActionIcon>
-                                </Flex>
-                              );
-                            })
-                          ) : (
-                            <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
-                          )}
-                        </Stack>
-                      )}
-                    </div>
-                  );
-                })}
-              </Stack>
-            </Box>
-          </Grid.Col>
-        </Grid>
-
-        {/* TABLEAU DE RATTRAPAGE EN BAS */}
-        <Box mt={10}>
-          <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            borderRadius: '12px',
-            padding: '10px 16px',
-            marginBottom: '20px',
-            width: 'fit-content',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-          }}>
-            <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
-              <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
-            </Title>
+              <ActionIcon
+                color="red"
+                variant="subtle"
+                size="lg"
+                style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px' }}
+                onClick={async () => {
+                  if (!selectedFolderId) return;
+                  if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
+                    const res = await deleteFolderAction(selectedFolderId);
+                    if (res && res.success) {
+                      const remainingFolders = foldersList.filter(f => String(f.id) !== selectedFolderId);
+                      if (remainingFolders.length > 0) {
+                        router.push(`/protected/dashboard/${remainingFolders[0].id}`);
+                      } else {
+                        router.push(`/protected/dashboard`);
+                      }
+                    } else {
+                      alert("Erreur lors de la suppression du dossier.");
+                    }
+                  }
+                }}
+              >
+                <Trash2 size={20} />
+              </ActionIcon>
+            </Flex>
           </div>
 
+          {/* TITRE GESTION DES MATIÈRES */}
+          <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Folder size={20} /> Gestion des Matières
+          </Title>
+         
+          {/* LISTE DES MATIÈRES AVEC LE MÊME DESIGN FLOUTÉ */}
+          <Stack gap="md">
+            {matieresList?.map((matiere: any) => {
+              const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
+              const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
+
+              return (
+                <div 
+                  key={matiere.id} 
+                  style={{ 
+                    backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+                    border: '1px solid rgba(255, 255, 255, 0.25)', 
+                    borderRadius: '12px', 
+                    padding: '16px',
+                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)'
+                  }}
+                >
+                  <Flex justify="space-between" align="center">
+                    <Flex
+                      align="center"
+                      style={{ cursor: 'pointer', flex: 1 }}
+                      onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
+                    >
+                      {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
+                      <Text fw={700} size="md" ml={8} style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
+                    </Flex>
+                    <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
+                      <Trash2 size={18} />
+                    </ActionIcon>
+                  </Flex>
+
+                  {isMatiereOpen && (
+                    <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.4)' }}>
+                      {listChapitres.length > 0 ? (
+                        listChapitres.map((chap: any) => {
+                          const chapId = chap.id;
+                          const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
+                          const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
+
+                          return (
+                            <Flex key={chapId} justify="space-between" align="center" py={4}>
+                              <Text size="sm" style={{ color: '#e2e8f0' }}>
+                                {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
+                                {chapTitre}
+                              </Text>
+                              <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
+                                <Trash2 size={15} />
+                              </ActionIcon>
+                            </Flex>
+                          );
+                        })
+                      ) : (
+                        <Text size="sm" c="dimmed" fs="italic">Aucun chapitre dans cette matière.</Text>
+                      )}
+                    </Stack>
+                  )}
+                </div>
+              );
+            })}
+          </Stack>
+        </Box>
+
+        {/* TABLEAU DE RATTRAPAGE */}
+        <Box mt={40}>
+          <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={20} color="#f97316" /> Tableau de Rattrapage
+          </Title>
+
           <div style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.35)', 
-            border: '1px solid rgba(56, 189, 248, 0.3)', 
-            borderRadius: '16px', 
-            padding: '24px',
-            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+            backgroundColor: 'rgba(15, 23, 42, 0.85)', 
+            border: '1px solid rgba(255, 255, 255, 0.25)', 
+            borderRadius: '12px', 
+            padding: '16px',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
             overflowX: 'auto'
           }}>
             <Table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', color: '#ffffff' }}>
               <Table.Thead>
                 <Table.Tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.15)' }}>
-                  <Table.Th style={{ padding: '16px 12px', color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}>Chapitre</Table.Th>
-                  <Table.Th style={{ padding: '16px 12px', color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}>Date</Table.Th>
-                  <Table.Th style={{ padding: '16px 12px', color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}>Note</Table.Th>
-                  <Table.Th style={{ padding: '16px 12px', color: '#ffffff', fontWeight: 'bold', fontSize: '14px' }}>Actions</Table.Th>
+                  <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Chapitre</Table.Th>
+                  <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Date</Table.Th>
+                  <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Note</Table.Th>
+                  <Table.Th style={{ padding: '12px', color: '#ffffff', fontWeight: 700 }}>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -306,58 +243,26 @@ export default function Dashboard() {
 
                     return (
                       <Table.Tr key={rowKey} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                        <Table.Td style={{ padding: '16px 12px' }}>
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            borderRadius: '6px',
-                            padding: '8px 12px',
-                            color: '#ffffff',
-                            fontWeight: '600',
-                            fontSize: '14px'
-                          }}>
-                            {jValue && <span style={{ marginRight: '8px', fontWeight: 800, color: '#38bdf8' }}>[{jValue}]</span>}
-                            {titreChapitre}
-                          </div>
+                        <Table.Td style={{ padding: '12px', color: '#ffffff', fontWeight: 500 }}>
+                          {jValue && <span style={{ marginRight: '8px', fontWeight: 700, color: '#38bdf8' }}>[{jValue}]</span>}
+                          {titreChapitre}
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '16px 12px' }}>
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            borderRadius: '6px',
-                            padding: '8px 12px',
-                            color: '#ffffff',
-                            fontSize: '14px'
-                          }}>
-                            {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
-                          </div>
+                        <Table.Td style={{ padding: '12px', color: '#ffffff' }}>
+                          {dateEcheance ? new Date(dateEcheance).toLocaleDateString() : "Date invalide"}
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '16px 12px' }}>
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                            border: '1px solid rgba(56, 189, 248, 0.25)',
-                            borderRadius: '6px',
-                            padding: '6px 10px',
-                            color: '#34d399',
-                            fontWeight: 'bold',
-                            fontSize: '14px'
-                          }}>
-                            {Number(noteMoyenne).toFixed(1)}
-                          </div>
+                        <Table.Td style={{ padding: '12px', color: '#ffffff' }}>
+                          {Number(noteMoyenne).toFixed(1)}
                         </Table.Td>
 
-                        <Table.Td style={{ padding: '16px 12px' }}>
+                        <Table.Td style={{ padding: '12px' }}>
                           <Flex gap="sm">
                             <Button size="xs" color="blue" onClick={() => handleReintegrer(r)}>Réintégrer</Button>
                             <Button
                               size="xs"
                               color="red"
-                              variant="filled"
+                              variant="outline"
                               onClick={async () => {
                                 if (r.id) {
                                   const res = await actionIgnorerRattrapage(String(r.id));
@@ -378,7 +283,7 @@ export default function Dashboard() {
                   })
                 ) : (
                   <Table.Tr>
-                    <Table.Td colSpan={4} align="center" style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '24px 12px', fontStyle: 'italic', fontSize: '14px' }}>
+                    <Table.Td colSpan={4} align="center" style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '24px', fontStyle: 'italic' }}>
                       Aucun élément en rattrapage
                     </Table.Td>
                   </Table.Tr>
@@ -397,11 +302,11 @@ export default function Dashboard() {
         styles={{
           content: { backgroundColor: '#0f172a', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)' },
           header: { backgroundColor: '#0f172a', color: '#ffffff' },
-          title: { fontWeight: 700, color: '#ffffff' }
+          title: { fontWeight: 700 }
         }}
       >
         <Stack>
-          <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.85)' }}>Aucune place automatique n'a été trouvée pour ce rattrapage. Choisis une date pour forcer ou ignore la ligne.</Text>
+          <Text size="sm" c="dimmed">Aucune place automatique n'a été trouvée pour ce rattrapage. Choisis une date pour forcer ou ignore la ligne.</Text>
          
           <TextInput
             label="Date forcée"
@@ -410,7 +315,7 @@ export default function Dashboard() {
             onChange={(e) => setForcedDateInput(e.currentTarget.value)}
             styles={{
               input: { backgroundColor: '#1e293b', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.25)' },
-              label: { color: '#ffffff', fontWeight: 500 }
+              label: { color: '#ffffff' }
             }}
           />
 
@@ -454,3 +359,4 @@ export default function Dashboard() {
     </Container>
   );
 }
+

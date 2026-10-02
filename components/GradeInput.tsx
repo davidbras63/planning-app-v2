@@ -19,31 +19,23 @@ export default function GradeInput({
 
   return (
     <div style={{ width: '100%', WebkitFontSmoothing: 'antialiased' }}>
-      {/* Titre dans un encadré sombre et opaque bien visible */}
-      <div style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.85)',
-        border: '1px solid rgba(56, 189, 248, 0.3)',
-        borderRadius: '12px',
-        padding: '12px 20px',
-        marginBottom: '20px',
-        width: 'fit-content',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-      }}>
-        <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
-          Tableau de saisie des notes
-        </Title>
-      </div>
+      {/* Ligne de séparation */}
+      <hr style={{ border: 'none', height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.15)', margin: '40px 0 20px 0' }} />
 
-      {/* Le cadre stylisé du tableau */}
+      {/* Le titre est DIRECTEMENT sur le fond de page, exactement comme "Planning de la semaine" */}
+      <Title order={3} c="dimmed" style={{ margin: 0, marginBottom: '16px' }}>
+                Tableau de saisie des notes
+      </Title>
+
+      {/* Le cadre stylisé s'applique UNIQUEMENT au tableau lui-même, pas au titre */}
       <div style={{ 
-        backgroundColor: 'rgba(15, 23, 42, 0.35)', 
+        backgroundColor: 'rgba(15, 23, 42, 0.4)', 
         color: '#ffffff', 
         borderRadius: '16px', 
         border: '1px solid rgba(56, 189, 248, 0.3)',
         boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
         padding: '24px'
       }}>
-        
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', color: '#ffffff' }}>
             <thead>
@@ -79,20 +71,8 @@ export default function GradeInput({
                           {e.stepName || e.step || "Étape"}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 12px' }}>
-                        {/* Conteneur pour le titre du chapitre reprenant exactement les mêmes réglages que l'input des notes */}
-                        <div style={{
-                          display: 'inline-block',
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                          padding: '8px 12px',
-                          borderRadius: '6px',
-                          color: '#ffffff',
-                          fontWeight: '600',
-                          fontSize: '14px'
-                        }}>
-                          {e.titreChapitre || e.chapitre_titre || e.titre || "Chapitre sans nom"}
-                        </div>
+                      <td style={{ padding: '16px 12px', color: '#ffffff', fontWeight: '600', fontSize: '15px' }}>
+                        {e.titreChapitre || e.chapitre_titre || e.titre || "Chapitre sans nom"}
                       </td>
                       <td style={{ padding: '16px 12px' }}>
                         <input
@@ -105,6 +85,7 @@ export default function GradeInput({
                           onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                               event.preventDefault();
+                              // On utilise directement inputRefs pour sauter à la ligne suivante instantanément
                               const nextInput = inputRefs.current[index + 1];
                               if (nextInput) {
                                 nextInput.focus();
@@ -147,20 +128,8 @@ export default function GradeInput({
                           placeholder="Ex: 15 ou 14/30 18/20"
                         />
                       </td>
-                      <td style={{ padding: '16px 12px' }}>
-                        {/* Petit conteneur pour la moyenne */}
-                        <div style={{
-                          display: 'inline-block',
-                          backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
-                          borderRadius: '6px',
-                          padding: '6px 10px',
-                          color: '#34d399',
-                          fontWeight: 'bold',
-                          fontSize: '14px'
-                        }}>
-                          {matchingKey && averages && averages[matchingKey] !== undefined ? `Moyenne : ${averages[matchingKey]}` : '-'}
-                        </div>
+                      <td style={{ padding: '16px 12px', color: '#34d399', fontWeight: 'bold', fontSize: '15px' }}>
+                        {matchingKey && averages && averages[matchingKey] !== undefined ? `Moyenne : ${averages[matchingKey]}` : '-'}
                       </td>
                     </tr>
                   );

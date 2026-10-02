@@ -39,6 +39,7 @@ export default async function PlanningPage({ params }: { params: Promise<{ folde
 
                     {/* 1. Création de chapitre */}
                     <div style={{ width: '100%' }}>
+                        <Title order={3} mb="sm" c="dimmed">Nouveau chapitre</Title>
                         <ChapterCreator/>
                     </div>
 
