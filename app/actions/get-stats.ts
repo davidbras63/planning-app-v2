@@ -42,6 +42,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
         moyenne: individualNotes.moyenne,
         content: individualNotes.content,
         echeanceId: individualNotes.echeanceId,
+        isDirectTraining: individualNotes.isDirectTraining,
         createdAt: individualNotes.createdAt,
       })
       .from(individualNotes)
@@ -63,36 +64,51 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
     let unlinkedIndex = 0;
 
     rawNotes.forEach(row => {
+      // 1. Comptage des QCM depuis le texte brut
       if (row.content) {
         const items = row.content.trim().split(/[\s,]+/).filter(Boolean);
         totalQcm += items.length;
       }
 
+      // 2. Récupération directe de la moyenne stockée en base (sans filtre restrictif à la con)
+      let rowMoyenne = 0;
+      let hasValidMoyenne = false;
+
+      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
+        const val = parseFloat(row.moyenne);
+        if (!isNaN(val)) {
+          rowMoyenne = val;
+          hasValidMoyenne = true;
+        }
+      }
+
+      if (!hasValidMoyenne) return; // Si vraiment pas de moyenne, on zappe cette ligne
+
+      // 3. Détermination du J (step) : si lié à une échéance on prend son nom, sinon séquence J pour le training
       let step = '';
-      if (row.echeanceId !== null && row.echeanceId !== undefined && row.echeanceId !== '') {
+      const hasEcheance = row.echeanceId !== null && row.echeanceId !== undefined && row.echeanceId !== '';
+      
+      if (hasEcheance) {
         const foundStep = echeanceMap.get(row.echeanceId.toString());
         if (foundStep) {
           step = foundStep;
         }
       }
       
+      // Si c'est du training direct ou qu'aucune échéance n'est trouvée
       if (!step) {
         step = DEFAULT_J_SEQUENCE[unlinkedIndex] || `J${unlinkedIndex * 7}`;
         unlinkedIndex++;
       }
 
-      if (row.moyenne !== null && row.moyenne !== undefined && row.moyenne !== '') {
-        const val = parseFloat(row.moyenne);
-        if (!isNaN(val)) {
-          allNotes.push(val);
+      // 4. Intégration dans les stats
+      allNotes.push(rowMoyenne);
 
-          if (!statsByStep[step]) {
-            statsByStep[step] = { sum: 0, count: 0 };
-          }
-          statsByStep[step].sum += val;
-          statsByStep[step].count += 1;
-        }
+      if (!statsByStep[step]) {
+        statsByStep[step] = { sum: 0, count: 0 };
       }
+      statsByStep[step].sum += rowMoyenne;
+      statsByStep[step].count += 1;
     });
 
     const chapitreAverage = allNotes.length > 0 
@@ -131,7 +147,7 @@ export async function getChapitreGraphDataComplete(chapitreId: number, clerkId: 
 }
 
 /**
- * Données graphiques complètes pour TOUTE UNE MATIÈRE (Exportée pour éviter le crash du build)
+ * Données graphiques complètes pour TOUTE UNE MATIÈRE
  */
 export async function getMatiereGraphDataComplete(matiereId: number, folderId: number, clerkId: string) {
   try {
