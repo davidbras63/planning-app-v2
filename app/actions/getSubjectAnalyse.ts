@@ -5,8 +5,11 @@ import { subjectAnnals } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
 export async function getFolderAnalysesData(folderId: number | string) {
+  console.log('👉 [DEBUG 1] Appel de getFolderAnalysesData avec folderId:', folderId, '(type:', typeof folderId, ')');
+
   try {
     const numericFolderId = Number(folderId);
+    console.log('👉 [DEBUG 2] folderId converti en number:', numericFolderId);
 
     const rawData = await db
       .select({
@@ -21,7 +24,10 @@ export async function getFolderAnalysesData(folderId: number | string) {
       .where(eq(subjectAnnals.folderId, numericFolderId))
       .orderBy(asc(subjectAnnals.revisionDate));
 
+    console.log('👉 [DEBUG 3] rawData récupéré de la bdd (longueur:', rawData?.length, '):', rawData);
+
     if (!rawData || rawData.length === 0) {
+      console.log('⚠️️ [DEBUG 4] rawData est vide ! Aucun enregistrement trouvé pour ce folderId.');
       return { success: true, data: {} };
     }
 
@@ -33,6 +39,8 @@ export async function getFolderAnalysesData(folderId: number | string) {
       }
       mapByMatiere[mId].push(row);
     }
+
+    console.log('👉 [DEBUG 5] mapByMatiere construit:', Object.keys(mapByMatiere));
 
     const groupedData: Record<string, { chartData: any[]; average: number; totalQcm: number }> = {};
 
@@ -94,12 +102,14 @@ export async function getFolderAnalysesData(folderId: number | string) {
       };
     }
 
+    console.log('👉 [DEBUG 6] groupedData final renvoyé au front:', groupedData);
+
     return {
       success: true,
       data: groupedData,
     };
   } catch (error) {
-    console.error('Erreur dans getFolderAnalysesData :', error);
+    console.error('❌ [DEBUG ERREUR] Erreur fatale dans getFolderAnalysesData :', error);
     return { success: false, data: {} };
   }
 }
