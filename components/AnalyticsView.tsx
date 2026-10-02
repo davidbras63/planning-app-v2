@@ -166,15 +166,15 @@ export default function AnalyticsView({
                 <Box style={{ height: 300, width: "100%" }}>
                   {matiereInfo?.chartData && matiereInfo.chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={matInfo.chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
-						  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-						  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#909296' }} />
-						  <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
-						  <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-						  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
-						  <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} /> {/* <-- Ajout de la ligne d'average */}
+					  <LineChart data={matiereInfo.chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+						<CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
+						<XAxis dataKey="date" tick={{ fontSize: 10, fill: '#909296' }} />
+						<YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
+						<Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
+						<Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
+						<Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} />
 					  </LineChart>
-                    </ResponsiveContainer>
+					</ResponsiveContainer>
                   ) : (
                     <Center h="100%"><Text size="sm" c="dimmed">Aucune donnée disponible pour cette matière</Text></Center>
                   )}
