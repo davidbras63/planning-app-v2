@@ -12,14 +12,14 @@ const formatDateOnly = (date: Date) => {
     return `${year}-${month}-${day}`;
 };
 
-// Fonction utilitaire pour parser une date "YYYY-MM-DD" en heure locale pure (évite le piège UTC de minuit)
-const parseLocalDate = (dateStr: string) => {
+// Parse ultra-robuste qui fixe l'heure à 12:00:00 pour éviter tout risque de bascule de jour UTC
+const parseLocalDateSafe = (dateStr: string) => {
     if (!dateStr) return null;
-    // Si la chaîne contient une heure (ex: ISO string), on prend juste la partie YYYY-MM-DD
     const cleanStr = dateStr.split('T')[0];
     const [year, month, day] = cleanStr.split('-').map(Number);
-    if (!year || !month || !day) return new Date(dateStr); // Fallback
-    return new Date(year, month - 1, day); // Mois indexé de 0 à 11 en JS = heure locale garantie !
+    if (!year || !month || !day) return new Date(dateStr);
+    // On force l'heure à midi (12h00) heure locale pour immuniser la date contre les décalages UTC
+    return new Date(year, month - 1, day, 12, 0, 0, 0);
 };
 
 export async function createChapterAction(input: any) {
@@ -35,12 +35,12 @@ export async function createChapterAction(input: any) {
       return { success: false, error: "Paramètres ou matière manquants pour créer le chapitre." };
     }
 
-    const dateJ0 = parseLocalDate(dateJ0Str);
+    const dateJ0 = parseLocalDateSafe(dateJ0Str);
     if (!dateJ0 || isNaN(dateJ0.getTime())) {
       return { success: false, error: "Format de date J0 invalide." };
     }
 
-    const dateExamen = dateExamenStr ? parseLocalDate(dateExamenStr) : null;
+    const dateExamen = dateExamenStr ? parseLocalDateSafe(dateExamenStr) : null;
 
     let cadencier: number[] = [];
     if (userId) {
@@ -85,7 +85,6 @@ export async function createChapterAction(input: any) {
     const echeancesToInsert = [];
 
     for (const delaiJour of cadencier) {
-      // On clone la date J0 locale et on ajoute les jours en heure locale
       const targetDate = new Date(dateJ0.getTime());
       targetDate.setDate(targetDate.getDate() + delaiJour);
 
