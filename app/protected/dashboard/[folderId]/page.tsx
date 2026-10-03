@@ -18,6 +18,11 @@ export default function Dashboard() {
   const [foldersList, setFoldersList] = useState<any[]>([]);
   const [rattrapages, setRattrapages] = useState<any[]>([]);
   const [expandedMatieres, setExpandedMatieres] = useState<{ [key: string]: boolean }>({});
+  
+  // États d'accordéon pour les deux blocs du haut
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [isGestionMatieresOpen, setIsGestionMatieresOpen] = useState(false);
+
   const [, startTransition] = useTransition();
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(folderIdFromUrl || null);
   const [modalOpened, setModalOpened] = useState(false);
@@ -91,75 +96,86 @@ export default function Dashboard() {
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
               height: '100%'
             }}>
-              <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                width: 'fit-content',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}>
+              <div 
+                onClick={() => setIsDossierOpen(!isDossierOpen)}
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '12px',
+                  padding: '10px 16px',
+                  marginBottom: isDossierOpen ? '20px' : '0px',
+                  width: 'fit-content',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  userSelect: 'none'
+                }}
+              >
+                {isDossierOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
                 <Title order={5} style={{ margin: 0, color: '#ffffff' }}>
                   Dossier actif
                 </Title>
               </div>
 
-              <Flex align="center" gap="sm">
-                <div style={{ flex: 1 }}>
-                  <Select
-                    size="md"
-                    placeholder="Sélectionner un dossier"
-                    data={foldersList.map((folder: any) => ({
-                      value: String(folder.id),
-                      label: folder.name || `Dossier ${folder.id}`,
-                    }))}
-                    value={selectedFolderId}
-                    onChange={(value) => {
-                      if (value) {
-                        setSelectedFolderId(value);
-                        router.push(`/protected/dashboard/${value}`);
-                      }
-                    }}
-                    styles={{
-                      input: {
-                        backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                        color: '#ffffff',
-                      },
-                      dropdown: {
-                        backgroundColor: '#0f172a',
-                        border: '1px solid rgba(255, 255, 255, 0.25)',
-                        color: '#ffffff',
-                      }
-                    }}
-                  />
-                </div>
-                <ActionIcon
-                  color="red"
-                  variant="subtle"
-                  size="lg"
-                  style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.35)', flexShrink: 0 }}
-                  onClick={async () => {
-                    if (!selectedFolderId) return;
-                    if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
-                      const res = await deleteFolderAction(selectedFolderId);
-                      if (res && res.success) {
-                        const remainingFolders = foldersList.filter(f => String(f.id) !== selectedFolderId);
-                        if (remainingFolders.length > 0) {
-                          router.push(`/protected/dashboard/${remainingFolders[0].id}`);
-                        } else {
-                          router.push(`/protected/dashboard`);
+              {isDossierOpen && (
+                <Flex align="center" gap="sm">
+                  <div style={{ flex: 1 }}>
+                    <Select
+                      size="md"
+                      placeholder="Sélectionner un dossier"
+                      data={foldersList.map((folder: any) => ({
+                        value: String(folder.id),
+                        label: folder.name || `Dossier ${folder.id}`,
+                      }))}
+                      value={selectedFolderId}
+                      onChange={(value) => {
+                        if (value) {
+                          setSelectedFolderId(value);
+                          router.push(`/protected/dashboard/${value}`);
                         }
-                      } else {
-                        alert("Erreur lors de la suppression du dossier.");
+                      }}
+                      styles={{
+                        input: {
+                          backgroundColor: 'rgba(30, 41, 59, 0.75)',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          color: '#ffffff',
+                        },
+                        dropdown: {
+                          backgroundColor: '#0f172a',
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          color: '#ffffff',
+                        }
+                      }}
+                    />
+                  </div>
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
+                    size="lg"
+                    style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.35)', flexShrink: 0 }}
+                    onClick={async () => {
+                      if (!selectedFolderId) return;
+                      if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
+                        const res = await deleteFolderAction(selectedFolderId);
+                        if (res && res.success) {
+                          const remainingFolders = foldersList.filter(f => String(f.id) !== selectedFolderId);
+                          if (remainingFolders.length > 0) {
+                            router.push(`/protected/dashboard/${remainingFolders[0].id}`);
+                          } else {
+                            router.push(`/protected/dashboard`);
+                          }
+                        } else {
+                          alert("Erreur lors de la suppression du dossier.");
+                        }
                       }
-                    }
-                  }}
-                >
-                  <Trash2 size={20} />
-                </ActionIcon>
-              </Flex>
+                    }}
+                  >
+                    <Trash2 size={20} />
+                  </ActionIcon>
+                </Flex>
+              )}
             </Box>
           </Grid.Col>
 
@@ -172,92 +188,103 @@ export default function Dashboard() {
               padding: '24px',
               boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
             }}>
-              <div style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '12px',
-                padding: '10px 16px',
-                marginBottom: '20px',
-                width: 'fit-content',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-              }}>
+              <div 
+                onClick={() => setIsGestionMatieresOpen(!isGestionMatieresOpen)}
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  borderRadius: '12px',
+                  padding: '10px 16px',
+                  marginBottom: isGestionMatieresOpen ? '20px' : '0px',
+                  width: 'fit-content',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  userSelect: 'none'
+                }}
+              >
+                {isGestionMatieresOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
                 <Title order={5} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff' }}>
                   <Folder size={18} color="#38bdf8" /> Gestion des Matières
                 </Title>
               </div>
              
-              <Stack gap="md">
-                {matieresList?.map((matiere: any) => {
-                  const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
-                  const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
+              {isGestionMatieresOpen && (
+                <Stack gap="md">
+                  {matieresList?.map((matiere: any) => {
+                    const isMatiereOpen = Boolean(expandedMatieres[matiere.id]);
+                    const listChapitres = matiere.chapitres || matiere.chapitre || matiere.chapters || [];
 
-                  return (
-                    <div 
-                      key={matiere.id} 
-                      style={{ 
-                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
-                        border: '1px solid rgba(255, 255, 255, 0.2)', 
-                        borderRadius: '12px', 
-                        padding: '16px'
-                      }}
-                    >
-                      <Flex justify="space-between" align="center">
-                        <Flex
-                          align="center"
-                          style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
-                          onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
-                        >
-                          {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
-                          
-                          <div style={{
-                            display: 'inline-block',
-                            backgroundColor: 'rgba(30, 41, 59, 0.75)',
-                            border: '1px solid rgba(255, 255, 255, 0.25)',
-                            borderRadius: '6px',
-                            padding: '6px 10px',
-                            marginLeft: '10px',
-                            maxWidth: 'calc(100% - 40px)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            <Text fw={600} size="sm" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
-                          </div>
+                    return (
+                      <div 
+                        key={matiere.id} 
+                        style={{ 
+                          backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                          border: '1px solid rgba(255, 255, 255, 0.2)', 
+                          borderRadius: '12px', 
+                          padding: '16px' 
+                        }}
+                      >
+                        <Flex justify="space-between" align="center">
+                          <Flex
+                            align="center"
+                            style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
+                            onClick={() => setExpandedMatieres(prev => ({ ...prev, [matiere.id]: !prev[matiere.id] }))}
+                          >
+                            {isMatiereOpen ? <ChevronDown size={18} color="#38bdf8" /> : <ChevronRight size={18} color="#38bdf8" />}
+                            
+                            <div style={{
+                              display: 'inline-block',
+                              backgroundColor: 'rgba(30, 41, 59, 0.75)',
+                              border: '1px solid rgba(255, 255, 255, 0.25)',
+                              borderRadius: '6px',
+                              padding: '6px 10px',
+                              marginLeft: '10px',
+                              maxWidth: 'calc(100% - 40px)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <Text fw={600} size="sm" style={{ color: '#ffffff' }}>{matiere.nom || matiere.name}</Text>
+                            </div>
+                          </Flex>
+                          <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
+                            <Trash2 size={18} />
+                          </ActionIcon>
                         </Flex>
-                        <ActionIcon color="red" variant="subtle" onClick={() => handleDelete('matieres', matiere.id)}>
-                          <Trash2 size={18} />
-                        </ActionIcon>
-                      </Flex>
 
-                      {isMatiereOpen && (
-                        <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
-                          {listChapitres.length > 0 ? (
-                            listChapitres.map((chap: any) => {
-                              const chapId = chap.id;
-                              const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
-                              const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
+                        {isMatiereOpen && (
+                          <Stack gap="xs" mt="md" pl="md" style={{ borderLeft: '2px solid rgba(56, 189, 248, 0.6)' }}>
+                            {listChapitres.length > 0 ? (
+                              listChapitres.map((chap: any) => {
+                                const chapId = chap.id;
+                                const chapTitre = chap.titre || chap.title || "Chapitre sans nom";
+                                const chapJ = chap.cycleDay ?? chap.j ?? chap.jour;
 
-                              return (
-                                <Flex key={chapId} justify="space-between" align="center" py={4}>
-                                  <Text size="sm" style={{ color: '#ffffff' }}>
-                                    {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
-                                    {chapTitre}
-                                  </Text>
-                                  <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
-                                    <Trash2 size={15} />
-                                  </ActionIcon>
-                                </Flex>
-                              );
-                            })
-                          ) : (
-                            <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
-                          )}
-                        </Stack>
-                      )}
-                    </div>
-                  );
-                })}
-              </Stack>
+                                return (
+                                  <Flex key={chapId} justify="space-between" align="center" py={4}>
+                                    <Text size="sm" style={{ color: '#ffffff' }}>
+                                      {chapJ !== undefined && chapJ !== null ? <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '6px' }}>[J{chapJ}]</span> : ''}
+                                      {chapTitre}
+                                    </Text>
+                                    <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDelete('chapitres', chapId)}>
+                                      <Trash2 size={15} />
+                                    </ActionIcon>
+                                  </Flex>
+                                );
+                              })
+                            ) : (
+                              <Text size="sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }} fs="italic">Aucun chapitre dans cette matière.</Text>
+                            )}
+                          </Stack>
+                        )}
+                      </div>
+                    );
+                  })}
+                </Stack>
+              )}
             </Box>
           </Grid.Col>
         </Grid>
