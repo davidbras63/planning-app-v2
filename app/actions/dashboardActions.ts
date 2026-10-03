@@ -3,7 +3,8 @@
 import { db } from "@/db";
 import { auth } from "@clerk/nextjs/server";
 import { folders, matieres, chapitres, echeances, individualNotes, settings } from "@/db/schema";
-import { eq, and, gt, ne } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function getDashboardData(folderId: string) {
     try {
@@ -31,7 +32,7 @@ export async function getDashboardData(folderId: string) {
     where: eq(folders.clerkId, userId ?? ""),
   })
   
-  // Récupération des seuils bas de la table settings
+  // Récupération des seuils bas et du cadencier de la table settings
   const userSettings = await db.query.settings.findFirst({
 		where: and(
 			eq(settings.clerkId, userId ?? ""),
@@ -40,6 +41,8 @@ export async function getDashboardData(folderId: string) {
   });
 
   let seuilBasTable: number[] = [];
+  let cadencierTable: number[] = [];
+
   try {
     const rawSeuil = userSettings?.seuilBasNote;
     if (Array.isArray(rawSeuil)) {
@@ -47,14 +50,21 @@ export async function getDashboardData(folderId: string) {
     } else if (typeof rawSeuil === 'string') {
       seuilBasTable = JSON.parse(rawSeuil);
     }
+
+    const rawCadencier = userSettings?.cadencier;
+    if (Array.isArray(rawCadencier)) {
+      cadencierTable = rawCadencier;
+    } else if (typeof rawCadencier === 'string') {
+      cadencierTable = JSON.parse(rawCadencier);
+    }
   } catch (e) {
-    console.error("Erreur de parsing seuilBasNote:", e);
+    console.error("Erreur de parsing des settings (seuil/cadencier):", e);
   }
 
   // On récupère directement les notes individuelles en ciblant la colonne moyenne
   const notesList = await db.query.individualNotes.findMany({
     where: eq(individualNotes.clerkId, userId ?? ""),
-})
+  });
 
   const rattrapages = [];
   for (const note of notesList) {
@@ -64,10 +74,9 @@ export async function getDashboardData(folderId: string) {
       where: eq(chapitres.id, Number(note.chapitreId)),
     });
 
-    // --- AJOUT : Si le chapitre n'existe pas ou n'appartient pas au dossier actif, on l'ignore ---
     if (!chap) continue;
     
-    // On va vérifier si la matière de ce chapitre appartient bien à notre dossier actif
+    // On vérifie si la matière de ce chapitre appartient bien à notre dossier actif
     const matiereAssociee = await db.query.matieres.findFirst({
       where: and(
         eq(matieres.id, Number(chap.matiereId)),
@@ -75,14 +84,12 @@ export async function getDashboardData(folderId: string) {
       ),
     });
 
-    if (!matiereAssociee) continue; // Si la matière n'est pas dans ce dossier, on passe au suivant !
-    // ------------------------------------------------------------------------------------------
+    if (!matiereAssociee) continue;
 
-    // 1. Déclaration de 'ech' tout en haut de la boucle...
+    // 1. Déclaration de 'ech'
     const ech = note.echeanceId ? await db.query.echeances.findFirst({
       where: eq(echeances.id, Number(note.echeanceId)),
     }) : null;
-
 
     // 2. Filtre pour savoir si l'échéance de rattrapage ("R") a déjà été créée
     let dejaReintegre = false;
@@ -99,25 +106,25 @@ export async function getDashboardData(folderId: string) {
       }
     }
 
-    // 3. Si le "R" existe déjà, on saute cette ligne pour l'effacer du tableau de rattrapage
     if (dejaReintegre) {
       continue;
     }
 
-	
-
     // La moyenne de la note individuelle
     const moyenneNum = Number(note.moyenne || 0);
    
-    // Récupération du J via l'échéance liée (ech est parfaitement défini ici)
-    const indexCadencier = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
+    // Récupération du J de l'échéance liée
+    const cycleDayValue = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
+
+    // Recherche de la position exacte de ce cycleDay dans le cadencier (ex: 14 est à l'index 4)
+    const cadencierIndex = cadencierTable.indexOf(cycleDayValue);
 
     let seuilBasActif = null;
-    if (seuilBasTable[indexCadencier] !== undefined) {
-      seuilBasActif = Number(seuilBasTable[indexCadencier]);
+    if (cadencierIndex !== -1 && seuilBasTable[cadencierIndex] !== undefined) {
+      seuilBasActif = Number(seuilBasTable[cadencierIndex]);
     }
 
-    // Comparaison de la moyenne de la note avec le seuil bas du J correspondant
+    // Comparaison de la moyenne de la note avec le seuil bas correspondant
     if (seuilBasActif !== null && moyenneNum > 0 && moyenneNum < seuilBasActif) {
       rattrapages.push({
         id: note.id,
@@ -125,7 +132,7 @@ export async function getDashboardData(folderId: string) {
         chapitreId: note.chapitreId,
         moyenne: note.moyenne,
         titre: chap?.titre || "Chapitre inconnu",
-        cycleDay: indexCadencier,
+        cycleDay: cycleDayValue,
         date: ech?.date || null,
         stepName: ech?.stepName || null,
       });
