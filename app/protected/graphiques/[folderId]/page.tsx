@@ -4,7 +4,6 @@ import { matieres, chapitres } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import AnalyticsView from "@/components/AnalyticsView";
 import { getMatiereGraphDataComplete, getChapitreGraphDataComplete } from "@/app/actions/get-stats";
-import { getFolderAnalysesData } from "@/app/actions/getSubjectAnalyse";
 
 interface PageProps {
   params: {
@@ -78,12 +77,11 @@ export default async function AnalyticsPage({ params }: PageProps) {
 
   // 7. Rendu de la vue client avec les listes et les actions injectées
   return (
-	  <AnalyticsView
-		matieresList={matieresList}
-		chapitresList={chapitresList}
-		getMatiereData={handleGetMatiereData}
-		getChapitreData={handleGetChapitreData}
-		getFolderAnalysesData={getFolderAnalysesData}
-	  />
-	);
+    <AnalyticsView
+      matieresList={matieresList}
+      chapitresList={chapitresList}
+      getMatiereData={handleGetMatiereData}
+      getChapitreData={handleGetChapitreData}
+    />
+  );
 }
