@@ -12,16 +12,6 @@ const formatDateOnly = (date: Date) => {
     return `${year}-${month}-${day}`;
 };
 
-// Parse ultra-robuste qui fixe l'heure à 12:00:00 pour éviter tout risque de bascule de jour UTC
-const parseLocalDateSafe = (dateStr: string) => {
-    if (!dateStr) return null;
-    const cleanStr = dateStr.split('T')[0];
-    const [year, month, day] = cleanStr.split('-').map(Number);
-    if (!year || !month || !day) return new Date(dateStr);
-    // On force l'heure à midi (12h00) heure locale pour immuniser la date contre les décalages UTC
-    return new Date(year, month - 1, day, 12, 0, 0, 0);
-};
-
 export async function createChapterAction(input: any) {
   try {
     const { userId } = await auth();
@@ -35,12 +25,12 @@ export async function createChapterAction(input: any) {
       return { success: false, error: "Paramètres ou matière manquants pour créer le chapitre." };
     }
 
-    const dateJ0 = parseLocalDateSafe(dateJ0Str);
-    if (!dateJ0 || isNaN(dateJ0.getTime())) {
+    const dateJ0 = new Date(dateJ0Str);
+    if (isNaN(dateJ0.getTime())) {
       return { success: false, error: "Format de date J0 invalide." };
     }
 
-    const dateExamen = dateExamenStr ? parseLocalDateSafe(dateExamenStr) : null;
+    const dateExamen = dateExamenStr ? new Date(dateExamenStr) : null;
 
     let cadencier: number[] = [];
     if (userId) {
@@ -85,7 +75,7 @@ export async function createChapterAction(input: any) {
     const echeancesToInsert = [];
 
     for (const delaiJour of cadencier) {
-      const targetDate = new Date(dateJ0.getTime());
+      const targetDate = new Date(dateJ0);
       targetDate.setDate(targetDate.getDate() + delaiJour);
 
       if (dateExamen && targetDate >= dateExamen) {
