@@ -25,7 +25,11 @@ export async function createChapterAction(input: any) {
       return { success: false, error: "Paramètres ou matière manquants pour créer le chapitre." };
     }
 
-    const dateJ0 = new Date(dateJ0Str);
+    // CORRECTION ICI : On parse en local strict pour éviter le décalage UTC entre minuit et 2h du mat
+    const cleanDateStr = String(dateJ0Str).split('T')[0];
+    const [y, m, d] = cleanDateStr.split('-').map(Number);
+    const dateJ0 = (y && m && d) ? new Date(y, m - 1, d) : new Date(dateJ0Str);
+
     if (isNaN(dateJ0.getTime())) {
       return { success: false, error: "Format de date J0 invalide." };
     }
@@ -75,7 +79,7 @@ export async function createChapterAction(input: any) {
     const echeancesToInsert = [];
 
     for (const delaiJour of cadencier) {
-      const targetDate = new Date(dateJ0);
+      const targetDate = new Date(dateJ0.getTime());
       targetDate.setDate(targetDate.getDate() + delaiJour);
 
       if (dateExamen && targetDate >= dateExamen) {
