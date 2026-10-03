@@ -13,135 +13,128 @@ export async function getDashboardData(folderId: string) {
 
         const numericFolderId = parseInt(folderId, 10);
 
-  const folderData = await db.query.folders.findFirst({
-    where: eq(folders.id, numericFolderId),
-    with: {
-      matieres: {
-        with: {
-          chapitres: {
-            with: {
-              echeances: true,
-            },
-          },
-        },
-      },
-    },
-  });
- 
-  const allFolders = await db.query.folders.findMany({
-    where: eq(folders.clerkId, userId ?? ""),
-  })
-  
-  // Récupération des seuils bas et du cadencier de la table settings
-  const userSettings = await db.query.settings.findFirst({
-		where: and(
-			eq(settings.clerkId, userId ?? ""),
-			eq(settings.folderId, Number(folderId))
-		),
-  });
+        // 1. On charge tout en une seule fois (zéro requête SQL en cascade dans la boucle)
+        const [folderData, allFolders, userSettings, notesList, allEcheancesUser, allChapitresUser, allMatieresUser] = await Promise.all([
+            db.query.folders.findFirst({
+                where: eq(folders.id, numericFolderId),
+                with: {
+                    matieres: {
+                        with: {
+                            chapitres: {
+                                with: {
+                                    echeances: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+            db.query.folders.findMany({
+                where: eq(folders.clerkId, userId ?? ""),
+            }),
+            db.query.settings.findFirst({
+                where: and(
+                    eq(settings.clerkId, userId ?? ""),
+                    eq(settings.folderId, Number(folderId))
+                ),
+            }),
+            db.query.individualNotes.findMany({
+                where: eq(individualNotes.clerkId, userId ?? ""),
+            }),
+            db.query.echeances.findMany(),
+            db.query.chapitres.findMany(),
+            db.query.matieres.findMany()
+        ]);
 
-  let seuilBasTable: number[] = [];
-  let cadencierTable: number[] = [];
+        if (!folderData) return null;
 
-  try {
-    const rawSeuil = userSettings?.seuilBasNote;
-    if (Array.isArray(rawSeuil)) {
-      seuilBasTable = rawSeuil;
-    } else if (typeof rawSeuil === 'string') {
-      seuilBasTable = JSON.parse(rawSeuil);
-    }
+        // Parsing des seuils bas et du cadencier
+        let seuilBasTable: number[] = [];
+        let cadencierTable: number[] = [];
 
-    const rawCadencier = userSettings?.cadencier;
-    if (Array.isArray(rawCadencier)) {
-      cadencierTable = rawCadencier;
-    } else if (typeof rawCadencier === 'string') {
-      cadencierTable = JSON.parse(rawCadencier);
-    }
-  } catch (e) {
-    console.error("Erreur de parsing des settings (seuil/cadencier):", e);
-  }
+        try {
+            const rawSeuil = userSettings?.seuilBasNote;
+            if (Array.isArray(rawSeuil)) {
+                seuilBasTable = rawSeuil;
+            } else if (typeof rawSeuil === 'string') {
+                seuilBasTable = JSON.parse(rawSeuil);
+            }
 
-  // On récupère directement les notes individuelles en ciblant la colonne moyenne
-  const notesList = await db.query.individualNotes.findMany({
-    where: eq(individualNotes.clerkId, userId ?? ""),
-  });
+            const rawCadencier = userSettings?.cadencier;
+            if (Array.isArray(rawCadencier)) {
+                cadencierTable = rawCadencier;
+            } else if (typeof rawCadencier === 'string') {
+                cadencierTable = JSON.parse(rawCadencier);
+            }
+        } catch (e) {
+            console.error("Erreur de parsing des settings (seuil/cadencier):", e);
+        }
 
-  const rattrapages = [];
-  for (const note of notesList) {
-    if (note.isIgnored) continue;  
-    
-    const chap = await db.query.chapitres.findFirst({
-      where: eq(chapitres.id, Number(note.chapitreId)),
-    });
+        // 2. Indexation en mémoire pour retrouver instantanément les données sans refaire de requêtes
+        const chapitreMap = new Map(allChapitresUser.map(c => [c.id, c]));
+        const matiereMap = new Map(allMatieresUser.map(m => [m.id, m]));
+        const echeanceMap = new Map(allEcheancesUser.map(e => [e.id, e]));
 
-    if (!chap) continue;
-    
-    // On vérifie si la matière de ce chapitre appartient bien à notre dossier actif
-    const matiereAssociee = await db.query.matieres.findFirst({
-      where: and(
-        eq(matieres.id, Number(chap.matiereId)),
-        eq(matieres.folderId, numericFolderId)
-      ),
-    });
+        const existingRSteps = new Set<string>();
+        for (const ech of allEcheancesUser) {
+            if (ech.chapitreId && ech.stepName) {
+                existingRSteps.add(`${ech.chapitreId}_${ech.stepName}`);
+            }
+        }
 
-    if (!matiereAssociee) continue;
+        const rattrapages = [];
 
-    // 1. Déclaration de 'ech'
-    const ech = note.echeanceId ? await db.query.echeances.findFirst({
-      where: eq(echeances.id, Number(note.echeanceId)),
-    }) : null;
+        // 3. Boucle de traitement 100% en mémoire (ultra rapide, zéro latence)
+        for (const note of notesList) {
+            if (note.isIgnored) continue;  
+            
+            const chapIdNum = Number(note.chapitreId);
+            const chap = chapitreMap.get(chapIdNum);
+            if (!chap) continue;
+            
+            const matiereAssociee = matiereMap.get(Number(chap.matiereId));
+            if (!matiereAssociee || matiereAssociee.folderId !== numericFolderId) continue;
 
-    // 2. Filtre pour savoir si l'échéance de rattrapage ("R") a déjà été créée
-    let dejaReintegre = false;
-    if (ech && ech.stepName) {
-      const stepRecherche = ech.stepName.includes("R") ? ech.stepName : `${ech.stepName} R`;
-      const rExiste = await db.query.echeances.findFirst({
-        where: and(
-          eq(echeances.chapitreId, Number(note.chapitreId)),
-          eq(echeances.stepName, stepRecherche)
-        )
-      });
-      if (rExiste) {
-        dejaReintegre = true;
-      }
-    }
+            const ech = note.echeanceId ? echeanceMap.get(Number(note.echeanceId)) : null;
 
-    if (dejaReintegre) {
-      continue;
-    }
+            let dejaReintegre = false;
+            if (ech && ech.stepName) {
+                const stepRecherche = ech.stepName.includes("R") ? ech.stepName : `${ech.stepName} R`;
+                if (existingRSteps.has(`${chapIdNum}_${stepRecherche}`)) {
+                    dejaReintegre = true;
+                }
+            }
 
-    // La moyenne de la note individuelle
-    const moyenneNum = Number(note.moyenne || 0);
-   
-    // Récupération du J de l'échéance liée
-    const cycleDayValue = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
+            if (dejaReintegre) {
+                continue;
+            }
 
-    // Recherche de la position exacte de ce cycleDay dans le cadencier (ex: 14 est à l'index 4)
-    const cadencierIndex = cadencierTable.indexOf(cycleDayValue);
+            const moyenneNum = Number(note.moyenne || 0);
+            const cycleDayValue = (ech?.cycleDay !== null && ech?.cycleDay !== undefined) ? Number(ech.cycleDay) : 0;
+            const cadencierIndex = cadencierTable.indexOf(cycleDayValue);
 
-    let seuilBasActif = null;
-    if (cadencierIndex !== -1 && seuilBasTable[cadencierIndex] !== undefined) {
-      seuilBasActif = Number(seuilBasTable[cadencierIndex]);
-    }
+            let seuilBasActif = null;
+            if (cadencierIndex !== -1 && seuilBasTable[cadencierIndex] !== undefined) {
+                seuilBasActif = Number(seuilBasTable[cadencierIndex]);
+            }
 
-    // Comparaison de la moyenne de la note avec le seuil bas correspondant
-    if (seuilBasActif !== null && moyenneNum > 0 && moyenneNum < seuilBasActif) {
-      rattrapages.push({
-        id: note.id,
-        echeanceId: note.echeanceId,
-        chapitreId: note.chapitreId,
-        moyenne: note.moyenne,
-        titre: chap?.titre || "Chapitre inconnu",
-        cycleDay: cycleDayValue,
-        date: ech?.date || null,
-        stepName: ech?.stepName || null,
-      });
-    }
-  }
+            if (seuilBasActif !== null && moyenneNum > 0 && moyenneNum < seuilBasActif) {
+                rattrapages.push({
+                    id: note.id,
+                    echeanceId: note.echeanceId,
+                    chapitreId: note.chapitreId,
+                    moyenne: note.moyenne,
+                    titre: chap?.titre || "Chapitre inconnu",
+                    cycleDay: cycleDayValue,
+                    date: ech?.date || null,
+                    stepName: ech?.stepName || null,
+                });
+            }
+        }
 
-  return {
+        return {
             folder: folderData,
-			folderList: allFolders,
+            folderList: allFolders,
             rattrapages: rattrapages,
         };
     } catch (error) {
@@ -155,24 +148,18 @@ export async function deleteDashboardItem(table: 'matieres' | 'chapitres' | 'ech
   const numericId = Number(id);
 
   if (table === 'matieres') {
-    // 1. Trouver les chapitres de la matière
     const chaps = await db.select().from(chapitres).where(eq(chapitres.matiereId, numericId));
     for (const chap of chaps) {
-      // Supprimer les notes et échéances de chaque chapitre
       await db.delete(individualNotes).where(eq(individualNotes.chapitreId, String(chap.id)));
       await db.delete(echeances).where(eq(echeances.chapitreId, String(chap.id)));
     }
-    // 2. Supprimer les chapitres
     await db.delete(chapitres).where(eq(chapitres.matiereId, numericId));
-    // 3. Supprimer la matière
     await db.delete(matieres).where(eq(matieres.id, numericId));
   } 
   
   else if (table === 'chapitres') {
-    // 1. Supprimer les notes et échéances liées au chapitre
     await db.delete(individualNotes).where(eq(individualNotes.chapitreId, String(numericId)));
     await db.delete(echeances).where(eq(echeances.chapitreId, String(numericId)));
-    // 2. Supprimer le chapitre
     await db.delete(chapitres).where(eq(chapitres.id, numericId));
   } 
   
@@ -189,24 +176,18 @@ export async function deleteFolderAction(folderId: string | number) {
   const { userId } = await auth();
   if (!userId) throw new Error("Non authentifié");
 
-  // 1. Récupérer toutes les matières du dossier
   const mats = await db.select().from(matieres).where(eq(matieres.folderId, numericFolderId));
   
   for (const mat of mats) {
-    // Pour chaque matière, on supprime ses chapitres
     const chaps = await db.select().from(chapitres).where(eq(chapitres.matiereId, mat.id));
     for (const chap of chaps) {
-      // Supprimer les notes et échéances de chaque chapitre
       await db.delete(individualNotes).where(eq(individualNotes.chapitreId, String(chap.id)));
       await db.delete(echeances).where(eq(echeances.chapitreId, String(chap.id)));
     }
-    // Supprimer les chapitres de la matière
     await db.delete(chapitres).where(eq(chapitres.matiereId, mat.id));
-    // Supprimer la matière
     await db.delete(matieres).where(eq(matieres.id, mat.id));
   }
 
-  // 2. Supprimer les settings liés à ce dossier
   await db.delete(settings).where(
     and(
       eq(settings.folderId, numericFolderId),
@@ -214,7 +195,6 @@ export async function deleteFolderAction(folderId: string | number) {
     )
   );
 
-  // 3. Enfin, supprimer le dossier en toute sécurité
   await db.delete(folders).where(eq(folders.id, numericFolderId));
 
   return { success: true };
