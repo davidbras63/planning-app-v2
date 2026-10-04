@@ -592,9 +592,7 @@ export default function Sidebar() {
             </Modal>
 
             {/* Modale de Personnalisation */}
-            <Modal opened={openedBackground} onClose={closeBackground} title="Personnalisation de l'arrière-plan" size="md">
-                <BackgroundPicker onClose={closeBackground} />
-            </Modal>
+            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
         </Box>
     );
 }
