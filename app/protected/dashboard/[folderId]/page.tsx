@@ -156,18 +156,21 @@ export default function Dashboard() {
                     size="lg"
                     style={{ height: '42px', width: '42px', backgroundColor: 'rgba(127, 29, 29, 0.3)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.35)', flexShrink: 0 }}
                     onClick={async () => {
-					  if (!selectedFolderId) return;
-					  if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
-						const res = await deleteFolderAction(selectedFolderId);
-						if (res && res.success) {
-						  startTransition(() => {
-							router.push('/protected/dashboard');
-						  });
-						} else {
-						  alert("Erreur lors de la suppression du dossier.");
-						}
-					  }
-					}}
+                      if (!selectedFolderId) return;
+                      if (confirm("Êtes-vous sûr de vouloir supprimer définitivement ce dossier et tout son contenu ?")) {
+                        const res = await deleteFolderAction(selectedFolderId);
+                        if (res && res.success) {
+                          const remainingFolders = foldersList.filter(f => String(f.id) !== selectedFolderId);
+                          if (remainingFolders.length > 0) {
+                            router.push(`/protected/dashboard/${remainingFolders[0].id}`);
+                          } else {
+                            router.push(`/protected/dashboard`);
+                          }
+                        } else {
+                          alert("Erreur lors de la suppression du dossier.");
+                        }
+                      }
+                    }}
                   >
                     <Trash2 size={20} />
                   </ActionIcon>
