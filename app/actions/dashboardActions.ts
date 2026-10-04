@@ -87,6 +87,7 @@ export async function getDashboardData(folderId: string) {
         // 3. Boucle de traitement 100% en mémoire (ultra rapide, zéro latence)
         for (const note of notesList) {
             if (note.isIgnored) continue;  
+            if (note.isDirectTraining) continue; // Exclut les notes d'entraînement direct du rattrapage
             
             const chapIdNum = Number(note.chapitreId);
             const chap = chapitreMap.get(chapIdNum);
