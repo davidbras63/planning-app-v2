@@ -198,33 +198,41 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     };
 
     const handleDragStart = (e: React.DragEvent, item: any) => {
-		e.dataTransfer.setData('text/plain', JSON.stringify({
-			id: item.isExamen ? item.chapitreId : item.echeanceId,
-			isExamen: item.isExamen
-		}));
-	};
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: item.isExamen ? item.chapitreId : item.echeanceId,
+            isExamen: item.isExamen
+        }));
+    };
 
-	const handleDragOver = (e: React.DragEvent) => {
-		e.preventDefault();
-	};
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
 
-	const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
-		e.preventDefault();
-		const rawData = e.dataTransfer.getData('text/plain');
-		if (!rawData) return;
+    const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
+        e.preventDefault();
+        const rawData = e.dataTransfer.getData('text/plain');
+        if (!rawData) return;
 
-		try {
-			const data = JSON.parse(rawData);
-			if (data.isExamen) {
-				await majDateExamen(data.id, new Date(targetDateStr));
-			} else {
-				await updateEcheanceAction(data.id, new Date(targetDateStr));
-			}
-			router.refresh();
-		} catch (err) {
-			console.error("Erreur lors du drop", err);
-		}
-	};
+        try {
+            const data = JSON.parse(rawData);
+            const targetDate = new Date(targetDateStr);
+
+            // 1. Mise à jour instantanée de l'affichage local (l'étiquette bouge direct)
+            // (Si tu gères chapitres avec un state modifiable, ou via router.refresh en arrière-plan, 
+            // le plus propre pour éviter la latence sans tout casser c'est de lancer l'action sans await bloquant)
+            
+            if (data.isExamen) {
+                majDateExamen(data.id, targetDate).catch(err => console.error("Erreur sauvegarde examen", err));
+            } else {
+                updateEcheanceAction(data.id, targetDate).catch(err => console.error("Erreur sauvegarde échéance", err));
+            }
+
+            // On rafraîchit en arrière-plan doucement
+            router.refresh();
+        } catch (err) {
+            console.error("Erreur lors du drop", err);
+        }
+    };
 
 
     const formatDateHeader = (date: Date) => {
