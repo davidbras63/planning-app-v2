@@ -160,41 +160,41 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         await saveNotesAction(echeanceId, chapitreId, value);
     };
 
-    // Fonction du bouton "Calculer moyenne" optimisée en parallèle
+    // Fonction du bouton "Calculer moyenne" 100% instantanée en local
     const handleCalculateAll = async () => {
         if (!todayEcheances || todayEcheances.length === 0) return;
 
-        // On lance toutes les requêtes en même temps pour chaque échéance
-        const promises = todayEcheances.map(async (item) => {
+        const newAverages: { [key: string]: number } = {};
+
+        todayEcheances.forEach((item) => {
             const { echeanceId, chapitreId } = item;
-            if (!echeanceId || !chapitreId) return null;
+            if (!echeanceId || !chapitreId) return;
 
             const rowKey = `${echeanceId}_${chapitreId}`;
-            
-            // On récupère la moyenne et le contenu en parallèle pour chaque ligne
-            const [moyenne, content] = await Promise.all([
-                getMoyenneAction(echeanceId, chapitreId),
-                getNotesContentAction(echeanceId, chapitreId)
-            ]);
+            const content = notesValues[rowKey] || "";
 
-            return { rowKey, moyenne, content };
-        });
+            // On extrait tous les nombres de la case (gère les espaces, virgules, points)
+            const numbers = content
+                .replace(/,/g, '.')
+                .match(/-?\d+(\.\d+)?/g)
+                ?.map(Number) || [];
 
-        // On attend que tout le monde ait fini instantanément
-        const results = await Promise.all(promises);
-
-        const newAverages: { [key: string]: number } = {};
-        const newNotesValues: { [key: string]: string } = {};
-
-        results.forEach((res) => {
-            if (res) {
-                newAverages[res.rowKey] = res.moyenne;
-                newNotesValues[res.rowKey] = res.content;
+            // Calcul de la moyenne localement
+            if (numbers.length > 0) {
+                const sum = numbers.reduce((acc, val) => acc + val, 0);
+                newAverages[rowKey] = Number((sum / numbers.length).toFixed(2));
+            } else {
+                newAverages[rowKey] = 0;
             }
+
+            // Sauvegarde en arrière-plan sans bloquer l'affichage
+            saveNotesAction(echeanceId, chapitreId, content).catch(err => {
+                console.error("Erreur de sauvegarde en arrière-plan", err);
+            });
         });
 
-        setAverages(newAverages);
-        setNotesValues(prev => ({ ...prev, ...newNotesValues }));
+        // Mise à jour immédiate de l'affichage
+        setAverages(prev => ({ ...prev, ...newAverages }));
     };
 
     const handleDragStart = (e: React.DragEvent, item: any) => {
