@@ -112,28 +112,28 @@ export default function GradeInput({
                             }
                           }}
                           onBlur={async (event) => {
-                            if (saveNotesAction && cleanEcheanceId && cleanChapitreId) {
-                              let rawValue = event.target.value;
+							  if (saveNotesAction && cleanEcheanceId && cleanChapitreId) {
+								let rawValue = event.target.value;
 
-                              const parts = rawValue.trim().split(/\s+/);
-                              const convertedParts = parts.map(part => {
-                                if (part.includes('/')) {
-                                  const [num, den] = part.split('/').map(Number);
-                                  if (!isNaN(num) && !isNaN(den) && den !== 0) {
-                                    const converted = (num / den) * 20;
-                                    return Number(converted.toFixed(2));
-                                  }
-                                }
-                                return part;
-                              });
+								const parts = rawValue.trim().split(/\s+/);
+								const convertedParts = parts.map(part => {
+								  if (part.includes('/')) {
+									const [num, den] = part.split('/').map(Number);
+									if (!isNaN(num) && !isNaN(den) && den !== 0) {
+									  const converted = (num / den) * 20;
+									  return Number(converted.toFixed(2));
+									}
+								  }
+								  return part;
+								});
 
-                              const finalValue = convertedParts.join(' ');
-                              event.target.value = finalValue;
+								const finalValue = convertedParts.join(' ');
+								event.target.value = finalValue;
 
-                              await saveNotesAction(cleanEcheanceId, cleanChapitreId, finalValue);
-                              router.refresh();
-                            }
-                          }}
+								// On sauvegarde en arrière-plan sans bloquer l'interface avec router.refresh()
+								await saveNotesAction(cleanEcheanceId, cleanChapitreId, finalValue);
+							  }
+						   }}
                           style={{
                             border: '1px solid rgba(255, 255, 255, 0.25)',
                             backgroundColor: 'rgba(30, 41, 59, 0.9)',
