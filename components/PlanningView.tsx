@@ -160,22 +160,39 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         await saveNotesAction(echeanceId, chapitreId, value);
     };
 
-    // Fonction du bouton "Calculer moyenne" mise à jour
+    // Fonction du bouton "Calculer moyenne" optimisée en parallèle
     const handleCalculateAll = async () => {
+        if (!todayEcheances || todayEcheances.length === 0) return;
+
+        // On lance toutes les requêtes en même temps pour chaque échéance
+        const promises = todayEcheances.map(async (item) => {
+            const { echeanceId, chapitreId } = item;
+            if (!echeanceId || !chapitreId) return null;
+
+            const rowKey = `${echeanceId}_${chapitreId}`;
+            
+            // On récupère la moyenne et le contenu en parallèle pour chaque ligne
+            const [moyenne, content] = await Promise.all([
+                getMoyenneAction(echeanceId, chapitreId),
+                getNotesContentAction(echeanceId, chapitreId)
+            ]);
+
+            return { rowKey, moyenne, content };
+        });
+
+        // On attend que tout le monde ait fini instantanément
+        const results = await Promise.all(promises);
+
         const newAverages: { [key: string]: number } = {};
         const newNotesValues: { [key: string]: string } = {};
 
-        for (const item of todayEcheances) {
-            const { echeanceId, chapitreId } = item;
-            if (echeanceId && chapitreId) {
-                const rowKey = `${echeanceId}_${chapitreId}`;
-                const moyenne = await getMoyenneAction(echeanceId, chapitreId);
-                const content = await getNotesContentAction(echeanceId, chapitreId);
-               
-                newAverages[rowKey] = moyenne;
-                newNotesValues[rowKey] = content;
+        results.forEach((res) => {
+            if (res) {
+                newAverages[res.rowKey] = res.moyenne;
+                newNotesValues[res.rowKey] = res.content;
             }
-        }
+        });
+
         setAverages(newAverages);
         setNotesValues(prev => ({ ...prev, ...newNotesValues }));
     };
