@@ -32,22 +32,17 @@ export async function updateEcheanceAction(id: string, newDate: Date) {
         const isJ0 = allEcheances.length > 0 && allEcheances[0].id === targetEcheance.id;
 
         if (isJ0) {
-            // CAS 1 : C'est le J0 -> On décale tout d'un coup en parallèle dans une transaction
-            await db.transaction(async (tx) => {
-                const updatePromises = allEcheances.map((ech) => {
-                    if (!ech.date) return Promise.resolve();
-                    
+            // CAS 1 : C'est le J0 -> On décale TOUT le chapitre en cascade d'autant de jours
+            for (const ech of allEcheances) {
+                if (ech.date) {
                     const echDate = new Date(ech.date);
                     echDate.setDate(echDate.getDate() + diffDays);
 
-                    return tx.update(echeances)
+                    await db.update(echeances)
                         .set({ date: echDate })
                         .where(eq(echeances.id, ech.id));
-                });
-
-                await Promise.all(updatePromises);
-            });
-        }
+                }
+            }
         } else {
             // CAS 2 : Ce n'est pas le J0 -> On ne bouge que l'échéance qu'on vient de glisser-déposer
             await db.update(echeances)
