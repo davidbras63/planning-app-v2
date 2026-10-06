@@ -47,7 +47,7 @@ export async function updateEcheanceAction(id: string, newDate: Date) {
                 );
             }
             await Promise.all(promises);
-        }
+        
         } else {
             // CAS 2 : Ce n'est pas le J0 -> On ne bouge que l'échéance qu'on vient de glisser-déposer
             await db.update(echeances)
