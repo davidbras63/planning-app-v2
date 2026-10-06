@@ -57,7 +57,7 @@ export default function AnalyticsView({
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
   const [opened, { open, close }] = useDisclosure(false);
-  const [activeModalItem, setActiveModalItem] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
+  const [activeModalItem, setActiveModalItem] = useState<{ label: string; data: any; totalQcm: number; average: number; isDateMode?: boolean } | null>(null);
 
   // Standard mode fetch
   useEffect(() => {
@@ -100,6 +100,7 @@ export default function AnalyticsView({
       data: info?.chartData || [],
       totalQcm: info?.totalQcm || 0,
       average: info?.average || 0,
+      isDateMode,
     });
     open();
   };
@@ -171,7 +172,7 @@ export default function AnalyticsView({
                 cursor: "pointer",
                 transition: "transform 0.2s, border-color 0.2s"
               }}
-              onClick={() => handleCardClick(`Vue Globale Matière : ${selectedMatiereLabel}`, matiereInfo)}
+              onClick={() => handleCardClick(`Vue Globale Matière : ${selectedMatiereLabel}`, matiereInfo, false)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-3px)";
                 e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
@@ -303,7 +304,7 @@ export default function AnalyticsView({
                     borderRadius: '12px',
                     transition: "transform 0.2s, border-color 0.2s"
                   }}
-                  onClick={() => handleCardClick(chap.label, chapInfo)}
+                  onClick={() => handleCardClick(chap.label, chapInfo, false)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-3px)";
                     e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
@@ -367,12 +368,15 @@ export default function AnalyticsView({
            
             <Box style={{ height: 350, width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sortChartSteps(activeModalItem.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <LineChart 
+                  data={activeModalItem.isDateMode ? activeModalItem.data : sortChartSteps(activeModalItem.data)} 
+                  margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                  <XAxis dataKey="step" stroke="#909296" />
+                  <XAxis dataKey={activeModalItem.isDateMode ? "date" : "step"} stroke="#909296" />
                   <YAxis domain={[0, 20]} stroke="#909296" />
                   <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name={activeModalItem.isDateMode ? "Moyenne Session" : "Moyenne J"} dot={{ r: 4 }} />
                   <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
