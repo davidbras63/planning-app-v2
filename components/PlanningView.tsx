@@ -16,7 +16,12 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     const [notesValues, setNotesValues] = useState<{ [key: string]: string }>({});
     const [averages, setAverages] = useState<{ [key: string]: number }>({});
     const inputRefs = useRef<HTMLInputElement[]>([]);
-    
+    // État local pour le drag-and-drop instantané
+    const [localChapitres, setLocalChapitres] = useState<any[]>(chapitres);
+
+    useEffect(() => {
+        setLocalChapitres(chapitres);
+    }, [chapitres]);
 
     useEffect(() => {
         const d = new Date();
@@ -87,9 +92,9 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 
     const planningItemsByDate = useMemo(() => {
         const map: { [key: string]: any[] } = {};
-        if (!chapitres) return map;
+        if (!localChapitres) return map;
 
-        chapitres.forEach((chap: any) => {
+        localChapitres.forEach((chap: any) => {
             // 1. Injection de l'examen à sa date exacte sur le planning
             if (chap.dateExamen) {
                 const dEx = new Date(chap.dateExamen);
@@ -215,10 +220,32 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 
 		try {
 			const data = JSON.parse(rawData);
+            const targetDate = new Date(targetDateStr);
+
+            // Mise à jour visuelle immédiate (zéro latence)
+            setLocalChapitres(prevChapitres => {
+                return prevChapitres.map(chap => {
+                    if (data.isExamen && chap.id === data.id) {
+                        return { ...chap, dateExamen: targetDate };
+                    }
+                    if (!data.isExamen && chap.echeances) {
+                        const updatedEcheances = chap.echeances.map((ech: any) => {
+                            if (ech.id === data.id) {
+                                return { ...ech, date: targetDate };
+                            }
+                            return ech;
+                        });
+                        return { ...chap, echeances: updatedEcheances };
+                    }
+                    return chap;
+                });
+            });
+
+            // Appel serveur en arrière-plan
 			if (data.isExamen) {
-				await majDateExamen(data.id, new Date(targetDateStr));
+				await majDateExamen(data.id, targetDate);
 			} else {
-				await updateEcheanceAction(data.id, new Date(targetDateStr));
+				await updateEcheanceAction(data.id, targetDate);
 			}
 			router.refresh();
 		} catch (err) {
