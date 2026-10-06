@@ -157,7 +157,7 @@ export default function AnalyticsView({
               }}
             />
 
-            <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.4)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+            <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
               <Stack gap="md">
                 <Text fw={700} size="lg" c="white">
                   Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
@@ -205,7 +205,7 @@ export default function AnalyticsView({
                   radius="md"
                   p="md"
                   style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '12px'
                   }}
@@ -264,7 +264,7 @@ export default function AnalyticsView({
                   radius="md"
                   p="md"
                   style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
                     cursor: "pointer",
                     borderRadius: '12px',
