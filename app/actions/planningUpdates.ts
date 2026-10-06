@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { echeances } from "@/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { sql, eq, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function updateEcheanceAction(id: string, newDate: Date) {
@@ -32,22 +32,29 @@ export async function updateEcheanceAction(id: string, newDate: Date) {
         const isJ0 = allEcheances.length > 0 && allEcheances[0].id === targetEcheance.id;
 
         if (isJ0) {
-            // CAS 1 : On décale tout un par un mais sans attendre la base à chaque tour de boucle
-            const promises = [];
-            for (const ech of allEcheances) {
-                if (!ech.date) continue;
-                
-                const echDate = new Date(ech.date);
-                echDate.setDate(echDate.getDate() + diffDays);
+            // On prépare les cas pour mettre à jour toutes les échéances d'un coup en une seule requête SQL
+            const cases = allEcheances
+                .filter(ech => ech.date)
+                .map(ech => {
+                    const echDate = new Date(ech.date!);
+                    echDate.setDate(echDate.getDate() + diffDays);
+                    // Format SQL de la date pour PostgreSQL (Neon)
+                    const formattedDate = echDate.toISOString().slice(0, 19).replace('T', ' ');
+                    return sql`WHEN ${echeances.id} = ${ech.id} THEN ${formattedDate}::timestamp`;
+                });
 
-                promises.push(
-                    db.update(echeances)
-                        .set({ date: echDate })
-                        .where(eq(echeances.id, ech.id))
-                );
+            if (cases.length > 0) {
+                const ids = allEcheances.map(ech => ech.id);
+                
+                await db.execute(sql`
+                    UPDATE ${echeances}
+                    SET date = CASE 
+                        ${sql.join(cases, sql` `)}
+                        ELSE date 
+                    END
+                    WHERE id IN (${sql.join(ids, sql`, `)})
+                `);
             }
-            await Promise.all(promises);
-        
         } else {
             // CAS 2 : Ce n'est pas le J0 -> On ne bouge que l'échéance qu'on vient de glisser-déposer
             await db.update(echeances)
