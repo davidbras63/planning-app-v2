@@ -16,6 +16,13 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     const [notesValues, setNotesValues] = useState<{ [key: string]: string }>({});
     const [averages, setAverages] = useState<{ [key: string]: number }>({});
     const inputRefs = useRef<HTMLInputElement[]>([]);
+    
+    // État local synchronisé avec les props pour l'affichage instantané
+    const [localChapitres, setLocalChapitres] = useState<any[]>(chapitres);
+
+    useEffect(() => {
+        setLocalChapitres(chapitres);
+    }, [chapitres]);
 
     useEffect(() => {
         const d = new Date();
@@ -49,6 +56,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 
         loadInitialNotes();
     }, []);
+
 
     // Date du jour au format YYYY-MM-DD pour filtrer le tableau du jour
     const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
@@ -85,9 +93,9 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
 
     const planningItemsByDate = useMemo(() => {
         const map: { [key: string]: any[] } = {};
-        if (!chapitres) return map;
+        if (!localChapitres) return map;
 
-        chapitres.forEach((chap: any) => {
+        localChapitres.forEach((chap: any) => {
             // 1. Injection de l'examen à sa date exacte sur le planning
             if (chap.dateExamen) {
                 const dEx = new Date(chap.dateExamen);
@@ -144,12 +152,13 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         });
 
         return map;
-    }, [chapitres]);
+    }, [localChapitres]);
 
     const todayEcheances = useMemo(() => {
         return (planningItemsByDate[todayStr] || []).filter((item: any) => !item.isExamen);
     }, [planningItemsByDate, todayStr]);
 
+    // Fonction de sauvegarde mise à jour avec le couple (echeanceId, chapitreId)
     const handleSaveNote = async (echeanceId: string, chapitreId: string, value: string) => {
         if (!echeanceId || !chapitreId) return;
         const rowKey = `${echeanceId}_${chapitreId}`;
@@ -157,6 +166,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         await saveNotesAction(echeanceId, chapitreId, value);
     };
 
+    // Fonction du bouton "Calculer moyenne" 100% instantanée en local
     const handleCalculateAll = async () => {
         if (!todayEcheances || todayEcheances.length === 0) return;
 
@@ -169,11 +179,13 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
             const rowKey = `${echeanceId}_${chapitreId}`;
             const content = notesValues[rowKey] || "";
 
+            // On extrait tous les nombres de la case (gère les espaces, virgules, points)
             const numbers = content
                 .replace(/,/g, '.')
                 .match(/-?\d+(\.\d+)?/g)
                 ?.map(Number) || [];
 
+            // Calcul de la moyenne localement
             if (numbers.length > 0) {
                 const sum = numbers.reduce((acc, val) => acc + val, 0);
                 newAverages[rowKey] = Number((sum / numbers.length).toFixed(2));
@@ -181,11 +193,13 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                 newAverages[rowKey] = 0;
             }
 
+            // Sauvegarde en arrière-plan sans bloquer l'affichage
             saveNotesAction(echeanceId, chapitreId, content).catch(err => {
                 console.error("Erreur de sauvegarde en arrière-plan", err);
             });
         });
 
+        // Mise à jour immédiate de l'affichage
         setAverages(prev => ({ ...prev, ...newAverages }));
     };
 
@@ -209,6 +223,25 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
             const data = JSON.parse(rawData);
             const targetDate = new Date(targetDateStr);
 
+            // Mise à jour locale immédiate en respectant la structure complète (examen ou échéance simple)
+            setLocalChapitres(prev => 
+                prev.map(chap => {
+                    if (data.isExamen && chap.id === data.id) {
+                        return { ...chap, dateExamen: targetDate };
+                    }
+                    if (!data.isExamen && chap.echeances) {
+                        return {
+                            ...chap,
+                            echeances: chap.echeances.map((ech: any) => 
+                                ech.id === data.id ? { ...ech, date: targetDate } : ech
+                            )
+                        };
+                    }
+                    return chap;
+                })
+            );
+
+            // Appels serveurs (laisse le backend recalculer la cascade des J si nécessaire via le refresh)
             if (data.isExamen) {
                 await majDateExamen(data.id, targetDate);
             } else {
@@ -220,12 +253,14 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         }
     };
 
+
     const formatDateHeader = (date: Date) => {
         return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'numeric' });
     };
 
     return (
         <Stack gap="md" w="100%" style={{ maxWidth: '100%', overflowX: 'hidden' }}>
+            {/* CONTENEUR SOMBRE DU HAUT : Titre et boutons parfaitement lisibles peu importe l'image de fond */}
             <div style={{ 
                 backgroundColor: 'rgba(15, 23, 42, 0.75)', 
                 borderRadius: '12px', 
@@ -264,6 +299,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                             ← Semaine Précédente
                         </Button>
 
+                        {/* Bouton Aujourd'hui bien visible avec fond lumineux et texte contrasté */}
                         <Button 
                             size="sm" 
                             onClick={goToCurrentWeek}
@@ -304,6 +340,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                 </Group>
             </div>
 
+            {/* Le tableau du planning avec effet transparent/flouté pour s'adapter aux fonds */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', width: '100%', marginBottom: '20px' }}>
                 {weekDays.map((day, index) => {
                     const dStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -326,12 +363,14 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                                 overflow: 'hidden'
                             }}
                         >
+                            {/* En-tête du jour */}
                             <div style={{ padding: '10px 8px', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', textAlign: 'center' }}>
                                 <span style={{ fontSize: '11px', fontWeight: 700, color: isToday ? '#38bdf8' : '#ffffff', textTransform: 'capitalize', WebkitFontSmoothing: 'antialiased' }}>
                                     {formatDateHeader(day)}
                                 </span>
                             </div>
 
+                            {/* Liste des cartes */}
                             <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
                                 {itemsForDay.length === 0 ? (
                                     <div style={{ textAlign: 'center', marginTop: '40px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic' }}>
@@ -356,7 +395,9 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                                                 WebkitFontSmoothing: 'antialiased'
                                             }}
                                         >
+                                            {/* LIGNE DU HAUT : Check à gauche + Titre du chapitre à côté */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {/* Bouton check ROUGE VIF */}
                                                 {!item.isExamen && (
                                                     <button
                                                         type="button"
@@ -386,26 +427,30 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                                                         {item.completed ? '✓' : ''}
                                                     </button>
                                                 )}
+                                                {/* Titre du chapitre net à côté du check */}
                                                 <div style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', wordBreak: 'break-word', lineHeight: '1.2' }}>
                                                     {item.titreChapitre}
                                                 </div>
                                             </div>
 
+                                            {/* LIGNE DU BAS : Badge J BLEU ÉLECTRIQUE TRÈS CLAIR à gauche, Matière en bas à droite */}
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
+                                                {/* Badge J : BLEU ÉLECTRIQUE LUMINEUX bien pétant */}
                                                 <span style={{
                                                     backgroundColor: item.isExamen ? '#dc2626' : '#38bdf8', 
-                                                    color: '#0f172a',
+                                                    color: '#0f172a', // Texte sombre bien tranché sur le bleu clair lumineux
                                                     padding: '2px 8px',
-                                                    borderRadius: '6px',
+                                                    borderRadius: '6px', // Forme plus arrondie / pilule
                                                     fontSize: '9px',
                                                     fontWeight: 800,
                                                     textTransform: 'uppercase',
-                                                    boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)',
+                                                    boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)', // Léger effet néon pour que ça pète bien
                                                     WebkitFontSmoothing: 'antialiased'
                                                 }}>
                                                     {item.stepName}
                                                 </span>
 
+                                                {/* Matière en bas à droite */}
                                                 <span style={{ fontSize: '9px', fontWeight: 600, color: '#93c5fd', backgroundColor: 'rgba(59, 130, 246, 0.25)', padding: '2px 6px', borderRadius: '4px', textAlign: 'right' }}>
                                                     {item.matiereNom}
                                                 </span>
