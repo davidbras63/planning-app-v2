@@ -57,7 +57,7 @@ export default function AnalyticsView({
   const [chapitresData, setChapitresData] = useState<Record<string, any>>({});
 
   const [opened, { open, close }] = useDisclosure(false);
-  const [activeChapitreModal, setActiveChapitreModal] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
+  const [activeModalItem, setActiveModalItem] = useState<{ label: string; data: any; totalQcm: number; average: number } | null>(null);
 
   // Standard mode fetch
   useEffect(() => {
@@ -94,15 +94,17 @@ export default function AnalyticsView({
     });
   }, [selectedMatiere, chapitresList.length, getChapitreData]);
 
-  const handleCardClick = (chap: { value: string; label: string }, chapInfo: any) => {
-    setActiveChapitreModal({
-      label: chap.label,
-      data: chapInfo?.chartData || [],
-      totalQcm: chapInfo?.totalQcm || 0,
-      average: chapInfo?.average || 0,
+  const handleCardClick = (label: string, info: any, isDateMode = false) => {
+    setActiveModalItem({
+      label,
+      data: info?.chartData || [],
+      totalQcm: info?.totalQcm || 0,
+      average: info?.average || 0,
     });
     open();
   };
+
+  const selectedMatiereLabel = folderMatieres.find((m) => m.value === selectedMatiere)?.label || "Matière";
 
   return (
     <Container fluid p="xl" style={{ WebkitFontSmoothing: 'antialiased' }}>
@@ -157,7 +159,28 @@ export default function AnalyticsView({
               }}
             />
 
-            <Card withBorder shadow="sm" radius="md" p="lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+            <Card
+              withBorder
+              shadow="sm"
+              radius="md"
+              p="lg"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '12px',
+                cursor: "pointer",
+                transition: "transform 0.2s, border-color 0.2s"
+              }}
+              onClick={() => handleCardClick(`Vue Globale Matière : ${selectedMatiereLabel}`, matiereInfo)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-3px)";
+                e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+              }}
+            >
               <Stack gap="md">
                 <Text fw={700} size="lg" c="white">
                   Vue Globale Matière (Moyenne : <span style={{ color: '#38bdf8' }}>{matiereInfo.average} / 20</span>)
@@ -191,11 +214,10 @@ export default function AnalyticsView({
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
             {folderMatieres.map((mat) => {
-			  // On cherche la clé en string ET en number pour être sûr de tomber dessus
-			  const matInfo = subjectsAnalysesData[mat.value] 
-				|| subjectsAnalysesData[String(mat.value)] 
-				|| subjectsAnalysesData[Number(mat.value)] 
-				|| { chartData: [], average: 0, totalQcm: 0 };
+              const matInfo = subjectsAnalysesData[mat.value] 
+                || subjectsAnalysesData[String(mat.value)] 
+                || subjectsAnalysesData[Number(mat.value)] 
+                || { chartData: [], average: 0, totalQcm: 0 };
 
               return (
                 <Card
@@ -207,7 +229,18 @@ export default function AnalyticsView({
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '12px'
+                    borderRadius: '12px',
+                    cursor: "pointer",
+                    transition: "transform 0.2s, border-color 0.2s"
+                  }}
+                  onClick={() => handleCardClick(mat.label, matInfo, true)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
                   }}
                 >
                   <Stack gap="xs">
@@ -224,7 +257,7 @@ export default function AnalyticsView({
                             <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
                             <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
-							<Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} />
+                            <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
@@ -270,7 +303,7 @@ export default function AnalyticsView({
                     borderRadius: '12px',
                     transition: "transform 0.2s, border-color 0.2s"
                   }}
-                  onClick={() => handleCardClick(chap, chapInfo)}
+                  onClick={() => handleCardClick(chap.label, chapInfo)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-3px)";
                     e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
@@ -313,11 +346,11 @@ export default function AnalyticsView({
         </Box>
       )}
 
-      {/* --- MODAL DE ZOOM --- */}
+      {/* --- MODAL DE ZOOM UNIVERSELLE --- */}
       <Modal
         opened={opened}
         onClose={close}
-        title={<Text fw={700} c="white">{activeChapitreModal?.label || "Détail Chapitre"}</Text>}
+        title={<Text fw={700} c="white">{activeModalItem?.label || "Détail"}</Text>}
         size="lg"
         centered
         styles={{
@@ -326,15 +359,15 @@ export default function AnalyticsView({
           close: { color: 'white' }
         }}
       >
-        {activeChapitreModal && (
+        {activeModalItem && (
           <Stack gap="md">
             <Text size="sm" fw={500} c="white">
-              Moyenne globale du chapitre : <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeChapitreModal.average} / 20</span>
+              Moyenne : <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{activeModalItem.average} / 20</span>
             </Text>
            
             <Box style={{ height: 350, width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={sortChartSteps(activeChapitreModal.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <LineChart data={sortChartSteps(activeModalItem.data)} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
                   <XAxis dataKey="step" stroke="#909296" />
                   <YAxis domain={[0, 20]} stroke="#909296" />
@@ -347,7 +380,7 @@ export default function AnalyticsView({
 
             <Box bg="rgba(56, 189, 248, 0.08)" p="xs" ta="center" style={{ borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.2)" }}>
               <Text size="sm" fw={700} c="#38bdf8">
-                Total QCM réalisés : {activeChapitreModal.totalQcm}
+                Total QCM réalisés : {activeModalItem.totalQcm}
               </Text>
             </Box>
           </Stack>
