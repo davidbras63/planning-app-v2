@@ -83,14 +83,22 @@ export default function AnalyticsView({
     (chap) => !selectedMatiere || chap.matiereId === Number(selectedMatiere)
   );
 
+  // Chargement simultané de tous les chapitres en même temps (Promise.all)
   useEffect(() => {
     setChapitresData({});
-    filteredChapitres.forEach((chap) => {
-      getChapitreData(Number(chap.value)).then((res) => {
-        if (res) {
-          setChapitresData((prev) => ({ ...prev, [chap.value]: res }));
-        }
+    if (filteredChapitres.length === 0) return;
+
+    Promise.all(
+      filteredChapitres.map(async (chap) => {
+        const res = await getChapitreData(Number(chap.value));
+        return { id: chap.value, data: res || { chartData: [], average: 0, totalQcm: 0 } };
+      })
+    ).then((results) => {
+      const newChapData: Record<string, any> = {};
+      results.forEach((item) => {
+        newChapData[item.id] = item.data;
       });
+      setChapitresData(newChapData);
     });
   }, [selectedMatiere, chapitresList.length, getChapitreData]);
 
