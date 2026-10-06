@@ -16,7 +16,8 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     const [notesValues, setNotesValues] = useState<{ [key: string]: string }>({});
     const [averages, setAverages] = useState<{ [key: string]: number }>({});
     const inputRefs = useRef<HTMLInputElement[]>([]);
-    // État local pour le drag-and-drop instantané
+    
+    // État local synchronisé avec les props pour l'affichage instantané
     const [localChapitres, setLocalChapitres] = useState<any[]>(chapitres);
 
     useEffect(() => {
@@ -114,7 +115,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
                 });
             }
 
-            // 2. Traitement des échéances de révision classiques
+            // 2. Traitement des échéances de révision classiques (J0, J1, etc.)
             if (chap.echeances && Array.isArray(chap.echeances)) {
                 chap.echeances.forEach((ech: any) => {
                     if (ech.date) {
@@ -151,7 +152,7 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
         });
 
         return map;
-    }, [chapitres]);
+    }, [localChapitres]);
 
     const todayEcheances = useMemo(() => {
         return (planningItemsByDate[todayStr] || []).filter((item: any) => !item.isExamen);
@@ -203,55 +204,54 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
     };
 
     const handleDragStart = (e: React.DragEvent, item: any) => {
-		e.dataTransfer.setData('text/plain', JSON.stringify({
-			id: item.isExamen ? item.chapitreId : item.echeanceId,
-			isExamen: item.isExamen
-		}));
-	};
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: item.isExamen ? item.chapitreId : item.echeanceId,
+            isExamen: item.isExamen
+        }));
+    };
 
-	const handleDragOver = (e: React.DragEvent) => {
-		e.preventDefault();
-	};
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
 
-	const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
-		e.preventDefault();
-		const rawData = e.dataTransfer.getData('text/plain');
-		if (!rawData) return;
+    const handleDrop = async (e: React.DragEvent, targetDateStr: string) => {
+        e.preventDefault();
+        const rawData = e.dataTransfer.getData('text/plain');
+        if (!rawData) return;
 
-		try {
-			const data = JSON.parse(rawData);
+        try {
+            const data = JSON.parse(rawData);
             const targetDate = new Date(targetDateStr);
 
-            // Mise à jour visuelle immédiate (zéro latence)
-            setLocalChapitres(prevChapitres => {
-                return prevChapitres.map(chap => {
+            // Mise à jour locale immédiate en respectant la structure complète (examen ou échéance simple)
+            setLocalChapitres(prev => 
+                prev.map(chap => {
                     if (data.isExamen && chap.id === data.id) {
                         return { ...chap, dateExamen: targetDate };
                     }
                     if (!data.isExamen && chap.echeances) {
-                        const updatedEcheances = chap.echeances.map((ech: any) => {
-                            if (ech.id === data.id) {
-                                return { ...ech, date: targetDate };
-                            }
-                            return ech;
-                        });
-                        return { ...chap, echeances: updatedEcheances };
+                        return {
+                            ...chap,
+                            echeances: chap.echeances.map((ech: any) => 
+                                ech.id === data.id ? { ...ech, date: targetDate } : ech
+                            )
+                        };
                     }
                     return chap;
-                });
-            });
+                })
+            );
 
-            // Appel serveur en arrière-plan
-			if (data.isExamen) {
-				await majDateExamen(data.id, targetDate);
-			} else {
-				await updateEcheanceAction(data.id, targetDate);
-			}
-			router.refresh();
-		} catch (err) {
-			console.error("Erreur lors du drop", err);
-		}
-	};
+            // Appels serveurs (laisse le backend recalculer la cascade des J si nécessaire via le refresh)
+            if (data.isExamen) {
+                await majDateExamen(data.id, targetDate);
+            } else {
+                await updateEcheanceAction(data.id, targetDate);
+            }
+            router.refresh();
+        } catch (err) {
+            console.error("Erreur lors du drop", err);
+        }
+    };
 
 
     const formatDateHeader = (date: Date) => {
@@ -341,137 +341,137 @@ export default function PlanningView({ chapitres, folderId }: { chapitres: any[]
             </div>
 
             {/* Le tableau du planning avec effet transparent/flouté pour s'adapter aux fonds */}
-				<div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', width: '100%', marginBottom: '20px' }}>
-					{weekDays.map((day, index) => {
-						const dStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-						const itemsForDay = planningItemsByDate[dStr] || [];
-						const isToday = new Date().toISOString().split('T')[0] === dStr;
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '12px', width: '100%', marginBottom: '20px' }}>
+                {weekDays.map((day, index) => {
+                    const dStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+                    const itemsForDay = planningItemsByDate[dStr] || [];
+                    const isToday = new Date().toISOString().split('T')[0] === dStr;
 
-						return (
-							<div
-								key={index}
-								onDragOver={handleDragOver}
-								onDrop={(e) => handleDrop(e, dStr)}
-								style={{ 
-									minHeight: '340px', 
-									backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.35)', 
-									borderRadius: '12px',
-									border: isToday ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.25)',
-									boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
-									display: 'flex',
-									flexDirection: 'column',
-									overflow: 'hidden'
-								}}
-							>
-								{/* En-tête du jour */}
-								<div style={{ padding: '10px 8px', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', textAlign: 'center' }}>
-									<span style={{ fontSize: '11px', fontWeight: 700, color: isToday ? '#38bdf8' : '#ffffff', textTransform: 'capitalize', WebkitFontSmoothing: 'antialiased' }}>
-										{formatDateHeader(day)}
-									</span>
-								</div>
+                    return (
+                        <div
+                            key={index}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, dStr)}
+                            style={{ 
+                                minHeight: '340px', 
+                                backgroundColor: isToday ? 'rgba(30, 41, 59, 0.5)' : 'rgba(15, 23, 42, 0.35)', 
+                                borderRadius: '12px',
+                                border: isToday ? '2px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.25)',
+                                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* En-tête du jour */}
+                            <div style={{ padding: '10px 8px', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottom: '1px solid rgba(255, 255, 255, 0.15)', textAlign: 'center' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: isToday ? '#38bdf8' : '#ffffff', textTransform: 'capitalize', WebkitFontSmoothing: 'antialiased' }}>
+                                    {formatDateHeader(day)}
+                                </span>
+                            </div>
 
-								{/* Liste des cartes */}
-								<div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-									{itemsForDay.length === 0 ? (
-										<div style={{ textAlign: 'center', marginTop: '40px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic' }}>
-											Aucune échéance
-										</div>
-									) : (
-										itemsForDay.map((item, idx) => (
-											<div
-												key={idx}
-												draggable={true}
-												onDragStart={(e) => handleDragStart(e, item)}
-												style={{
-													backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.85)' : 'rgba(30, 41, 59, 0.65)',
-													border: item.isExamen ? '1px solid #f87171' : '1px solid rgba(255, 255, 255, 0.25)',
-													borderRadius: '8px',
-													padding: '10px',
-													cursor: 'grab',
-													boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-													display: 'flex',
-													flexDirection: 'column',
-													gap: '8px',
-													WebkitFontSmoothing: 'antialiased'
-												}}
-											>
-												{/* LIGNE DU HAUT : Check à gauche + Titre du chapitre à côté */}
-												<div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-													{/* Bouton check ROUGE VIF */}
-													{!item.isExamen && (
-														<button
-															type="button"
-															onClick={async () => {
-																const newStatus = !item.completed;
-																await toggleEcheanceCompleted(item.echeanceId, newStatus);
-															}}
-															style={{
-																width: '18px',
-																height: '18px',
-																minWidth: '18px',
-																borderRadius: '4px',
-																cursor: 'pointer',
-																backgroundColor: 'rgba(15, 23, 42, 0.9)',
-																border: item.completed ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.5)',
-																display: 'flex',
-																alignItems: 'center',
-																justifyContent: 'center',
-																color: '#ef4444',
-																fontSize: '12px',
-																fontWeight: 900,
-																padding: 0,
-																margin: 0
-															}}
-															title="Valider"
-														>
-															{item.completed ? '✓' : ''}
-														</button>
-													)}
-													{/* Titre du chapitre net à côté du check */}
-													<div style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', wordBreak: 'break-word', lineHeight: '1.2' }}>
-														{item.titreChapitre}
-													</div>
-												</div>
+                            {/* Liste des cartes */}
+                            <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                                {itemsForDay.length === 0 ? (
+                                    <div style={{ textAlign: 'center', marginTop: '40px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic' }}>
+                                        Aucune échéance
+                                    </div>
+                                ) : (
+                                    itemsForDay.map((item, idx) => (
+                                        <div
+                                            key={idx}
+                                            draggable={true}
+                                            onDragStart={(e) => handleDragStart(e, item)}
+                                            style={{
+                                                backgroundColor: item.isExamen ? 'rgba(127, 29, 29, 0.85)' : 'rgba(30, 41, 59, 0.65)',
+                                                border: item.isExamen ? '1px solid #f87171' : '1px solid rgba(255, 255, 255, 0.25)',
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                cursor: 'grab',
+                                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: '8px',
+                                                WebkitFontSmoothing: 'antialiased'
+                                            }}
+                                        >
+                                            {/* LIGNE DU HAUT : Check à gauche + Titre du chapitre à côté */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {/* Bouton check ROUGE VIF */}
+                                                {!item.isExamen && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            const newStatus = !item.completed;
+                                                            await toggleEcheanceCompleted(item.echeanceId, newStatus);
+                                                        }}
+                                                        style={{
+                                                            width: '18px',
+                                                            height: '18px',
+                                                            minWidth: '18px',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                                            border: item.completed ? '2px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.5)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            color: '#ef4444',
+                                                            fontSize: '12px',
+                                                            fontWeight: 900,
+                                                            padding: 0,
+                                                            margin: 0
+                                                        }}
+                                                        title="Valider"
+                                                    >
+                                                        {item.completed ? '✓' : ''}
+                                                    </button>
+                                                )}
+                                                {/* Titre du chapitre net à côté du check */}
+                                                <div style={{ fontSize: '11px', fontWeight: 700, color: '#ffffff', wordBreak: 'break-word', lineHeight: '1.2' }}>
+                                                    {item.titreChapitre}
+                                                </div>
+                                            </div>
 
-												{/* LIGNE DU BAS : Badge J BLEU ÉLECTRIQUE TRÈS CLAIR à gauche, Matière en bas à droite */}
-												<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
-													{/* Badge J : BLEU ÉLECTRIQUE LUMINEUX bien pétant */}
-													<span style={{
-														backgroundColor: item.isExamen ? '#dc2626' : '#38bdf8', 
-														color: '#0f172a', // Texte sombre bien tranché sur le bleu clair lumineux
-														padding: '2px 8px',
-														borderRadius: '6px', // Forme plus arrondie / pilule
-														fontSize: '9px',
-														fontWeight: 800,
-														textTransform: 'uppercase',
-														boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)', // Léger effet néon pour que ça pète bien
-														WebkitFontSmoothing: 'antialiased'
-													}}>
-														{item.stepName}
-													</span>
+                                            {/* LIGNE DU BAS : Badge J BLEU ÉLECTRIQUE TRÈS CLAIR à gauche, Matière en bas à droite */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2px' }}>
+                                                {/* Badge J : BLEU ÉLECTRIQUE LUMINEUX bien pétant */}
+                                                <span style={{
+                                                    backgroundColor: item.isExamen ? '#dc2626' : '#38bdf8', 
+                                                    color: '#0f172a', // Texte sombre bien tranché sur le bleu clair lumineux
+                                                    padding: '2px 8px',
+                                                    borderRadius: '6px', // Forme plus arrondie / pilule
+                                                    fontSize: '9px',
+                                                    fontWeight: 800,
+                                                    textTransform: 'uppercase',
+                                                    boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)', // Léger effet néon pour que ça pète bien
+                                                    WebkitFontSmoothing: 'antialiased'
+                                                }}>
+                                                    {item.stepName}
+                                                </span>
 
-													{/* Matière en bas à droite */}
-													<span style={{ fontSize: '9px', fontWeight: 600, color: '#93c5fd', backgroundColor: 'rgba(59, 130, 246, 0.25)', padding: '2px 6px', borderRadius: '4px', textAlign: 'right' }}>
-														{item.matiereNom}
-													</span>
-												</div>
-											</div>
-										))
-									)}
-								</div>
-							</div>
-						  );
-						})}
-					  </div>
+                                                {/* Matière en bas à droite */}
+                                                <span style={{ fontSize: '9px', fontWeight: 600, color: '#93c5fd', backgroundColor: 'rgba(59, 130, 246, 0.25)', padding: '2px 6px', borderRadius: '4px', textAlign: 'right' }}>
+                                                    {item.matiereNom}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
 
-					  <GradeInput
-						echeances={todayEcheances}
-						inputRefs={inputRefs}
-						saveNotesAction={handleSaveNote}
-						averages={averages}
-						handleCalculateAll={handleCalculateAll}
-						notesValues={notesValues}
-					  />
-					</Stack>
-				  );
-				}
+            <GradeInput
+                echeances={todayEcheances}
+                inputRefs={inputRefs}
+                saveNotesAction={handleSaveNote}
+                averages={averages}
+                handleCalculateAll={handleCalculateAll}
+                notesValues={notesValues}
+            />
+        </Stack>
+    );
+}
