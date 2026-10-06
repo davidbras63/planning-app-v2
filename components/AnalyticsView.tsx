@@ -171,8 +171,8 @@ export default function AnalyticsView({
                         <XAxis dataKey="step" stroke="#909296" tick={{ fontSize: 12 }} />
                         <YAxis domain={[0, 20]} stroke="#909296" tick={{ fontSize: 12 }} />
                         <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                        <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
-                        <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                        <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} isAnimationActive={false} />
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
@@ -191,11 +191,10 @@ export default function AnalyticsView({
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
             {folderMatieres.map((mat) => {
-			  // On cherche la clé en string ET en number pour être sûr de tomber dessus
-			  const matInfo = subjectsAnalysesData[mat.value] 
-				|| subjectsAnalysesData[String(mat.value)] 
-				|| subjectsAnalysesData[Number(mat.value)] 
-				|| { chartData: [], average: 0, totalQcm: 0 };
+              const matInfo = subjectsAnalysesData[mat.value] 
+                || subjectsAnalysesData[String(mat.value)] 
+                || subjectsAnalysesData[Number(mat.value)] 
+                || { chartData: [], average: 0, totalQcm: 0 };
 
               return (
                 <Card
@@ -223,8 +222,8 @@ export default function AnalyticsView({
                             <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#909296' }} />
                             <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" />
-							<Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} />
+                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} name="Moyenne Session" isAnimationActive={false} />
+                            <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="5 5" name="Average" dot={false} isAnimationActive={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
@@ -291,8 +290,8 @@ export default function AnalyticsView({
                             <XAxis dataKey="step" tick={{ fontSize: 10, fill: '#909296' }} />
                             <YAxis domain={[0, 20]} tick={{ fontSize: 10, fill: '#909296' }} />
                             <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                            <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={2} dot={false} isAnimationActive={false} />
+                            <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={1.5} strokeDasharray="3 3" dot={false} isAnimationActive={false} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
@@ -339,8 +338,8 @@ export default function AnalyticsView({
                   <XAxis dataKey="step" stroke="#909296" />
                   <YAxis domain={[0, 20]} stroke="#909296" />
                   <Tooltip contentStyle={{ backgroundColor: '#1a1b1e', borderColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 8, color: '#fff' }} />
-                  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} />
+                  <Line type="monotone" dataKey="moyenne" stroke="#38bdf8" strokeWidth={3} name="Moyenne J" dot={{ r: 4 }} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="average" stroke="#f87171" strokeWidth={2} strokeDasharray="5 5" name="Average" dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </Box>
