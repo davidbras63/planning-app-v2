@@ -96,7 +96,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
    
     console.log("Utilisateur trouvé en base — Email :", userEmail, "— Fin de période actuelle :", currentPeriodEnd);
    
-    if (currentPeriodEnd > new Date(now.getTime() + 29 * 24 * 60 * 60 * 1000)) {
+    if (currentPeriodEnd > new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000)) {
       console.log("Abonnement déjà prolongé, on ignore ce webhook dupliqué.");
       return;
     }
@@ -106,7 +106,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
     // Si elle est dépassée (passée), on repart de la date d'aujourd'hui (now).
     const baseDate = currentPeriodEnd > now ? currentPeriodEnd : now;
     const newPeriodEnd = new Date(baseDate);
-    newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+    newPeriodEnd.setDate(newPeriodEnd.getDate() + 32);
 
     console.log("Nouvelle date de fin calculée :", newPeriodEnd.toISOString());
 
