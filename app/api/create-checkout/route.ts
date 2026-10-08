@@ -31,7 +31,7 @@ export async function POST() {
 
     const storeId = process.env.LEMONSQUEEZY_STORE_ID;
     const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
-    const siteUrl = 'https://nesis-dev.vercel.app';
+    const siteUrl = 'https://nesis.fr';
 
     const payload = {
       data: {
