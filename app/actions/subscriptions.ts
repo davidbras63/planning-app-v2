@@ -127,7 +127,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
         try {
             if (userEmail) {
                 console.log(`Envoi de l'e-mail de confirmation et d'accès au parrainage à ${userEmail}`);
-                const referralInstructionsUrl = "https://nesis.lemonsqueezy.com/affiliates";
+                const referralInstructionsUrl = "lien en cours de mise en place";
                 const emailBody =
  "Bienvenue chez Nesis !\n\n" +
  "Votre abonnement a bien été validé. Vous avez dès à présent accès à toutes les fonctionnalités de l'application.\n\n" +
