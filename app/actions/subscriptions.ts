@@ -82,7 +82,8 @@ export async function handleLemonSqueezyWebhook(event: any) {
   else if (eventName === 'subscription_payment_success') {
     const now = new Date();
    
-    const userResult = await db.execute(sql`SELECT email, period_end FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
+    // On récupère aussi referred_by pour Affilibee
+    const userResult = await db.execute(sql`SELECT email, period_end, referred_by FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
     const dbUser = userResult.rows[0] as any;
    
     if (!dbUser) {
@@ -91,6 +92,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
     }
 
     const userEmail = dbUser.email || attributes?.user_email;
+    const referralCode = dbUser.referred_by;
     const existingPeriodEnd = dbUser.period_end;
     const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
    
@@ -102,8 +104,6 @@ export async function handleLemonSqueezyWebhook(event: any) {
     }
 
     // --- CORRECTION DU CALCUL DES 30 JOURS ---
-    // Si la période actuelle est encore valide (future), on s'appuie dessus. 
-    // Si elle est dépassée (passée), on repart de la date d'aujourd'hui (now).
     const baseDate = currentPeriodEnd > now ? currentPeriodEnd : now;
     const newPeriodEnd = new Date(baseDate);
     newPeriodEnd.setDate(newPeriodEnd.getDate() + 32);
@@ -121,25 +121,49 @@ export async function handleLemonSqueezyWebhook(event: any) {
       console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
     }
 
-    // Le reste de l'envoi d'e-mail ne change pas...
+    // --- ENVOI DE LA COMMANDE À AFFILIBEE ---
+    try {
+      const amount = attributes?.total || attributes?.subtotal || 0;
+      const orderId = event.data?.id;
 
+      const affilibeePayload: any = {
+        email: userEmail,
+        amount: amount / 100,
+        order_id: orderId,
+      };
+
+      if (referralCode) {
+        affilibeePayload.referral_code = referralCode;
+      }
+
+      const affilibeeResponse = await fetch("https://affilibee.com/api/v1/orders", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(affilibeePayload),
+      });
+
+      if (!affilibeeResponse.ok) {
+        console.error("❌ Erreur API Affilibee:", await affilibeeResponse.text());
+      } else {
+        console.log("✅ Commande transmise à Affilibee avec succès pour l'email:", userEmail);
+      }
+    } catch (affilibeeErr) {
+      console.error("❌ Erreur de communication avec Affilibee:", affilibeeErr);
+    }
+
+    // --- ENVOI DE L'E-MAIL DE CONFIRMATION (SANS PARRAINAGE) ---
     if (eventName === 'subscription_created' || attributes?.billing_reason === 'initial') {
         try {
             if (userEmail) {
-                console.log(`Envoi de l'e-mail de confirmation et d'accès au parrainage à ${userEmail}`);
-                const referralInstructionsUrl = "lien en cours de mise en place";
+                console.log(`Envoi de l'e-mail de confirmation à ${userEmail}`);
                 const emailBody =
- "Bienvenue chez Nesis !\n\n" +
- "Votre abonnement a bien été validé. Vous avez dès à présent accès à toutes les fonctionnalités de l'application.\n\n" +
- "--- Activez votre programme de parrainage ---\n" +
- "En tant qu'abonné, vous bénéficiez de notre programme de parrainage. Pour commencer à parrainer et toucher des commissions, voici comment procéder :\n" +
- "1. Rendez-vous sur notre lien d'espace affilié dédié : " + referralInstructionsUrl + "\n" +
- "2. Connectez-vous avec l'e-mail utilisé lors de votre achat pour récupérer votre lien de parrainage personnel.\n" +
- "3. Partagez votre lien autour de vous !\n\n" +
- "Important concernant les commissions :\n" +
- "Le versement de vos commissions s'effectue automatiquement dès que votre solde atteint un seuil minimum de 9 €. En dessous de ce montant, vos gains se cumulent en toute sécurité.\n\n" +
- "À très vite sur l'application !\n" +
- "L'équipe Nesis";
+"Bienvenue chez Nesis !\n\n" +
+"Votre abonnement a bien été validé. Vous avez dès à présent accès à toutes les fonctionnalités de l'application.\n\n" +
+"À très vite sur l'application !\n" +
+"L'équipe Nesis";
 
                 await resend.emails.send({
                  from: 'Nesis <contact@nesis.fr>',
@@ -147,10 +171,10 @@ export async function handleLemonSqueezyWebhook(event: any) {
                  subject: 'Confirmation et accès Nesis',
                  text: emailBody
                 });
-                console.log("E-mail de confirmation et de parrainage envoyé.");
+                console.log("E-mail de confirmation envoyé.");
             }
         } catch (emailError) {
-            console.error("❌ ERREUR ENVOI-EMAIL PARRAINAGE", emailError);
+            console.error("❌ ERREUR ENVOI-EMAIL", emailError);
         }
     }
 
