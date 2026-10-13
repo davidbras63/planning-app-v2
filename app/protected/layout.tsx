@@ -7,16 +7,31 @@ import TrialGuard from '@/components/TrialGuard';
 import { OnboardingGuide } from '@/components/OnboardingGuide';
 import { useEffect } from 'react';
 import { getUserCustomization } from '@/app/actions/customization';
-import { processReferral } from '@/app/actions/referral'; // <-- Import de l'action
+import { processReferral } from '@/app/actions/referral';
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
 
   useEffect(() => {
-    // 0. On déclenche l'enregistrement du parrainage dès l'arrivée sur le dashboard
-    processReferral();
+    // 0. Double sécurité parrainage : Capture l'URL s'il y a un paramètre et le met en localStorage
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlAffiliate = urlParams.get('affiliate') || urlParams.get('via');
+      if (urlAffiliate) {
+        localStorage.setItem('nesis_affiliate_ref', urlAffiliate);
+      }
+    }
 
-    // 1. On va chercher en base Neon au chargement pour synchroniser le localStorage
+    // Récupère le code de secours du localStorage
+    const localAffiliate = localStorage.getItem('nesis_affiliate_ref');
+
+    // Déclenche l'enregistrement en base (cookie ou localStorage en fallback)
+    processReferral(localAffiliate).then(() => {
+      // Une fois traité, on nettoie le localStorage pour éviter de le réappliquer inutilement
+      localStorage.removeItem('nesis_affiliate_ref');
+    });
+
+    // 1. On va chercher en base Neon au chargement pour synchroniser le localStorage (fonds d'écran)
     async function loadFromDB() {
       try {
         const data = await getUserCustomization();
