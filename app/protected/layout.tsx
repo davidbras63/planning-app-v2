@@ -7,12 +7,15 @@ import TrialGuard from '@/components/TrialGuard';
 import { OnboardingGuide } from '@/components/OnboardingGuide';
 import { useEffect } from 'react';
 import { getUserCustomization } from '@/app/actions/customization';
+import { processReferral } from '@/app/actions/referral'; // <-- Import de l'action
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
 
-  // Charger et écouter les changements de fond en temps réel via les variables CSS globales
   useEffect(() => {
+    // 0. On déclenche l'enregistrement du parrainage dès l'arrivée sur le dashboard
+    processReferral();
+
     // 1. On va chercher en base Neon au chargement pour synchroniser le localStorage
     async function loadFromDB() {
       try {
@@ -35,8 +38,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       if (typeof document !== 'undefined') {
         const root = document.documentElement;
-        
-        // On injecte les valeurs dans les variables exactes lues par ton globals.css
         root.style.setProperty('--nesis-bg-color', color || '#1a1b1e');
         root.style.setProperty('--nesis-bg-image', image ? `url(${image})` : 'none');
         root.style.setProperty('--nesis-bg-zoom', zoom);
@@ -45,7 +46,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     loadFromDB();
 
-    // Écouter si un changement survient (depuis la modale)
     window.addEventListener('storage', updateBackground);
     window.addEventListener('bg-updated', updateBackground);
 
