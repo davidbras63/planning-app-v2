@@ -1,37 +1,14 @@
 "use server";
 
 import { db } from "@/db";
-import { settings, links, echeances, users } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
+import { settings, links, echeances } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 
 export async function ensureUserInitialized(clerkId: string, folderId?: number) {
     if (!clerkId) return;
 
     try {
-        // 1. GESTION DE L'AFFILIATION
-        // On récupère le cookie 'affiliate_ref' posé par le middleware sur le navigateur
-        const cookieStore = await cookies();
-        const affiliateCode = cookieStore.get('affiliate_ref')?.value;
-
-        if (affiliateCode) {
-            // On vérifie d'abord si l'utilisateur n'a pas déjà un parrain enregistré
-            const userRecord = await db.select({ referredBy: users.referredBy })
-                .from(users)
-                .where(eq(users.clerkId, clerkId));
-
-            // Si le champ referredBy est encore vide (null ou non défini), on l'enregistre dans Neon
-            if (userRecord.length > 0 && !userRecord[0].referredBy) {
-                await db.update(users)
-                    .set({ referredBy: affiliateCode })
-                    .where(eq(users.clerkId, clerkId));
-                
-                console.log(`Parrain ${affiliateCode} attribué avec succès à ${clerkId}`);
-            }
-        }
-
-        // 2. GESTION DES SETTINGS (Ton code existant)
         // Si on a un folderId, on vérifie si des settings existent DÉJÀ pour ce dossier précis
         if (folderId) {
             const existing = await db.select().from(settings).where(eq(settings.folderId, folderId));
@@ -52,6 +29,8 @@ export async function ensureUserInitialized(clerkId: string, folderId?: number) 
         console.error("Erreur lors de l'initialisation : ", error);
     }
 }
+
+
 
 export async function toggleEcheanceCompleted(id: number, completed: boolean) {
     try {

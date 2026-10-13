@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     return new Response("Error occured -- no svix headers", { status: 400 });
   }
 
+  // CORRECTION ICI : on récupère le texte brut directement pour Svix
   const body = await req.text();
   const wh = new Webhook(WEBHOOK_SECRET);
   let evt: WebhookEvent;
@@ -36,15 +37,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (evt.type === 'user.created') {
-    const { id: clerkId, email_addresses, unsafe_metadata } = evt.data as any;
+    const { id: clerkId, email_addresses } = evt.data as any;
     const email = email_addresses[0]?.email_address;
 
     if (!clerkId || !email) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
-
-    // Récupération de la référence transmise dans les métadonnées de Clerk
-    const referredBy = unsafe_metadata?.referredBy || unsafe_metadata?.affiliate || null;
 
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 3);
@@ -55,17 +53,15 @@ export async function POST(req: NextRequest) {
           clerkId: clerkId,
           email: email,
           status: 'trial',
-          periodEnd: trialEndDate,
-          referredBy: referredBy,
+          periodEnd: trialEndDate
         })
         .onConflictDoUpdate({
           target: users.clerkId,
           set: {
-            email: email,
-            ...(referredBy ? { referredBy: referredBy } : {}),
+            email: email
           },
         });
-      console.log(`Utilisateur ${email} inséré dans Neon avec succès ! (Parrain: ${referredBy || 'aucun'})`);
+      console.log("Utilisateur inséré avec succès dans Neon !");
     } catch (dbError) {
       console.error("Erreur BDD:", dbError);
       return NextResponse.json({ error: "DB Error" }, { status: 500 });
