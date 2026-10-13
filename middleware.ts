@@ -8,17 +8,32 @@ import { eq } from 'drizzle-orm';
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/protected(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  
+  const url = req.nextUrl;
+  const affiliateCode = url.searchParams.get('affiliate') || url.searchParams.get('via');
+
+  let res = NextResponse.next();
+
+  // 1. Si un code parrain est présent dans l'URL, on pose le cookie pour 30 jours
+  if (affiliateCode) {
+    res.cookies.set('affiliate_ref', affiliateCode, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+  }
+
   if (isProtectedRoute(req)) {
     const { userId: clerkId } = await auth();
 
-    // 1. Si l'utilisateur n'est pas connecté, on le redirige vers l'accueil / sign-in
+    // 2. Si l'utilisateur n'est pas connecté, on le redirige vers l'accueil / sign-in
     if (!clerkId) {
       return NextResponse.redirect(new URL('/', req.url));
     }
 
     try {
-      // 2. On va chercher l'utilisateur en base de données avec son clerkId
+      // 3. On va chercher l'utilisateur en base de données avec son clerkId
       const result = await db.select().from(users).where(eq(users.clerkId, clerkId));
 
       if (result.length === 0) {
@@ -27,10 +42,11 @@ export default clerkMiddleware(async (auth, req) => {
 
       const user = result[0];
       // --- Bypass si statut 'elite' ---
-	  if (user.status === 'elite') {
-	    return NextResponse.next();
-	  }
-      // 3. Vérification de la période d'accès (periodEnd)
+      if (user.status === 'elite') {
+        return res;
+      }
+      
+      // 4. Vérification de la période d'accès (periodEnd)
       const now = new Date();
       const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
 
@@ -40,11 +56,12 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
     } catch (error) {
-      // En cas d'erreur de requête BDD par sécurité on bloque ou on laisse passer selon ton choix, 
-      // mais rediriger vers l'accès refusé évite les failles si la base plante.
+      // En cas d'erreur de requête BDD par sécurité on bloque
       return NextResponse.redirect(new URL('/acces-refuse', req.url));
     }
   }
+
+  return res;
 });
 
 export const config = {
