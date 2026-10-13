@@ -74,13 +74,13 @@ export async function POST(req: NextRequest) {
 
       // 2. Envoi du mail de bienvenue avec le lien sandbox d'Affilibee en dur
       try {
-        const testAffiliateUrl = "https://affilibee.com/landing-pages/nesis/nesis";
+        const AffiliateUrl = "https://affilibee.com/landing-pages/nesis/my-first-landing-page";
 
         await resend.emails.send({
           from: 'Nesis <contact@nesis.fr>',
           to: email,
           subject: 'Bienvenue chez Nesis - Votre programme d\'affiliation',
-          text: `Bienvenue chez Nesis !\n\nVotre compte a bien été créé.\n\nSi vous souhaitez rejoindre notre programme d'affiliation, vous pouvez utiliser ce lien : ${testAffiliateUrl}\n\nÀ très vite !`
+          text: `Bienvenue chez Nesis !\n\nVotre compte a bien été créé.\n\nSi vous souhaitez rejoindre notre programme d'affiliation, vous pouvez utiliser ce lien : ${AffiliateUrl}\n\nÀ très vite !`
         });
         console.log("Mail de bienvenue envoyé à", email);
       } catch (emailError) {
