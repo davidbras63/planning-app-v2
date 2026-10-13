@@ -1,15 +1,14 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { processReferral } from '@/app/actions/referral';
 
-export function AffiliateTracker() {
+function TrackerLogic() {
   const { isLoaded, userId } = useAuth();
   const searchParams = useSearchParams();
 
-  // 1. Capture du paramètre ?affiliate= dans l'URL dès l'arrivée
   useEffect(() => {
     const codeFromUrl = searchParams.get('affiliate') || searchParams.get('ref');
     if (codeFromUrl) {
@@ -17,7 +16,6 @@ export function AffiliateTracker() {
     }
   }, [searchParams]);
 
-  // 2. Traitement du parrainage une fois l'utilisateur connecté
   useEffect(() => {
     if (!isLoaded || !userId) return;
 
@@ -39,4 +37,12 @@ export function AffiliateTracker() {
   }, [isLoaded, userId]);
 
   return null;
+}
+
+export function AffiliateTracker() {
+  return (
+    <Suspense fallback={null}>
+      <TrackerLogic />
+    </Suspense>
+  );
 }
