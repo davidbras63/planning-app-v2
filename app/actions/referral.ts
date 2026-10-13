@@ -8,29 +8,23 @@ import { eq, and, isNull } from 'drizzle-orm';
 
 export async function processReferral() {
   const { userId: clerkId } = await auth();
-  console.log("🔍 DEBUG REFERRAL - Clerk ID trouvé :", clerkId);
-
   if (!clerkId) return;
 
   const cookieStore = await cookies();
-  const allCookies = cookieStore.getAll();
-  console.log("🍪 DEBUG REFERRAL - Tous les cookies dispo côté serveur :", allCookies);
-
   const affiliateCode = cookieStore.get('affiliate_ref')?.value;
-  console.log("🎯 DEBUG REFERRAL - Valeur du cookie affiliate_ref :", affiliateCode);
 
   if (!affiliateCode) {
-    console.log("❌ ERREUR : Aucun cookie affiliate_ref trouvé par l'action serveur !");
+    console.log("⚠️ Aucun code d'affiliation trouvé dans les cookies.");
     return;
   }
 
   try {
-    const result = await db
+    await db
       .update(users)
-      .set({ referredBy: affiliateCode })
+      .set({ referredBy: affiliateCode }) // Drizzle fait le pont tout seul avec "referred_by"
       .where(and(eq(users.clerkId, clerkId), isNull(users.referredBy)));
     
-    console.log("✅ SUCCÈS : Base Neon mise à jour avec le parrain :", affiliateCode);
+    console.log("✅ Parrainage enregistré avec succès :", affiliateCode);
   } catch (error) {
     console.error("❌ ERREUR SQL NEON :", error);
   }
