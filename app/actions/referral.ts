@@ -8,19 +8,30 @@ import { eq, and, isNull } from 'drizzle-orm';
 
 export async function processReferral() {
   const { userId: clerkId } = await auth();
+  console.log("🔍 DEBUG REFERRAL - Clerk ID trouvé :", clerkId);
+
   if (!clerkId) return;
 
   const cookieStore = await cookies();
-  const affiliateCode = cookieStore.get('affiliate_ref')?.value;
+  const allCookies = cookieStore.getAll();
+  console.log("🍪 DEBUG REFERRAL - Tous les cookies dispo côté serveur :", allCookies);
 
-  if (!affiliateCode) return;
+  const affiliateCode = cookieStore.get('affiliate_ref')?.value;
+  console.log("🎯 DEBUG REFERRAL - Valeur du cookie affiliate_ref :", affiliateCode);
+
+  if (!affiliateCode) {
+    console.log("❌ ERREUR : Aucun cookie affiliate_ref trouvé par l'action serveur !");
+    return;
+  }
 
   try {
-    await db
+    const result = await db
       .update(users)
       .set({ referredBy: affiliateCode })
       .where(and(eq(users.clerkId, clerkId), isNull(users.referredBy)));
+    
+    console.log("✅ SUCCÈS : Base Neon mise à jour avec le parrain :", affiliateCode);
   } catch (error) {
-    console.error("Erreur enregistrement parrainage :", error);
+    console.error("❌ ERREUR SQL NEON :", error);
   }
 }
