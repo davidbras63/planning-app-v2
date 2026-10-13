@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         const affiliateSignupUrl = "https://affilibee.com/landing-pages/nesis/my-first-landing-page";
 
         const { data, error } = await resend.emails.send({
-          from: 'Nesis <no-reply@nesis.app>',
+          from: 'Nesis <contact@nesis.fr>',
           to: [email],
           subject: 'Bienvenue sur Nesis - Devenez affilié',
           html: `
