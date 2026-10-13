@@ -18,7 +18,9 @@ export async function processReferral(code: string) {
   try {
     const result = await db
       .update(users)
-      .set({ referredBy: code })
+      .set({ 
+        referredBy: code 
+      })
       .where(eq(users.clerkId, clerkId))
       .returning();
 
