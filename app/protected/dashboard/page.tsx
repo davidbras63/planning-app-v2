@@ -1,30 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { folders, users } from "@/db/schema";
+import { folders } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ensureUserInitialized } from "@/app/actions/actions";
-import { cookies } from "next/headers";
 
 export default async function DashboardPage() {
     const { userId } = await auth();
     if (!userId) {
         redirect('/sign-in');
-    }
-
-    // Récupération du cookie d'affiliation et mise à jour de Neon si présent
-    try {
-        const cookieStore = await cookies();
-        const affiliateCode = cookieStore.get('affiliate_ref')?.value;
-
-        if (affiliateCode) {
-            await db.update(users)
-                .set({ referredBy: affiliateCode })
-                .where(eq(users.clerkId, userId));
-        }
-    } catch (e) {
-        console.error("Erreur mise à jour parrain:", e);
     }
 
     await ensureUserInitialized(userId);
