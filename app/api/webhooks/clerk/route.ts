@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           email: email,
           status: 'trial',
           periodEnd: trialEndDate,
-          referredBy: referralCode, // On persiste le slug ici pour l'utiliser lors du paiement
+          referredBy: referralCode,
         } as any)
         .onConflictDoUpdate({
           target: users.clerkId,
@@ -72,52 +72,19 @@ export async function POST(req: NextRequest) {
         });
       console.log("Utilisateur inséré avec succès dans Neon avec son code de parrainage !");
 
-      // 2. Appel à Affilibee pour enregistrer le lead / générer son propre lien d'affilié
+      // 2. Envoi du mail de bienvenue avec le lien sandbox d'Affilibee en dur
       try {
-        const payload: any = {
-          email: email,
-          external_id: clerkId,
-        };
-        if (referralCode) {
-          payload.referral_code = referralCode;
-        }
+        const testAffiliateUrl = "https://affilibee.com/landing-pages/nesis/nesis";
 
-        const affilibeeResponse = await fetch("https://affilibee.com/api/v1/affiliates", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+        await resend.emails.send({
+          from: 'Nesis <contact@nesis.fr>',
+          to: email,
+          subject: 'Bienvenue chez Nesis - Votre programme d\'affiliation',
+          text: `Bienvenue chez Nesis !\n\nVotre compte a bien été créé.\n\nSi vous souhaitez rejoindre notre programme d'affiliation, vous pouvez utiliser ce lien : ${testAffiliateUrl}\n\nÀ très vite !`
         });
-
-        if (affilibeeResponse.ok) {
-          const affilibeeData = await affilibeeResponse.json();
-          const referralLink = affilibeeData.referral_link || affilibeeData.url;
-
-          if (referralLink) {
-            // Stockage de l'URL dans la table links
-            await db.insert(links).values({
-              clerkId: clerkId,
-              label: "Mon lien de parrainage",
-              url: referralLink,
-            });
-            console.log("Lien de parrainage inséré dans la table links !");
-
-            // Envoi du mail de bienvenue avec son lien de parrainage personnel
-            await resend.emails.send({
-              from: 'Nesis <contact@nesis.fr>',
-              to: email,
-              subject: 'Bienvenue chez Nesis - Votre lien de parrainage',
-              text: `Bienvenue chez Nesis !\n\nVotre compte a bien été créé.\n\nVoici votre lien de parrainage personnel : ${referralLink}\n\nÀ très vite !`
-            });
-            console.log("Mail de bienvenue envoyé à", email);
-          }
-        } else {
-          console.error("Erreur API Affilibee:", await affilibeeResponse.text());
-        }
-      } catch (affilibeeError) {
-        console.error("Erreur Affilibee:", affilibeeError);
+        console.log("Mail de bienvenue envoyé à", email);
+      } catch (emailError) {
+        console.error("Erreur Envoi Mail:", emailError);
       }
 
     } catch (dbError) {
