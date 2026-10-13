@@ -13,6 +13,10 @@ export default clerkMiddleware(async (auth, req) => {
   // 1. Capture immédiate du paramètre d'affiliation dans l'URL (affiliate ou via)
   const affiliateParam = url.searchParams.get('affiliate') || url.searchParams.get('via');
   
+  // 🔍 TRACE DE CONTRÔLE : On regarde si le middleware capte bien quelque chose
+  console.log('🚨 [MIDDLEWARE TEST] URL complète : ', url.toString());
+  console.log('🚨 [MIDDLEWARE TEST] Paramètre capturé : ', affiliateParam);
+
   // On prépare la réponse de base
   let res = NextResponse.next();
 
@@ -23,6 +27,7 @@ export default clerkMiddleware(async (auth, req) => {
       maxAge: 60 * 60 * 24 * 30, // 30 jours
       sameSite: 'lax',
     });
+    console.log('🎯 [MIDDLEWARE TEST] Cookie "affiliate_ref" posé avec succès pour :', affiliateParam);
   }
   
   if (isProtectedRoute(req)) {
