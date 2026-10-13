@@ -6,13 +6,19 @@ import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req: NextRequest) {
   const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
   if (!WEBHOOK_SECRET) {
-    throw new Error("Veuillez ajouter WEBHOOK_SECRET dans votre .env");
+    console.error("❌ ERREUR CRITIQUE: WEBHOOK_SECRET non défini");
+    return new Response("Missing WEBHOOK_SECRET", { status: 500 });
   }
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    console.error("❌ ERREUR CRITIQUE: RESEND_API_KEY non définie");
+  }
+
+  const resend = new Resend(resendApiKey);
 
   const headerPayload = await headers();
   const svix_id = headerPayload.get("svix-id");
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
       "svix-signature": svix_signature,
     }) as WebhookEvent;
   } catch (err) {
-    console.error("Erreur de vérification:", err);
+    console.error("Erreur de vérification Svix:", err);
     return new Response("Error occured", { status: 400 });
   }
 
@@ -50,7 +56,7 @@ export async function POST(req: NextRequest) {
     trialEndDate.setDate(trialEndDate.getDate() + 3);
 
     try {
-      // 1. Insertion utilisateur standard
+      // 1. Insertion BDD Neon
       await db.insert(users)
         .values({
           clerkId: clerkId,
@@ -64,15 +70,15 @@ export async function POST(req: NextRequest) {
             email: email
           },
         });
-      console.log("Utilisateur inséré avec succès dans Neon !");
+      console.log("✅ Utilisateur inséré dans Neon :", email);
 
-      // 2. Envoi de l'email pour devenir affilié via la page Affilibee
-      if (process.env.RESEND_API_KEY) {
+      // 2. Envoi de l'email via Resend
+      if (resendApiKey) {
         const affiliateSignupUrl = "https://affilibee.com/landing-pages/nesis/my-first-landing-page";
 
-        await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from: 'Nesis <no-reply@nesis.app>',
-          to: email,
+          to: [email],
           subject: 'Bienvenue sur Nesis - Devenez affilié',
           html: `
             <div style="font-family: sans-serif; line-height: 1.6;">
@@ -83,12 +89,19 @@ export async function POST(req: NextRequest) {
             </div>
           `,
         });
-        console.log("📧 Email avec le lien Affilibee envoyé à :", email);
+
+        if (error) {
+          console.error("❌ ERREUR ENVOI RESEND :", error);
+        } else {
+          console.log("📧 EMAIL ENVOYÉ AVEC SUCCÈS (ID) :", data?.id);
+        }
+      } else {
+        console.warn("⚠️ RESEND_API_KEY absente, email non envoyé.");
       }
 
-    } catch (dbError) {
-      console.error("Erreur BDD:", dbError);
-      return NextResponse.json({ error: "DB Error" }, { status: 500 });
+    } catch (err) {
+      console.error("❌ ERREUR BDD/PROCESS :", err);
+      return NextResponse.json({ error: "Internal Error" }, { status: 500 });
     }
   }
 

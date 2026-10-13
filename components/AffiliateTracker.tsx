@@ -1,29 +1,34 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
-import { processReferral } from '@/app/actions/referral';
+import { processReferral } from '@/actions/referral'; // Ajuste le chemin du fichier si besoin
 
-export default function AffiliateTracker() {
+export function AffiliateTracker() {
+  const { isLoaded, userId } = useAuth();
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const affiliate = urlParams.get('affiliate') || urlParams.get('via');
+    // 1. On attend que Clerk soit prêt ET que l'utilisateur soit bien connecté
+    if (!isLoaded || !userId) return;
 
-      console.log('🔍 [TRACKER CLIENT] Code dans URL :', affiliate);
+    // 2. On récupère le code d'affiliation stocké
+    const affiliateCode = localStorage.getItem('affiliate_code');
+    if (!affiliateCode) return;
 
-      if (affiliate) {
-        localStorage.setItem('nesis_affiliate_ref', affiliate);
-        console.log('🔍 [TRACKER CLIENT] Code sauvegardé en LocalStorage :', affiliate);
-        processReferral(affiliate);
-      } else {
-        const savedAffiliate = localStorage.getItem('nesis_affiliate_ref');
-        console.log('🔍 [TRACKER CLIENT] Code récupéré depuis LocalStorage :', savedAffiliate);
-        if (savedAffiliate) {
-          processReferral(savedAffiliate);
+    // 3. On déclenche l'action serveur
+    async function runReferral() {
+      try {
+        const res = await processReferral(affiliateCode);
+        if (res?.success) {
+          localStorage.removeItem('affiliate_code');
         }
+      } catch (err) {
+        console.error('Erreur parrainage:', err);
       }
     }
-  }, []);
+
+    runReferral();
+  }, [isLoaded, userId]);
 
   return null;
 }
