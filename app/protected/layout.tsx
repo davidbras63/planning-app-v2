@@ -7,31 +7,13 @@ import TrialGuard from '@/components/TrialGuard';
 import { OnboardingGuide } from '@/components/OnboardingGuide';
 import { useEffect } from 'react';
 import { getUserCustomization } from '@/app/actions/customization';
-import { processReferral } from '@/app/actions/referral';
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
 
+  // Charger et écouter les changements de fond en temps réel via les variables CSS globales
   useEffect(() => {
-    // 0. Double sécurité parrainage : Capture l'URL s'il y a un paramètre et le met en localStorage
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlAffiliate = urlParams.get('affiliate') || urlParams.get('via');
-      if (urlAffiliate) {
-        localStorage.setItem('nesis_affiliate_ref', urlAffiliate);
-      }
-    }
-
-    // Récupère le code de secours du localStorage
-    const localAffiliate = localStorage.getItem('nesis_affiliate_ref');
-
-    // Déclenche l'enregistrement en base (cookie ou localStorage en fallback)
-    processReferral(localAffiliate).then(() => {
-      // Une fois traité, on nettoie le localStorage pour éviter de le réappliquer inutilement
-      localStorage.removeItem('nesis_affiliate_ref');
-    });
-
-    // 1. On va chercher en base Neon au chargement pour synchroniser le localStorage (fonds d'écran)
+    // 1. On va chercher en base Neon au chargement pour synchroniser le localStorage
     async function loadFromDB() {
       try {
         const data = await getUserCustomization();
@@ -53,6 +35,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
       if (typeof document !== 'undefined') {
         const root = document.documentElement;
+        
+        // On injecte les valeurs dans les variables exactes lues par ton globals.css
         root.style.setProperty('--nesis-bg-color', color || '#1a1b1e');
         root.style.setProperty('--nesis-bg-image', image ? `url(${image})` : 'none');
         root.style.setProperty('--nesis-bg-zoom', zoom);
@@ -61,6 +45,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
     loadFromDB();
 
+    // Écouter si un changement survient (depuis la modale)
     window.addEventListener('storage', updateBackground);
     window.addEventListener('bg-updated', updateBackground);
 
