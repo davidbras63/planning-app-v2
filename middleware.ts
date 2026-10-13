@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // Définit les routes qui doivent être protégées
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/protected(.*)']);
@@ -46,17 +46,6 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       const user = result[0];
-
-      // --- MISE À JOUR AUTOMATIQUE DU PARRAINAGE (REFERRED_BY) ---
-      // On récupère le cookie posé (soit par l'URL actuelle, soit par un clic précédent)
-      const cookieAffiliate = req.cookies.get('affiliate_ref')?.value;
-      if (cookieAffiliate && !user.referredBy) {
-        await db
-          .update(users)
-          .set({ referredBy: cookieAffiliate })
-          .where(and(eq(users.clerkId, clerkId), isNull(users.referredBy)));
-      }
-      // -----------------------------------------------------------
       
       // --- Bypass si statut 'elite' ---
       if (user.status === 'elite') {
@@ -84,6 +73,6 @@ export const config = {
     // Exclut les fichiers statiques, images et fichiers systèmes
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Autorise toujours les routes API ou tRPC
-    '//(api|trpc)(.*)',
+    '/(api|trpc)(.*)',
   ],
 };
