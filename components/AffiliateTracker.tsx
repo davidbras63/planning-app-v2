@@ -9,18 +9,17 @@ export default function AffiliateTracker() {
       const urlParams = new URLSearchParams(window.location.search);
       const affiliate = urlParams.get('affiliate') || urlParams.get('via');
 
+      console.log('🔍 [TRACKER CLIENT] Code dans URL :', affiliate);
+
       if (affiliate) {
-        // On stocke en localStorage au cas où Clerk dégage l'URL pendant la connexion
         localStorage.setItem('nesis_affiliate_ref', affiliate);
-        // On essaie de l'envoyer direct au cas où l'utilisateur est déjà connecté
+        console.log('🔍 [TRACKER CLIENT] Code sauvegardé en LocalStorage :', affiliate);
         processReferral(affiliate);
       } else {
-        // Si l'URL n'a plus le paramètre (après la redirection Clerk), on regarde dans le storage
         const savedAffiliate = localStorage.getItem('nesis_affiliate_ref');
+        console.log('🔍 [TRACKER CLIENT] Code récupéré depuis LocalStorage :', savedAffiliate);
         if (savedAffiliate) {
-          processReferral(savedAffiliate).then(() => {
-            localStorage.removeItem('nesis_affiliate_ref');
-          });
+          processReferral(savedAffiliate);
         }
       }
     }

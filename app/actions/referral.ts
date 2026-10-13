@@ -1,34 +1,29 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 
-export async function processReferral(clientCode?: string | null) {
+export async function processReferral(code: string) {
   const { userId: clerkId } = await auth();
-  if (!clerkId) return;
 
-  // 1. On cherche d'abord dans le cookie
-  const cookieStore = await cookies();
-  let affiliateCode = cookieStore.get('affiliate_ref')?.value;
+  console.log('🚀 [SERVER ACTION] Déclenchée avec code :', code, '| Clerk ID :', clerkId);
 
-  // 2. Si le cookie a sauté pendant l'inscription Clerk, on prend le code sauvé dans le localStorage
-  if (!affiliateCode && clientCode) {
-    affiliateCode = clientCode;
+  if (!clerkId || !code) {
+    console.log('⚠️ [SERVER ACTION] Annulée : clerkId ou code manquant.');
+    return;
   }
 
-  if (!affiliateCode) return;
-
   try {
-    await db
+    const result = await db
       .update(users)
-      .set({ referredBy: affiliateCode })
-      .where(and(eq(users.clerkId, clerkId), isNull(users.referredBy)));
+      .set({ referredBy: code })
+      .where(and(eq(users.clerkId, clerkId), isNull(users.referredBy)))
+      .returning();
 
-    console.log("✅ Parrainage enregistré dans Neon :", affiliateCode);
+    console.log('📊 [SERVER ACTION] Résultat UPDATE dans Neon :', result);
   } catch (error) {
-    console.error("❌ Erreur SQL Neon :", error);
+    console.error('❌ [SERVER ACTION] Erreur SQL Neon :', error);
   }
 }
