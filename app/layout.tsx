@@ -2,7 +2,7 @@ import '@mantine/core/styles.css';
 import './globals.css';
 import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import { ClerkProvider } from '@clerk/nextjs';
-import AffiliateTracker from '@/components/AffiliateTracker';
+import { AffiliateTracker } from '@/components/AffiliateTracker';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,8 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src="https://lemonsqueezy.com/affiliate.js" defer></script>
       </head>
       <body>
-        <AffiliateTracker />
         <ClerkProvider>
+          <AffiliateTracker />
           <MantineProvider defaultColorScheme="dark">
             {children}
           </MantineProvider>
