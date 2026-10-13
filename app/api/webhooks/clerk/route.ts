@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
     return new Response("Error occured -- no svix headers", { status: 400 });
   }
 
-  // CORRECTION ICI : on récupère le texte brut directement pour Svix
   const body = await req.text();
   const wh = new Webhook(WEBHOOK_SECRET);
   let evt: WebhookEvent;
@@ -44,7 +43,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
-    const referredBy = unsafe_metadata?.referredBy || unsafe_metadata?.affiliate || null;
+    // 1. On cherche la référence dans unsafeMetadata
+    let referredBy = unsafe_metadata?.referredBy || unsafe_metadata?.affiliate || null;
+
+    // 2. Si pas trouvé dans metadata, fallback sur le cookie affiliate_ref
+    if (!referredBy) {
+      try {
+        const cookieStore = await cookies();
+        referredBy = cookieStore.get('affiliate_ref')?.value || null;
+      } catch (e) {
+        console.log("Impossible de lire les cookies dans le webhook:", e);
+      }
+    }
 
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 3);
@@ -62,9 +72,10 @@ export async function POST(req: NextRequest) {
           target: users.clerkId,
           set: {
             email: email,
+            ...(referredBy ? { referredBy: referredBy } : {}),
           },
         });
-      console.log("Utilisateur inséré avec succès dans Neon !");
+      console.log(`Utilisateur ${email} inséré dans Neon avec succès ! (Parrain: ${referredBy || 'aucun'})`);
     } catch (dbError) {
       console.error("Erreur BDD:", dbError);
       return NextResponse.json({ error: "DB Error" }, { status: 500 });
