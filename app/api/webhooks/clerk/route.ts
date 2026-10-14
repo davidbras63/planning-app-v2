@@ -52,11 +52,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing data" }, { status: 400 });
     }
 
+    // On enlève "user_" pour n'avoir que la chaîne propre (ex: 3KhlnlNT...)
+    const affiliateSlug = clerkId.replace("user_", "");
+
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 3);
 
     try {
-      // 1. Insertion BDD Neon
+      // 1. Insertion BDD Neon (garde le vrai clerkId d'origine)
       await db.insert(users)
         .values({
           clerkId: clerkId,
@@ -72,7 +75,7 @@ export async function POST(req: NextRequest) {
         });
       console.log("✅ Utilisateur inséré dans Neon :", email);
 
-      // 2. Envoi de l'email via Resend avec le code d'affiliation
+      // 2. Envoi de l'email via Resend avec le slug nettoyé
       if (resendApiKey) {
         const affiliateSignupUrl = "https://affilibee.com/landing-pages/nesis/my-first-landing-page";
 
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest) {
               </ol>
 
               <div style="background-color: #f4f4f4; border: 1px solid #ddd; padding: 12px; font-family: monospace; font-size: 16px; font-weight: bold; text-align: center; border-radius: 6px; margin: 15px 0; color: #111;">
-                ${clerkId}
+                ${affiliateSlug}
               </div>
 
               <p>Colle simplement ce code dans le champ <strong>Slug</strong> sur la page d'inscription pour lier ton compte et valider ton affiliation.</p>
