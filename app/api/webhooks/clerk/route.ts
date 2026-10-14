@@ -101,6 +101,8 @@ export async function POST(req: NextRequest) {
 
               <p>Colle simplement ce code dans le champ <strong>Slug</strong> sur la page d'inscription pour lier ton compte et valider ton affiliation.</p>
               
+              <p style="font-size: 14px; color: #555;">💡 <em>Note : Les commissions sont versées à partir de 5 € de gains.</em></p>
+
               <p>À très vite,<br>L'équipe Nesis</p>
             </div>
           `,
