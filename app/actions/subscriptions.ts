@@ -38,7 +38,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
         console.log("✅ Insertion lien 'Gérer mon abonnement' effectuée.");
       } else {
         await db.execute(
-          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id =${clerkId} AND label = 'Gérer mon abonnement'`
+          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
         );
         console.log("✅ Mise à jour lien 'Gérer mon abonnement' effectuée.");
       }
@@ -211,4 +211,33 @@ export async function handleLemonSqueezyWebhook(event: any) {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #333;">Échec du prélèvement de votre abonnement</h2>
-            <p>Le prélèvement pour votre abonnement Nesis a
+            <p>Le prélèvement pour votre abonnement Nesis a échoué. Pour éviter toute interruption d'accès, veuillez mettre à jour votre moyen de paiement.</p>
+            <p style="color: #666; font-size: 14px;"><em>Rappel : en l'absence de régularisation sous 30 jours, votre abonnement sera résilié et vos données associées seront supprimées.</em></p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${updateUrl}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Mettre à jour mon paiement</a>
+            </div>
+          </div>
+        `
+      });
+      console.log("✅ E-mail d'échec de paiement envoyé avec l'URL :", updateUrl);
+    }
+  }
+
+  else if (eventName === 'subscription_cancelled') {
+    await db.execute(sql`
+      UPDATE users
+      SET status = 'cancelled'
+      WHERE clerk_id = ${clerkId}
+    `);
+    console.log("✅ Abonnement marqué comme annulé.");
+  }
+
+  else if (eventName === 'subscription_expired') {
+    await db.execute(sql`
+      UPDATE users
+      SET status = 'expired'
+      WHERE clerk_id = ${clerkId}
+    `);
+    console.log("✅ Abonnement marqué comme expiré.");
+  }
+}
