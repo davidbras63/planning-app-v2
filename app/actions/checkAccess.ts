@@ -4,6 +4,8 @@ import { auth } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import { processReferral } from '@/app/actions/...'; // <--- Remplace par le bon chemin vers ton fichier processReferral
 
 export async function checkAccessAction() {
     const { userId: clerkId } = await auth(); 
@@ -19,6 +21,22 @@ export async function checkAccessAction() {
     }
 
     const user = result[0];
+
+    // --- VÉRIFICATION & ENREGISTREMENT DU PARRAINAGE ---
+    if (!user.referredBy) {
+        const cookieStore = await cookies();
+        const affiliateCookie = cookieStore.get('affiliate_ref')?.value;
+
+        if (affiliateCookie) {
+            const cleanCode = affiliateCookie.trim();
+            // On s'assure qu'on ne se parraine pas soi-même si le code correspond au clerkId
+            if (cleanCode && cleanCode !== clerkId) {
+                await processReferral(cleanCode);
+            }
+        }
+    }
+    // --------------------------------------------------
+
     // --- Bypass direct si statut 'elite' ---
 	if (user.status === 'elite') {
 		return { hasAccess: true };
@@ -34,5 +52,4 @@ export async function checkAccessAction() {
 	}
 
 	return { hasAccess: true };
-
 }
