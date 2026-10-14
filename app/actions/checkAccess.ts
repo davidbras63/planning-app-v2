@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { processReferral } from '@/app/actions/...'; // <--- Remplace par le bon chemin vers ton fichier processReferral
+import { processReferral } from './referral';
 
 export async function checkAccessAction() {
     const { userId: clerkId } = await auth(); 
@@ -29,7 +29,7 @@ export async function checkAccessAction() {
 
         if (affiliateCookie) {
             const cleanCode = affiliateCookie.trim();
-            // On s'assure qu'on ne se parraine pas soi-même si le code correspond au clerkId
+            // On s'assure qu'on ne se parraine pas soi-même
             if (cleanCode && cleanCode !== clerkId) {
                 await processReferral(cleanCode);
             }
@@ -42,7 +42,7 @@ export async function checkAccessAction() {
 		return { hasAccess: true };
 	}
 
-    // Vérification stricte de la date de fin, peu importe le texte du statut
+    // Vérification stricte de la date de fin
 	const now = new Date();
 	const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
 	const isAccessGranted = periodEnd && periodEnd > now;
