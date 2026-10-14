@@ -5,7 +5,6 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { processReferral } from './referral';
 
 export async function checkAccessAction() {
     const { userId: clerkId } = await auth(); 
@@ -22,17 +21,24 @@ export async function checkAccessAction() {
 
     const user = result[0];
 
-    // --- VÉRIFICATION & ENREGISTREMENT DU PARRAINAGE ---
+    // --- ENREGISTREMENT DIRECT DU PARRAINAGE SI VIDE ---
     if (!user.referredBy) {
-        const cookieStore = await cookies();
-        const affiliateCookie = cookieStore.get('affiliate_ref')?.value;
+        try {
+            const cookieStore = await cookies();
+            const affiliateCookie = cookieStore.get('affiliate_ref')?.value;
 
-        if (affiliateCookie) {
-            const cleanCode = affiliateCookie.trim();
-            // On s'assure qu'on ne se parraine pas soi-même
-            if (cleanCode && cleanCode !== clerkId) {
-                await processReferral(cleanCode);
+            if (affiliateCookie) {
+                const cleanCode = affiliateCookie.trim();
+                // On s'assure qu'on ne se parraine pas soi-même
+                if (cleanCode && cleanCode !== clerkId) {
+                    await db
+                        .update(users)
+                        .set({ referredBy: cleanCode })
+                        .where(eq(users.clerkId, clerkId));
+                }
             }
+        } catch (err) {
+            console.error('Erreur lors de l’enregistrement du parrain :', err);
         }
     }
     // --------------------------------------------------
