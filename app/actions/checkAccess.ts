@@ -3,7 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 export async function checkAccessAction() {
@@ -21,7 +21,7 @@ export async function checkAccessAction() {
 
     const user = result[0];
 
-    // --- ENREGISTREMENT DIRECT DU PARRAINAGE SI VIDE ---
+    // --- ENREGISTREMENT DIRECT VIA SQL BRUT ---
     if (!user.referredBy) {
         try {
             const cookieStore = await cookies();
@@ -29,12 +29,10 @@ export async function checkAccessAction() {
 
             if (affiliateCookie) {
                 const cleanCode = affiliateCookie.trim();
-                // On s'assure qu'on ne se parraine pas soi-même
                 if (cleanCode && cleanCode !== clerkId) {
-                    await db
-                        .update(users)
-                        .set({ referredBy: cleanCode })
-                        .where(eq(users.clerkId, clerkId));
+                    await db.execute(
+                        sql`UPDATE users SET referred_by = ${cleanCode} WHERE clerk_id = ${clerkId}`
+                    );
                 }
             }
         } catch (err) {
@@ -43,12 +41,10 @@ export async function checkAccessAction() {
     }
     // --------------------------------------------------
 
-    // --- Bypass direct si statut 'elite' ---
-	if (user.status === 'elite') {
+    if (user.status === 'elite') {
 		return { hasAccess: true };
 	}
 
-    // Vérification stricte de la date de fin
 	const now = new Date();
 	const periodEnd = user.periodEnd ? new Date(user.periodEnd) : null;
 	const isAccessGranted = periodEnd && periodEnd > now;
