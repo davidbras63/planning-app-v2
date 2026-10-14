@@ -72,20 +72,33 @@ export async function POST(req: NextRequest) {
         });
       console.log("✅ Utilisateur inséré dans Neon :", email);
 
-      // 2. Envoi de l'email via Resend
+      // 2. Envoi de l'email via Resend avec le code d'affiliation
       if (resendApiKey) {
         const affiliateSignupUrl = "https://affilibee.com/landing-pages/nesis/my-first-landing-page";
 
         const { data, error } = await resend.emails.send({
           from: 'Nesis <contact@nesis.fr>',
           to: [email],
-          subject: 'Bienvenue sur Nesis - Devenez affilié',
+          subject: 'Bienvenue sur Nesis - Ton code d\'affiliation unique',
           html: `
-            <div style="font-family: sans-serif; line-height: 1.6;">
-              <h2>Bienvenue !</h2>
-              <p>Votre compte a été créé avec succès.</p>
-              <p>Si vous souhaitez rejoindre notre programme d'affiliation et parrainer des utilisateurs, inscrivez-vous en cliquant sur le lien ci-dessous :</p>
-              <p><a href="${affiliateSignupUrl}" style="background: #0070f3; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Rejoindre le programme d'affiliation</a></p>
+            <div style="font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+              <h2>Bienvenue sur Nesis !</h2>
+              <p>Ton compte a été créé avec succès.</p>
+              
+              <p>Si tu souhaites rejoindre notre programme d'affiliation pour parrainer des utilisateurs, voici la marche à suivre :</p>
+              
+              <ol style="padding-left: 20px;">
+                <li>Rends-toi sur la page d'inscription : <a href="${affiliateSignupUrl}" target="_blank" style="color: #0070f3;">Clique ici pour y accéder</a></li>
+                <li>Copie ton identifiant unique ci-dessous :</li>
+              </ol>
+
+              <div style="background-color: #f4f4f4; border: 1px solid #ddd; padding: 12px; font-family: monospace; font-size: 16px; font-weight: bold; text-align: center; border-radius: 6px; margin: 15px 0; color: #111;">
+                ${clerkId}
+              </div>
+
+              <p>Colle simplement ce code dans le champ <strong>Slug</strong> sur la page d'inscription pour lier ton compte et valider ton affiliation.</p>
+              
+              <p>À très vite,<br>L'équipe Nesis</p>
             </div>
           `,
         });
