@@ -38,7 +38,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
         console.log("✅ Insertion lien 'Gérer mon abonnement' effectuée.");
       } else {
         await db.execute(
-          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
+          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id =${clerkId} AND label = 'Gérer mon abonnement'`
         );
         console.log("✅ Mise à jour lien 'Gérer mon abonnement' effectuée.");
       }
@@ -121,32 +121,45 @@ export async function handleLemonSqueezyWebhook(event: any) {
       console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
     }
 
-    // --- ENVOI DE LA COMMANDE À AFFILIBEE ---
+    // --- ENVOI DE LA COMMANDE À AFFILIBEE (API v2) ---
     try {
       const amount = attributes?.total || attributes?.subtotal || 0;
-      const orderId = event.data?.id;
+      const orderId = event.data?.id?.toString() || `order-${Date.now()}`;
 
-      const affilibeePayload: any = {
-        email: userEmail,
-        amount: amount / 100,
-        order_id: orderId,
+      const affilibeePayload = {
+        affiliate_slug: referralCode || "default",
+        order_no: orderId,
+        total_shipping_value: 0,
+        currency_code: attributes?.currency || "EUR",
+        order_rows: [
+          {
+            product_sku: attributes?.product_id?.toString() || "nesis-sub",
+            product_name: attributes?.product_name || "Abonnement Nesis",
+            price_value: amount, // Déjà en centimes envoyé par Lemon Squeezy
+            tax_value: attributes?.tax || 0,
+            quantity: 1
+          }
+        ],
+        customer: {
+          name: attributes?.user_name || userEmail.split('@')[0],
+          email: userEmail
+        }
       };
 
-      if (referralCode) {
-        affilibeePayload.referral_code = referralCode;
-      }
-
-      const affilibeeResponse = await fetch("https://affilibee.com/api/v1/orders", {
+      const affilibeeResponse = await fetch("https://affilibee.com/api/v2/orders/create", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify(affilibeePayload),
       });
 
+      const affilibeeResult = await affilibeeResponse.json();
+
       if (!affilibeeResponse.ok) {
-        console.error("❌ Erreur API Affilibee:", await affilibeeResponse.text());
+        console.error("❌ Erreur API Affilibee:", affilibeeResult);
       } else {
         console.log("✅ Commande transmise à Affilibee avec succès pour l'email:", userEmail);
       }
@@ -198,33 +211,4 @@ export async function handleLemonSqueezyWebhook(event: any) {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #333;">Échec du prélèvement de votre abonnement</h2>
-            <p>Le prélèvement pour votre abonnement Nesis a échoué. Pour éviter toute interruption d'accès, veuillez mettre à jour votre moyen de paiement.</p>
-            <p style="color: #666; font-size: 14px;"><em>Rappel : en l'absence de régularisation sous 30 jours, votre abonnement sera résilié et vos données associées seront supprimées.</em></p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${updateUrl}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Mettre à jour mon paiement</a>
-            </div>
-          </div>
-        `
-      });
-      console.log("✅ E-mail d'échec de paiement envoyé avec l'URL :", updateUrl);
-    }
-  }
-
-  else if (eventName === 'subscription_cancelled') {
-    await db.execute(sql`
-      UPDATE users
-      SET status = 'cancelled'
-      WHERE clerk_id = ${clerkId}
-    `);
-    console.log("✅ Abonnement marqué comme annulé.");
-  }
-
-  else if (eventName === 'subscription_expired') {
-    await db.execute(sql`
-      UPDATE users
-      SET status = 'expired'
-      WHERE clerk_id = ${clerkId}
-    `);
-    console.log("✅ Abonnement marqué comme expiré.");
-  }
-}
+            <p>Le prélèvement pour votre abonnement Nesis a
