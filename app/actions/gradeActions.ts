@@ -40,6 +40,23 @@ export async function saveNotesAction(echeanceId: string, chapitreId: string, ne
         throw new Error("Utilisateur non authentifié");
     }
 
+    const cleanContent = newNotes ? newNotes.trim() : "";
+
+    // Si le contenu est vide, on supprime la ligne de la base de données pour ne pas polluer les stats et les graphiques avec des zéros
+    if (cleanContent === "") {
+        await db
+            .delete(individualNotes)
+            .where(
+                and(
+                    eq(individualNotes.echeanceId, echeanceId),
+                    eq(individualNotes.chapitreId, chapitreId)
+                )
+            );
+        return;
+    }
+
+    const computedMoyenne = String(calculateAverage(cleanContent) || 0);
+
     // Recherche de la ligne existante pour CE couple (échéance + chapitre)
     const existing = await db
         .select()
@@ -51,19 +68,12 @@ export async function saveNotesAction(echeanceId: string, chapitreId: string, ne
             )
         );
 
-    let finalContent = newNotes;
-
-    
-
-    const cleanContent = finalContent ? finalContent.trim() : "";
-	const computedMoyenne = String(calculateAverage(cleanContent) || 0);
-
     if (existing && existing.length > 0) {
-        // Mise à jour si la ligne existe déjà pour ce chapitre et cette échéance
+        // Mise à jour si la ligne existe déjà
         await db
             .update(individualNotes)
             .set({
-                content: finalContent,
+                content: cleanContent,
                 moyenne: computedMoyenne,
             })
             .where(
@@ -73,12 +83,12 @@ export async function saveNotesAction(echeanceId: string, chapitreId: string, ne
                 )
             );
     } else {
-        // Insertion si c'est une nouvelle entrée
+        // Insertion si c'est une nouvelle entrée avec de vraies notes
         await db.insert(individualNotes).values({
             clerkId: userId,
             echeanceId: echeanceId,
             chapitreId: chapitreId,
-            content: finalContent,
+            content: cleanContent,
             moyenne: computedMoyenne,
         });
     }
