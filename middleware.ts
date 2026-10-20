@@ -30,6 +30,11 @@ export default clerkMiddleware(async (auth, req) => {
     console.log('🎯 [MIDDLEWARE TEST] Cookie "affiliate_ref" posé avec succès pour :', affiliateParam);
   }
   
+  // 🚪 GARANTIE DE RETOUR À L'ACCUEIL : On laisse toujours passer la racine '/' sans blocage
+  if (url.pathname === '/') {
+    return res;
+  }
+  
   if (isProtectedRoute(req)) {
     const { userId: clerkId } = await auth();
 
