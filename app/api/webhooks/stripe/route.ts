@@ -110,7 +110,7 @@ export async function POST(req: Request) {
         const customerId = typeof customerRef === 'string' ? customerRef : customerRef.id;
         const portalSession = await stripe.billingPortal.sessions.create({
           customer: customerId,
-          return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://nesis.fr'}/dashboard`,
+          return_url: 'https://nesis.fr/dashboard',
         });
 
         if (portalSession?.url) {
