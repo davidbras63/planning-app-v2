@@ -11,8 +11,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
-  throw new Error("💥 TEST ERREUR FORCEE");
-  
+    
   try {
     console.log("--- 1. WEBHOOK REÇU ---");
     const bodyText = await req.text();
