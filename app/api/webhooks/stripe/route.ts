@@ -103,28 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, warning: 'No clerkId found' }, { status: 200 });
     }
 
-    // --- 1. CAPTURE GLOBALE DU PORTAIL CLIENT STRIPE ---
-    try {
-      const customerPortalUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing` : 'https://billing.stripe.com/p/login/...'; 
-      const existingSubLink = await db.execute(
-        sql`SELECT id FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
-      );
-
-      if (existingSubLink.rows.length === 0) {
-        await db.execute(
-          sql`INSERT INTO links (clerk_id, label, url) VALUES (${clerkId}, 'Gérer mon abonnement', ${customerPortalUrl})`
-        );
-        console.log("✅ Insertion lien 'Gérer mon abonnement' effectuée.");
-      } else {
-        await db.execute(
-          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
-        );
-        console.log("✅ Mise à jour lien 'Gérer mon abonnement' effectuée.");
-      }
-    } catch (portalError) {
-      console.error("❌ ERREUR SYNCHRO PORTAIL :", portalError);
-    }
-
     // --- 2. GESTION DES ÉVÉNEMENTS ---
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
       const subStatus = dataObject.status;
@@ -198,8 +176,43 @@ export async function POST(req: Request) {
         console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
       }
 
-      // Affilibee & Email
+      // Affilibee, Email & Enregistrement unique du lien portail client Stripe (uniquement à la création initiale)
       if (dataObject?.billing_reason === 'subscription_create') {
+        try {
+          // 1. Génération et enregistrement unique du lien du portail client Stripe dans la table links
+          if (dataObject?.customer) {
+            const customerId = typeof dataObject.customer === 'string' 
+              ? dataObject.customer 
+              : dataObject.customer.id;
+
+            const portalSession = await stripe.billingPortal.sessions.create({
+              customer: customerId,
+              return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://nesis.fr'}/dashboard`,
+            });
+
+            if (portalSession?.url) {
+              const customerPortalUrl = portalSession.url;
+              const existingSubLink = await db.execute(
+                sql`SELECT id FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
+              );
+
+              if (existingSubLink.rows.length === 0) {
+                await db.execute(
+                  sql`INSERT INTO links (clerk_id, label, url) VALUES (${clerkId}, 'Gérer mon abonnement', ${customerPortalUrl})`
+                );
+                console.log("✅ Insertion unique du lien 'Gérer mon abonnement' effectuée.");
+              } else {
+                await db.execute(
+                  sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
+                );
+                console.log("✅ Mise à jour unique du lien 'Gérer mon abonnement' effectuée.");
+              }
+            }
+          }
+        } catch (portalError) {
+          console.error("❌ ERREUR SYNCHRO PORTAIL :", portalError);
+        }
+
         try {
           if (userEmail) {
             console.log(`Envoi de l'e-mail de confirmation à ${userEmail}`);
