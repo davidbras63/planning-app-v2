@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { Button, Container, Text, Card, Stack, Title, Group } from '@mantine/core';
-import { IconCreditCard, IconSparkles, IconCheck, IconX } from '@tabler/icons-react';
+import { IconCreditCard, IconSparkles, IconCheck, IconX, IconHome } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ export default function SubscriptionPage() {
   const [drawerOpened, setDrawerOpened] = useState(false);
   const [successState, setSuccessState] = useState(false);
   const { isSignedIn, isLoaded } = useAuth();
-  const { openSignIn, signOut } = useClerk();
+  const { openSignIn } = useClerk();
   const router = useRouter();
 
   const executeCheckout = async () => {
@@ -70,12 +70,13 @@ export default function SubscriptionPage() {
     <Container size="xs" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <Group mb="md" justify="flex-end">
         <Button
+          component={Link}
+          href="/"
           variant="subtle"
-          color="red"
-          leftSection={<IconX size={18} />}
-          onClick={() => signOut({ redirectUrl: '/' })}
+          color="gray"
+          leftSection={<IconHome size={18} />}
         >
-          Se déconnecter
+          Retour à l'accueil
         </Button>
       </Group>
 
