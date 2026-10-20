@@ -175,7 +175,7 @@ export default function SubscriptionPage() {
                   </div>
                   <Title order={3} c="white">Opération réussie !</Title>
                   <Text size="sm" c="dimmed" ta="center">
-                    Votre compte est opérationnel. Redirection vers le module de paiement sécurisé Lemon Squeezy en cours...
+                    Votre compte est opérationnel. Redirection vers le module de paiement sécurisé Stripe en cours...
                   </Text>
                 </Stack>
               )}
@@ -186,8 +186,3 @@ export default function SubscriptionPage() {
     </Container>
   );
 }
-
-
-
-
-

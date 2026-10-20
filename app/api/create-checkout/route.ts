@@ -3,6 +3,11 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-02-24.acacia' as any,
+});
 
 export async function POST() {
   try {
@@ -29,79 +34,48 @@ export async function POST() {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données ou chez Clerk.' }, { status: 404 });
     }
 
-    const storeId = process.env.LEMONSQUEEZY_STORE_ID;
-    const variantId = process.env.LEMONSQUEEZY_VARIANT_ID;
+    const priceId = process.env.STRIPE_PRICE_ID;
     const siteUrl = 'https://nesis.fr';
 
-    const payload = {
-      data: {
-        type: 'checkouts',
-        attributes: {
-          checkout_data: {
-            email: userEmail, // On remet l'email car sans lui le champ est vide, mais regardons ce que l'API répond
-            custom: {
-              user_id: userId,
-            },
-          },
-          product_options: {
-            enabled_variants: [variantId],
-            redirect_url: `${siteUrl}/protected/dashboard`,
-            receipt_button_text: 'Accéder à mon espace',
-            receipt_link_url: `${siteUrl}/protected/dashboard`,
-          },
-          checkout_options: {
-            embed: false,
-            media: true,
-            logo: true,
-            dark: true,
-          },
-        },
-        relationships: {
-          store: {
-            data: {
-              type: 'stores',
-              id: storeId,
-            },
-          },
-          variant: {
-            data: {
-              type: 'variants',
-              id: variantId,
-            },
-          },
-        },
-      },
-    };
-
-    const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-        'Authorization': `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    // REGARDE BIEN CE QUE ÇA CRACHE DANS LES LOGS DE TON SERVEUR
-    console.log("REPONSE BRUTE LEMONSQUEEZY:", JSON.stringify(data, null, 2));
-
-    if (!response.ok) {
-      console.error('Erreur Lemon Squeezy API:', JSON.stringify(data, null, 2));
-      return NextResponse.json({ error: 'Erreur lors de la création du checkout', details: data }, { status: 500 });
+    if (!priceId) {
+      console.error('Erreur: STRIPE_PRICE_ID non configuré.');
+      return NextResponse.json({ error: 'Configuration Stripe manquante' }, { status: 500 });
     }
 
-    const checkoutUrl = data?.data?.attributes?.url;
+    // Création de la session Stripe Checkout
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer_email: userEmail,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${siteUrl}/protected/dashboard`,
+      cancel_url: `${siteUrl}/protected/dashboard`,
+      metadata: {
+        user_id: userId,
+      },
+      subscription_data: {
+        metadata: {
+          user_id: userId,
+        },
+      },
+    });
+
+    console.log("REPONSE BRUTE STRIPE CHECKOUT:", JSON.stringify(session, null, 2));
+
+    const checkoutUrl = session.url;
 
     if (!checkoutUrl) {
       return NextResponse.json({ error: 'URL de checkout introuvable dans la réponse' }, { status: 500 });
     }
 
     return NextResponse.json({ url: checkoutUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur critique route checkout:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur interne du serveur', details: error?.message }, { status: 500 });
   }
 }

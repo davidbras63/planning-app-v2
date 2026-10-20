@@ -3,54 +3,63 @@
 import { db } from '@/db';
 import { sql } from 'drizzle-orm';
 import { Resend } from 'resend';
+import Stripe from 'stripe';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-02-24.acacia' as any,
+});
 
-export async function handleLemonSqueezyWebhook(event: any) {
-  console.log("--- DÉBUT WEBHOOK LEMON SQUEEZY ---");
-  console.log("Payload brut reçu :", JSON.stringify(event));
+export async function handleStripeWebhook(event: Stripe.Event) {
+  console.log("--- DÉBUT WEBHOOK STRIPE ---");
+  console.log("Type d'événement reçu :", event.type);
 
-  const eventName = event?.meta?.event_name;
-  const attributes = event?.data?.attributes;
-  const customData = event?.meta?.custom_data || attributes?.custom_data;
-  const clerkId = customData?.user_id;
+  // Extraction des données selon l'objet Stripe concerné
+  const dataObject = event.data.object as any;
+  
+  // Récupération du clerkId stocké dans les metadata de l'objet (client, abonnement ou facture)
+  const clerkId = 
+    dataObject?.metadata?.user_id || 
+    dataObject?.customer_details?.metadata?.user_id;
 
-  console.log("Événement :", eventName, "| Clerk ID extrait :", clerkId);
- 
+  console.log("Événement Stripe :", event.type, "| Clerk ID extrait :", clerkId);
+  
   if (!clerkId) {
-    console.error("❌ ERREUR CRITIQUE : Aucun clerkId trouvé dans meta.custom_data ou attributes.custom_data !");
+    console.error("❌ ERREUR CRITIQUE : Aucun clerkId trouvé dans les metadata Stripe !");
     return;
   }
 
-  // --- 1. CAPTURE GLOBALE DU PORTAIL CLIENT ---
+  // --- 1. CAPTURE GLOBALE DU PORTAIL CLIENT STRIPE ---
+  // Pour Stripe, le lien du portail client est généralement généré à la volée ou stocké, 
+  // mais on met à jour/crée le lien standard du portail Stripe si disponible ou l'URL par défaut.
   try {
-    const customerPortalUrl = attributes?.urls?.customer_portal;
-    if (customerPortalUrl) {
-      console.log("URL du portail client détectée :", customerPortalUrl);
-      const existingSubLink = await db.execute(
-        sql`SELECT id FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
-      );
+    // Si l'événement contient un client, on peut lui lier l'accès au portail Stripe standard
+    const customerPortalUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing` : 'https://billing.stripe.com/p/login/...'; 
+    // Alternative : vous pouvez enregistrer l'URL du portail si gérée ailleurs, ici on met à jour le lien de gestion
+    const existingSubLink = await db.execute(
+      sql`SELECT id FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
+    );
 
-      if (existingSubLink.rows.length === 0) {
-        await db.execute(
-          sql`INSERT INTO links (clerk_id, label, url) VALUES (${clerkId}, 'Gérer mon abonnement', ${customerPortalUrl})`
-        );
-        console.log("✅ Insertion lien 'Gérer mon abonnement' effectuée.");
-      } else {
-        await db.execute(
-          sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
-        );
-        console.log("✅ Mise à jour lien 'Gérer mon abonnement' effectuée.");
-      }
+    if (existingSubLink.rows.length === 0) {
+      await db.execute(
+        sql`INSERT INTO links (clerk_id, label, url) VALUES (${clerkId}, 'Gérer mon abonnement', ${customerPortalUrl})`
+      );
+      console.log("✅ Insertion lien 'Gérer mon abonnement' effectuée.");
+    } else {
+      await db.execute(
+        sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
+      );
+      console.log("✅ Mise à jour lien 'Gérer mon abonnement' effectuée.");
     }
   } catch (portalError) {
     console.error("❌ ERREUR SYNCHRO PORTAIL :", portalError);
   }
 
-  // --- 2. GESTION DES ÉVÉNEMENTS ---
- 
-  if (eventName === 'subscription_created' || eventName === 'subscription_updated') {
-    const subStatus = attributes?.status;
+  // --- 2. GESTION DES ÉVÉNEMENTS STRIPE ---
+
+  // Abonnement créé ou mis à jour
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const subStatus = dataObject.status; // 'active', 'trialing', 'past_due', etc.
     if (subStatus) {
       await db.execute(sql`
         UPDATE users
@@ -61,25 +70,28 @@ export async function handleLemonSqueezyWebhook(event: any) {
     }
   }
 
-  // --- GESTION DE LA PAUSE DEPUIS LE PORTAIL LEMON SQUEEZY ---
-  else if (eventName === 'subscription_paused') {
+  // --- GESTION DE LA PAUSE (Stripe gère la pause via status 'paused') ---
+  else if (event.type === 'customer.subscription.paused') {
     await db.execute(sql`
       UPDATE users
       SET status = 'paused'
       WHERE clerk_id = ${clerkId}
     `);
-    console.log("✅ Abonnement mis en pause (via portail Lemon Squeezy). Le period_end reste inchangé pour laisser l'accès actif jusqu'à son terme.");
+    console.log("✅ Abonnement mis en pause (via portail/API Stripe). Le period_end reste inchangé pour laisser l'accès actif jusqu'à son terme.");
   }
+  
   // --- GESTION DE LA REPRISE DE PAUSE (UNPAUSE) ---
-  else if (eventName === 'subscription_unpaused') {
+  else if (event.type === 'customer.subscription.resumed') {
     await db.execute(sql`
       UPDATE users
       SET status = 'active'
       WHERE clerk_id = ${clerkId}
     `);
-    console.log("✅ Abonnement réactivé suite à la levée de la pause (via portail Lemon Squeezy).");
+    console.log("✅ Abonnement réactivé suite à la levée de la pause (via Stripe).");
   }
-  else if (eventName === 'subscription_payment_success') {
+
+  // --- PAIEMENT RÉUSSI (Facture payée / Renouvellement ou premier paiement) ---
+  else if (event.type === 'invoice.payment_succeeded') {
     const now = new Date();
    
     // On récupère aussi referred_by pour Affilibee
@@ -91,7 +103,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
       return;
     }
 
-    const userEmail = dbUser.email || attributes?.user_email;
+    const userEmail = dbUser.email || dataObject?.customer_email;
     const referralCode = dbUser.referred_by;
     const existingPeriodEnd = dbUser.period_end;
     const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
@@ -103,7 +115,7 @@ export async function handleLemonSqueezyWebhook(event: any) {
       return;
     }
 
-    // --- CORRECTION DU CALCUL DES 30 JOURS ---
+    // --- CALCUL DES 32 JOURS ---
     const baseDate = currentPeriodEnd > now ? currentPeriodEnd : now;
     const newPeriodEnd = new Date(baseDate);
     newPeriodEnd.setDate(newPeriodEnd.getDate() + 32);
@@ -123,25 +135,27 @@ export async function handleLemonSqueezyWebhook(event: any) {
 
     // --- ENVOI DE LA COMMANDE À AFFILIBEE (API v2) ---
     try {
-      const amount = attributes?.total || attributes?.subtotal || 0;
-      const orderId = event.data?.id?.toString() || `order-${Date.now()}`;
+      // Stripe transmet les montants en centimes, Affilibee attend le montant brut ou adapté selon configuration (gardé identique à votre logique)
+      const amount = dataObject?.amount_paid || dataObject?.total || 0;
+      const orderId = dataObject?.id?.toString() || `order-${Date.now()}`;
+      const lineItem = dataObject?.lines?.data?.[0];
 
       const affilibeePayload = {
         affiliate_slug: referralCode || "default",
         order_no: orderId,
         total_shipping_value: 0,
-        currency_code: attributes?.currency || "EUR",
+        currency_code: dataObject?.currency?.toUpperCase() || "EUR",
         order_rows: [
           {
-            product_sku: attributes?.product_id?.toString() || "nesis-sub",
-            product_name: attributes?.product_name || "Abonnement Nesis",
-            price_value: amount, // Déjà en centimes envoyé par Lemon Squeezy
-            tax_value: attributes?.tax || 0,
-            quantity: 1
+            product_sku: lineItem?.price?.id || "nesis-sub",
+            product_name: lineItem?.description || "Abonnement Nesis",
+            price_value: amount, 
+            tax_value: dataObject?.tax || 0,
+            quantity: lineItem?.quantity || 1
           }
         ],
         customer: {
-          name: attributes?.user_name || userEmail.split('@')[0],
+          name: dataObject?.customer_name || userEmail.split('@')[0],
           email: userEmail
         }
       };
@@ -167,8 +181,8 @@ export async function handleLemonSqueezyWebhook(event: any) {
       console.error("❌ Erreur de communication avec Affilibee:", affilibeeErr);
     }
 
-    // --- ENVOI DE L'E-MAIL DE CONFIRMATION (SANS PARRAINAGE) ---
-    if (eventName === 'subscription_created' || attributes?.billing_reason === 'initial') {
+    // --- ENVOI DE L'E-MAIL DE CONFIRMATION (Premier paiement / Création) ---
+    if (dataObject?.billing_reason === 'subscription_create') {
         try {
             if (userEmail) {
                 console.log(`Envoi de l'e-mail de confirmation à ${userEmail}`);
@@ -194,14 +208,15 @@ export async function handleLemonSqueezyWebhook(event: any) {
     console.log("✅ SUCCÈS : Paiement validé et abonnement prolongé !");
   }
 
-  else if (eventName === 'subscription_payment_failed') {
+  // --- ÉCHEC DE PAIEMENT ---
+  else if (event.type === 'invoice.payment_failed') {
     const userResult = await db.execute(sql`SELECT email FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
     const userEmail = (userResult.rows[0] as any)?.email;
 
     const linkResult = await db.execute(
       sql`SELECT url FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
     );
-    const updateUrl = (linkResult.rows[0] as any)?.url ?? attributes?.urls?.update_payment_method ?? 'https://app.lemonsqueezy.com';
+    const updateUrl = (linkResult.rows[0] as any)?.url ?? 'https://billing.stripe.com/p/login/...';
 
     if (userEmail) {
       await resend.emails.send({
@@ -223,21 +238,13 @@ export async function handleLemonSqueezyWebhook(event: any) {
     }
   }
 
-  else if (eventName === 'subscription_cancelled') {
+  // --- ABONNEMENT ANNULÉ ---
+  else if (event.type === 'customer.subscription.deleted') {
     await db.execute(sql`
       UPDATE users
       SET status = 'cancelled'
       WHERE clerk_id = ${clerkId}
     `);
     console.log("✅ Abonnement marqué comme annulé.");
-  }
-
-  else if (eventName === 'subscription_expired') {
-    await db.execute(sql`
-      UPDATE users
-      SET status = 'expired'
-      WHERE clerk_id = ${clerkId}
-    `);
-    console.log("✅ Abonnement marqué comme expiré.");
   }
 }
