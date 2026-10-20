@@ -118,7 +118,6 @@ export default function SubscriptionPage() {
         </Stack>
       </Card>
 
-      {/* Panneau latéral forcé au premier plan absolu (z-index 99999) pour ne jamais être assombri par le fond de Clerk */}
       {drawerOpened && (
         <div style={{
           position: 'fixed',
@@ -135,7 +134,6 @@ export default function SubscriptionPage() {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          {/* Header du panneau */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -155,7 +153,6 @@ export default function SubscriptionPage() {
             </Button>
           </div>
 
-          {/* Contenu du panneau */}
           <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
             <Stack gap="md">
               {!successState ? (
