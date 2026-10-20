@@ -11,7 +11,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
-    
   try {
     console.log("--- 1. WEBHOOK REÇU ---");
     const bodyText = await req.text();
@@ -43,10 +42,12 @@ export async function POST(req: Request) {
 
     const dataObject = event.data.object as any;
     
+    // 1. Recherche par métadonnées directes
     let clerkId = 
       dataObject?.metadata?.user_id || 
       dataObject?.customer_details?.metadata?.user_id;
 
+    // 2. Recherche via l'abonnement Stripe lié
     if (!clerkId && dataObject?.subscription) {
       try {
         const subscriptionId = typeof dataObject.subscription === 'string' 
@@ -60,6 +61,9 @@ export async function POST(req: Request) {
       }
     }
 
+    // 3. Recherche via le client Stripe + récupération de son e-mail
+    let customerEmail = dataObject?.customer_email || dataObject?.customer_details?.email;
+
     if (!clerkId && dataObject?.customer) {
       try {
         const customerId = typeof dataObject.customer === 'string' 
@@ -69,16 +73,33 @@ export async function POST(req: Request) {
         const customer = await stripe.customers.retrieve(customerId);
         if (!customer.deleted) {
           clerkId = customer.metadata?.user_id;
+          if (!customerEmail && (customer as any).email) {
+            customerEmail = (customer as any).email;
+          }
         }
       } catch (err) {
         console.error("Erreur récupération client Stripe pour le clerkId :", err);
       }
     }
 
+    // 4. Filet de sécurité ultime : Recherche par e-mail en base si le clerkId manque toujours
+    if (!clerkId && customerEmail) {
+      try {
+        console.log(`⚠️ ClerkId absent des metadata, recherche en base via l'e-mail : ${customerEmail}`);
+        const userRes = await db.execute(sql`SELECT clerk_id FROM users WHERE email = ${customerEmail} LIMIT 1`);
+        if (userRes.rows.length > 0) {
+          clerkId = (userRes.rows[0] as any).clerk_id;
+          console.log(`✅ ClerkId récupéré via l'e-mail en base : ${clerkId}`);
+        }
+      } catch (dbEmailErr) {
+        console.error("Erreur recherche utilisateur par e-mail :", dbEmailErr);
+      }
+    }
+
     console.log("Événement Stripe :", event.type, "| Clerk ID extrait :", clerkId);
     
     if (!clerkId) {
-      console.error("❌ ERREUR CRITIQUE : Aucun clerkId trouvé dans les metadata Stripe !");
+      console.error("❌ ERREUR CRITIQUE : Aucun clerkId trouvé ni dans Stripe ni en base !");
       return NextResponse.json({ received: true, warning: 'No clerkId found' }, { status: 200 });
     }
 
@@ -144,7 +165,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ received: true }, { status: 200 });
       }
 
-      const userEmail = dbUser.email || dataObject?.customer_email;
+      const userEmail = dbUser.email || customerEmail;
       const referralCode = dbUser.referred_by;
       const existingPeriodEnd = dbUser.period_end;
       const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
@@ -200,7 +221,7 @@ export async function POST(req: Request) {
     }
     else if (event.type === 'invoice.payment_failed') {
       const userResult = await db.execute(sql`SELECT email FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
-      const userEmail = (userResult.rows[0] as any)?.email;
+      const userEmail = (userResult.rows[0] as any)?.email || customerEmail;
       if (userEmail) {
         await resend.emails.send({
           from: 'Nesis <contact@nesis.fr>',
