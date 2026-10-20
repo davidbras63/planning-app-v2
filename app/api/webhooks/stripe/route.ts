@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { handleStripeWebhook } from '../../../actions/subscriptions';
+import { handleStripeWebhook } from '@/app/actions/subscriptions'; // Utilisation de l'alias propre Next.js
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as any,
 });
 
 export async function POST(req: Request) {
+
   try {
     console.log("--- 1. WEBHOOK REÇU ---");
     const bodyText = await req.text();
