@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { Button, Container, Text, Card, Stack, Title, Group } from '@mantine/core';
-import { IconCreditCard, IconArrowLeft, IconSparkles, IconCheck, IconX } from '@tabler/icons-react';
+import { IconCreditCard, IconSparkles, IconCheck, IconX } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ export default function SubscriptionPage() {
   const [drawerOpened, setDrawerOpened] = useState(false);
   const [successState, setSuccessState] = useState(false);
   const { isSignedIn, isLoaded } = useAuth();
-  const { openSignIn } = useClerk();
+  const { openSignIn, signOut } = useClerk();
   const router = useRouter();
 
   const executeCheckout = async () => {
@@ -68,14 +68,14 @@ export default function SubscriptionPage() {
 
   return (
     <Container size="xs" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <Group mb="md">
+      <Group mb="md" justify="flex-end">
         <Button
           variant="subtle"
-          color="gray"
-          leftSection={<IconArrowLeft size={18} />}
-          onClick={() => { window.location.href = '/?from=menu'; }}
+          color="red"
+          leftSection={<IconX size={18} />}
+          onClick={() => signOut({ redirectUrl: '/' })}
         >
-          Retour à l'accueil
+          Se déconnecter
         </Button>
       </Group>
 
@@ -175,7 +175,7 @@ export default function SubscriptionPage() {
                   </div>
                   <Title order={3} c="white">Opération réussie !</Title>
                   <Text size="sm" c="dimmed" ta="center">
-                    Votre compte est opérationnel. Redirection vers le module de paiement sécurisé Lemon Squeezy en cours...
+                    Votre compte est opérationnel. Redirection vers le module de paiement sécurisé en cours...
                   </Text>
                 </Stack>
               )}
