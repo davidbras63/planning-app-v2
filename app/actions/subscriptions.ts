@@ -119,10 +119,12 @@ export async function handleStripeWebhook(event: Stripe.Event) {
   // --- PAIEMENT RÉUSSI ---
   else if (event.type === 'invoice.payment_succeeded') {
     const now = new Date();
-   
+    
+    console.log("👉 [LOG DEBUG] billing_reason exact reçu de Stripe :", dataObject?.billing_reason);
+
     const userResult = await db.execute(sql`SELECT email, period_end, referred_by FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
     const dbUser = userResult.rows[0] as any;
-   
+    
     if (!dbUser) {
       console.error(`❌ ERREUR : Aucun utilisateur trouvé en base avec le clerk_id: ${clerkId}`);
       return;
@@ -132,11 +134,11 @@ export async function handleStripeWebhook(event: Stripe.Event) {
     const referralCode = dbUser.referred_by;
     const existingPeriodEnd = dbUser.period_end;
     const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
-   
-    console.log("Utilisateur trouvé en base — Email :", userEmail, "— Fin de période actuelle :", currentPeriodEnd);
-   
+    
+    console.log("Utilisateur trouvé en base — Email :", userEmail, "— Fin de période actuelle :", currentPeriodEnd.toISOString());
+    
     if (currentPeriodEnd > new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000)) {
-      console.log("Abonnement déjà prolongé, on ignore ce webhook dupliqué.");
+      console.log("⚠️ ABONNEMENT IGNORÉ : Fin de période déjà supérieure à +31 jours par rapport à maintenant (currentPeriodEnd =", currentPeriodEnd.toISOString(), ")");
       return;
     }
 
@@ -152,8 +154,9 @@ export async function handleStripeWebhook(event: Stripe.Event) {
         UPDATE users
         SET status = 'active', period_end = ${newPeriodEnd.toISOString()}
         WHERE clerk_id = ${clerkId}
+        RETURNING clerk_id, status, period_end;
       `);
-      console.log("✅ Résultat SQL UPDATE users :", updateResult);
+      console.log("✅ Résultat SQL UPDATE users :", JSON.stringify(updateResult));
     } catch (dbError) {
       console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
     }
@@ -161,7 +164,7 @@ export async function handleStripeWebhook(event: Stripe.Event) {
     // --- ENVOI DE LA COMMANDE À AFFILIBEE (API v2) ---
     try {
       const amount = dataObject?.amount_paid || dataObject?.total || 0;
-      const orderId = dataObject?.id?.toString() || `order-${Date.now()}`; // Corrigé ici
+      const orderId = dataObject?.id?.toString() || `order-${Date.now()}`;
       const lineItem = dataObject?.lines?.data?.[0];
 
       const affilibeePayload = {
@@ -227,6 +230,8 @@ export async function handleStripeWebhook(event: Stripe.Event) {
         } catch (emailError) {
             console.error("❌ ERREUR ENVOI-EMAIL", emailError);
         }
+    } else {
+      console.log("ℹ️ Pas d'envoi d'e-mail car billing_reason est '" + dataObject?.billing_reason + "' (attendu: 'subscription_create')");
     }
 
     console.log("✅ SUCCÈS : Paiement validé et abonnement prolongé !");
