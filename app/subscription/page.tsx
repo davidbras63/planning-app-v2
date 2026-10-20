@@ -53,7 +53,7 @@ export default function SubscriptionPage() {
       localStorage.setItem('pending_checkout', 'true');
       setSuccessState(false);
       setDrawerOpened(true);
-     
+      
       openSignIn({
         forceRedirectUrl: window.location.origin + '/subscription',
         fallbackRedirectUrl: window.location.origin + '/subscription',
@@ -73,9 +73,9 @@ export default function SubscriptionPage() {
           variant="subtle"
           color="gray"
           leftSection={<IconArrowLeft size={18} />}
-          onClick={() => router.push('/')}
+          onClick={() => { window.location.href = '/?from=menu'; }}
         >
-          Retour à l'acceuil
+          Retour à l'accueil
         </Button>
       </Group>
 
@@ -186,8 +186,3 @@ export default function SubscriptionPage() {
     </Container>
   );
 }
-
-
-
-
-
