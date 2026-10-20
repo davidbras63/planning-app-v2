@@ -128,13 +128,16 @@ export async function POST(req: Request) {
     // --- 2. GESTION DES ÉVÉNEMENTS ---
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
       const subStatus = dataObject.status;
-      if (subStatus) {
+      // On ignore 'incomplete' pour ne pas écraser un statut déjà actif ou validé
+      if (subStatus && subStatus !== 'incomplete') {
         await db.execute(sql`
           UPDATE users
           SET status = ${subStatus}
           WHERE clerk_id = ${clerkId}
         `);
         console.log(`✅ Statut utilisateur mis à jour à : ${subStatus}`);
+      } else {
+        console.log(`⚠️ Statut 'incomplete' ignoré.`);
       }
     }
     else if (event.type === 'customer.subscription.paused') {
