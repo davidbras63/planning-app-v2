@@ -1,10 +1,13 @@
 'use client';
 
-import { Container, Title, Text, Button, Stack, Card, Group } from '@mantine/core';
-import { Lock, CreditCard, Home } from 'lucide-react';
+import { Container, Title, Text, Button, Stack, Card } from '@mantine/core';
+import { Lock, CreditCard, Mail, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useClerk } from '@clerk/nextjs';
 
 export default function AccesRefuse() {
+  const { signOut } = useClerk();
+
   return (
     <Container size="xs" py={100}>
       <Card withBorder p="xl" radius="md" shadow="sm" ta="center">
@@ -25,23 +28,24 @@ export default function AccesRefuse() {
             >
               Voir les abonnements / Payer
             </Button>
-			<Button
-			  component={Link}
-			  href="/contact"
-			  variant="light"
-			  color="gray"
-			  fullWidth
-			>
-			  Contacter le support
-			</Button>
             <Button
               component={Link}
-              href="/"
-              variant="default"
-              leftSection={<Home size={16} />}
+              href="/contact"
+              variant="light"
+              color="gray"
+              fullWidth
+              leftSection={<Mail size={16} />}
+            >
+              Contacter le support
+            </Button>
+            <Button
+              variant="subtle"
+              color="red"
+              leftSection={<LogOut size={16} />}
+              onClick={() => signOut({ redirectUrl: '/' })}
               fullWidth
             >
-              Retour à l'accueil
+              Se déconnecter
             </Button>
           </Stack>
         </Stack>
