@@ -19,16 +19,12 @@ export async function POST() {
     }
 
     const userRecord = await db
-      .select({ 
-        email: users.email,
-        referralId: users.referralId 
-      })
+      .select({ email: users.email })
       .from(users)
       .where(eq(users.clerkId, userId))
       .limit(1);
 
     let userEmail = userRecord[0]?.email;
-    const dbReferralId = userRecord[0]?.referralId;
 
     if (!userEmail) {
       const clerkUser = await currentUser();
@@ -39,10 +35,9 @@ export async function POST() {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données ou chez Clerk.' }, { status: 404 });
     }
 
-    // Récupération de l'affiliation (cookie middleware ou BDD)
+    // Récupération directe du cookie d'affiliation posé par le middleware
     const cookieStore = await cookies();
-    const cookieAffiliate = cookieStore.get('affiliate_ref')?.value;
-    const affiliateRef = cookieAffiliate || dbReferralId || '';
+    const affiliateRef = cookieStore.get('affiliate_ref')?.value || '';
 
     const priceId = process.env.STRIPE_PRICE_ID;
     const siteUrl = 'https://nesis.fr';
