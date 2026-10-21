@@ -83,8 +83,8 @@ export async function POST() {
     const activeSubscription = subscriptions.data[0];
     const subscriptionId = activeSubscription.id;
 
-    // 5. Calcul des dates cibles (Reprise le 3 septembre et échéance le 5 septembre)
-    const resumeTimestamp = Math.floor(new Date(`${currentYear}-09-03T00:00:00Z`).getTime() / 1000);
+    // 5. Pour le test : reprise dans 10 minutes (date future obligatoire pour Stripe)
+	const resumeTimestamp = Math.floor(Date.now() / 1000) + (10 * 60);
     const targetDate = `${currentYear}-09-05T00:00:00Z`;
 
     // 6. Appel à l'API Stripe pour mettre en pause l'abonnement jusqu'au 3 septembre
