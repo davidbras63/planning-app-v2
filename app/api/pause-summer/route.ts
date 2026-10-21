@@ -46,16 +46,16 @@ export async function POST() {
     }
 
     // 3. Vérification de la période (MIS EN COMMENTAIRE POUR LE TEST)
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const june25 = new Date(currentYear, 5, 25);
-    const august31 = new Date(currentYear, 7, 31);
-    if (now < june25 || now > august31) {
-      return NextResponse.json(
-        { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
-        { status: 400 }
-      );
-    }
+    const currentYear = new Date().getFullYear();
+    // const now = new Date();
+    // const june25 = new Date(currentYear, 5, 25);
+    // const august31 = new Date(currentYear, 7, 31);
+    // if (now < june25 || now > august31) {
+    //   return NextResponse.json(
+    //     { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
+    //     { status: 400 }
+    //   );
+    // }
 
     // 4. Récupérer dynamiquement l'abonnement Stripe via l'email du client
     const customers = await stripe.customers.list({
