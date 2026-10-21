@@ -45,17 +45,17 @@ export async function POST() {
       return NextResponse.json({ error: 'Aucun email associé à ce compte.' }, { status: 400 });
     }
 
-    // 3. Vérification de la période (MIS EN COMMENTAIRE POUR LE TEST)
+    // 3. Vérification de la période (Réactivée pour la production)
     const currentYear = new Date().getFullYear();
-    // const now = new Date();
-    // const june25 = new Date(currentYear, 5, 25);
-    // const august31 = new Date(currentYear, 7, 31);
-    // if (now < june25 || now > august31) {
-    //   return NextResponse.json(
-    //     { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
-    //     { status: 400 }
-    //   );
-    // }
+    const now = new Date();
+    const june25 = new Date(currentYear, 5, 25);
+    const august31 = new Date(currentYear, 7, 31);
+    if (now < june25 || now > august31) {
+      return NextResponse.json(
+        { error: 'La pause estivale est disponible uniquement entre le 25 juin et le 31 août.' },
+        { status: 400 }
+      );
+    }
 
     // 4. Récupérer dynamiquement l'abonnement Stripe via l'email du client
     const customers = await stripe.customers.list({
@@ -83,14 +83,15 @@ export async function POST() {
     const activeSubscription = subscriptions.data[0];
     const subscriptionId = activeSubscription.id;
 
-    // 5. Pour le test : reprise dans 10 minutes (date future obligatoire pour Stripe)
-	const resumeTimestamp = Math.floor(Date.now() / 1000) + (10 * 60);
-    const targetDate = `${currentYear}-09-05T00:00:00Z`;
+    // 5. Reprise officielle au 3 septembre
+    const september3 = new Date(currentYear, 8, 3, 0, 0, 0);
+    const resumeTimestamp = Math.floor(september3.getTime() / 1000);
+    const targetDate = `${currentYear}-09-03T00:00:00Z`;
 
     // 6. Appel à l'API Stripe pour mettre en pause l'abonnement jusqu'au 3 septembre
     const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
       pause_collection: {
-        behavior: 'keep_as_draft', // ou 'void' selon vos préférences d'affichage de factures
+        behavior: 'keep_as_draft',
         resumes_at: resumeTimestamp,
       },
     });
@@ -107,7 +108,7 @@ export async function POST() {
       })
       .where(eq(users.clerkId, userId));
 
-    return NextResponse.json({ success: true, message: 'Pause estivale activée jusqu\'au 5 septembre.' });
+    return NextResponse.json({ success: true, message: 'Pause estivale activée jusqu\'au 3 septembre.' });
   } catch (error: any) {
     console.error('Erreur critique route pause-summer:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur', details: error?.message }, { status: 500 });
