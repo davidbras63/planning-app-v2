@@ -149,7 +149,6 @@ export async function POST(req: Request) {
       } else {
         console.log(`⚠️ Statut 'incomplete' ignoré.`);
       }
-      // On s'assure de générer le lien dès la création/mise à jour de l'abonnement
       await upsertPortalLink(dataObject?.customer);
     }
     else if (event.type === 'customer.subscription.paused') {
@@ -181,11 +180,11 @@ export async function POST(req: Request) {
       }
 
       const userEmail = dbUser.email || customerEmail;
-      const referralCode = dbUser.referred_by;
+      const referralCode = dbUser.referred_by; // <--- Ton code récupère déjà le parrain ici !
       const existingPeriodEnd = dbUser.period_end;
       const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
       
-      console.log("Utilisateur trouvé en base — Email :", userEmail, "— Fin de période actuelle :", currentPeriodEnd.toISOString());
+      console.log("Utilisateur trouvé en base — Email :", userEmail, "— Fin de période actuelle :", currentPeriodEnd.toISOString(), "— Code parrain :", referralCode);
       
       if (currentPeriodEnd > new Date(now.getTime() + 31 * 24 * 60 * 60 * 1000)) {
         console.log("⚠️ ABONNEMENT IGNORÉ : Fin de période déjà supérieure à +31 jours");
@@ -208,6 +207,35 @@ export async function POST(req: Request) {
         console.log("✅ Résultat SQL UPDATE users :", JSON.stringify(updateResult));
       } catch (dbError) {
         console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
+      }
+
+      // --- REMONTÉE DE LA CONVERSION VERS AFFILIBEE ---
+      if (referralCode) {
+        try {
+          console.log(`🚀 Envoi de la conversion à Affilibee pour l'affilié : ${referralCode}`);
+          
+          const affilibeeResponse = await fetch('https://api.affilibee.com/v1/conversions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
+            },
+            body: JSON.stringify({
+              affiliate_slug: referralCode,
+              order_id: dataObject.id,
+              amount: dataObject.amount_paid ? dataObject.amount_paid / 100 : 7.90,
+              currency: 'EUR',
+              customer_email: userEmail,
+            }),
+          });
+
+          const affilibeeResult = await affilibeeResponse.json();
+          console.log("✅ Réponse Affilibee conversion :", JSON.stringify(affilibeeResult));
+        } catch (affError) {
+          console.error("❌ ERREUR LORS DE L'ENVOI À AFFILIBEE :", affError);
+        }
+      } else {
+        console.log("ℹ️ Aucun code de parrainage trouvé pour cet utilisateur en base.");
       }
 
       // --- GÉNÉRATION DU PORTAIL CLIENT STRIPE ---
