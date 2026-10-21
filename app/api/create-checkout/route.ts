@@ -18,13 +18,18 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // 1. On lit l'email ET le champ referredBy définis dans ton schema.ts
     const userRecord = await db
-      .select({ email: users.email })
+      .select({ 
+        email: users.email,
+        referredBy: users.referredBy 
+      })
       .from(users)
       .where(eq(users.clerkId, userId))
       .limit(1);
 
     let userEmail = userRecord[0]?.email;
+    const dbReferredBy = userRecord[0]?.referredBy;
 
     if (!userEmail) {
       const clerkUser = await currentUser();
@@ -35,9 +40,10 @@ export async function POST() {
       return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données ou chez Clerk.' }, { status: 404 });
     }
 
-    // Récupération directe du cookie d'affiliation posé par le middleware
+    // 2. Récupération du code affilié (priorité au cookie, sinon valeur 'referred_by' en BDD)
     const cookieStore = await cookies();
-    const affiliateRef = cookieStore.get('affiliate_ref')?.value || '';
+    const cookieAffiliate = cookieStore.get('affiliate_ref')?.value;
+    const affiliateRef = cookieAffiliate || dbReferredBy || '';
 
     const priceId = process.env.STRIPE_PRICE_ID;
     const siteUrl = 'https://nesis.fr';
@@ -47,7 +53,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Configuration Stripe manquante' }, { status: 500 });
     }
 
-    // Création de la session Stripe Checkout avec les métadonnées d'affiliation
+    // 3. Injection directe dans Stripe metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
