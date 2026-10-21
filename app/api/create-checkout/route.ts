@@ -4,7 +4,6 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import Stripe from 'stripe';
-import { cookies } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as any,
@@ -18,7 +17,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. On lit l'email ET le champ referredBy définis dans ton schema.ts
+    // Extraction directe de l'email et de referred_by depuis la base de données
     const userRecord = await db
       .select({ 
         email: users.email,
@@ -29,7 +28,7 @@ export async function POST() {
       .limit(1);
 
     let userEmail = userRecord[0]?.email;
-    const dbReferredBy = userRecord[0]?.referredBy;
+    const affiliateRef = userRecord[0]?.referredBy || '';
 
     if (!userEmail) {
       const clerkUser = await currentUser();
@@ -37,13 +36,8 @@ export async function POST() {
     }
 
     if (!userEmail) {
-      return NextResponse.json({ error: 'Utilisateur introuvable dans la base de données ou chez Clerk.' }, { status: 404 });
+      return NextResponse.json({ error: 'Utilisateur introuvable.' }, { status: 404 });
     }
-
-    // 2. Récupération du code affilié (priorité au cookie, sinon valeur 'referred_by' en BDD)
-    const cookieStore = await cookies();
-    const cookieAffiliate = cookieStore.get('affiliate_ref')?.value;
-    const affiliateRef = cookieAffiliate || dbReferredBy || '';
 
     const priceId = process.env.STRIPE_PRICE_ID;
     const siteUrl = 'https://nesis.fr';
@@ -53,7 +47,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Configuration Stripe manquante' }, { status: 500 });
     }
 
-    // 3. Injection directe dans Stripe metadata
+    // Création de la session Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',
@@ -78,8 +72,6 @@ export async function POST() {
       },
     });
 
-    console.log("REPONSE BRUTE STRIPE CHECKOUT:", JSON.stringify(session, null, 2));
-
     const checkoutUrl = session.url;
 
     if (!checkoutUrl) {
@@ -88,7 +80,7 @@ export async function POST() {
 
     return NextResponse.json({ url: checkoutUrl });
   } catch (error: any) {
-    console.error('Erreur critique route checkout:', error);
+    console.error('Erreur route checkout:', error);
     return NextResponse.json({ error: 'Erreur interne du serveur', details: error?.message }, { status: 500 });
   }
 }
