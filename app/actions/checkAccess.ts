@@ -21,7 +21,7 @@ export async function checkAccessAction() {
 
     const user = result[0];
 
-    /// --- ENREGISTREMENT DIRECT VIA SQL BRUT ---
+    // --- ENREGISTREMENT DIRECT VIA SQL BRUT ---
     if (!user.referredBy) {
         try {
             const cookieStore = await cookies();
@@ -33,9 +33,6 @@ export async function checkAccessAction() {
                     await db.execute(
                         sql`UPDATE users SET referred_by = ${cleanCode} WHERE clerk_id = ${clerkId}`
                     );
-                    
-                    // 🔒 Sécurité : on détruit le cookie instantanément pour qu'il ne traîne plus
-                    cookieStore.set('affiliate_ref', '', { maxAge: 0, path: '/' });
                 }
             }
         } catch (err) {
