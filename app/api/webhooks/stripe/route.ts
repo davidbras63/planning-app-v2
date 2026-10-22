@@ -180,7 +180,7 @@ export async function POST(req: Request) {
       }
 
       const userEmail = dbUser.email || customerEmail;
-      const referralCode = dbUser.referred_by; // <--- Ton code récupère déjà le parrain ici !
+      const referralCode = dbUser.referred_by;
       const existingPeriodEnd = dbUser.period_end;
       const currentPeriodEnd = existingPeriodEnd ? new Date(existingPeriodEnd) : now;
       
@@ -209,33 +209,53 @@ export async function POST(req: Request) {
         console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
       }
 
-      // --- REMONTÉE DE LA CONVERSION VERS AFFILIBEE ---
-      if (referralCode) {
-        try {
-          console.log(`🚀 Envoi de la conversion à Affilibee pour l'affilié : ${referralCode}`);
-          
-          const affilibeeResponse = await fetch('https://api.affilibee.com/v1/conversions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
-            },
-            body: JSON.stringify({
-              affiliate_slug: referralCode,
-              order_id: dataObject.id,
-              amount: dataObject.amount_paid ? dataObject.amount_paid / 100 : 7.90,
-              currency: 'EUR',
-              customer_email: userEmail,
-            }),
-          });
+      // --- REMONTÉE DE LA COMMANDE VERS AFFILIBEE (API v2 - Sandbox) ---
+      try {
+        const amount = dataObject?.amount_paid || dataObject?.total || 0;
+        const orderId = dataObject?.id?.toString() || `order-${Date.now()}`;
+        const lineItem = dataObject?.lines?.data?.[0];
 
-          const affilibeeResult = await affilibeeResponse.json();
-          console.log("✅ Réponse Affilibee conversion :", JSON.stringify(affilibeeResult));
-        } catch (affError) {
-          console.error("❌ ERREUR LORS DE L'ENVOI À AFFILIBEE :", affError);
+        const affilibeePayload = {
+          affiliate_slug: referralCode || "default",
+          order_no: orderId,
+          total_shipping_value: 0,
+          currency_code: dataObject?.currency?.toUpperCase() || "EUR",
+          order_rows: [
+            {
+              product_sku: lineItem?.price?.id || "nesis-sub",
+              product_name: lineItem?.description || "Abonnement Nesis",
+              price_value: amount,
+              tax_value: dataObject?.tax || 0,
+              quantity: lineItem?.quantity || 1
+            }
+          ],
+          customer: {
+            name: dataObject?.customer_name || userEmail.split('@')[0],
+            email: userEmail
+          }
+        };
+
+        console.log(`🚀 Envoi de la commande à Affilibee (v2 - Sandbox) pour l'affilié : ${referralCode || 'aucun'}`);
+
+        const affilibeeResponse = await fetch("https://affilibee.com/api/v2/sandbox/orders/create", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(affilibeePayload),
+        });
+
+        const affilibeeResult = await affilibeeResponse.json();
+
+        if (!affilibeeResponse.ok) {
+          console.error("❌ Erreur API Affilibee (v2 - Sandbox):", affilibeeResult);
+        } else {
+          console.log("✅ Commande transmise à Affilibee (v2 - Sandbox) avec succès pour l'email:", userEmail);
         }
-      } else {
-        console.log("ℹ️ Aucun code de parrainage trouvé pour cet utilisateur en base.");
+      } catch (affilibeeErr) {
+        console.error("❌ Erreur de communication avec Affilibee:", affilibeeErr);
       }
 
       // --- GÉNÉRATION DU PORTAIL CLIENT STRIPE ---
