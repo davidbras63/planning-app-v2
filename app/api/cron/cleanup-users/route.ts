@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users, folders, matieres, chapitres, individualNotes, echeances, settings, links } from '@/db/schema';
-import { inArray, lt, and, eq } from 'drizzle-orm';
+import { lt, and, eq, ne, inArray } from 'drizzle-orm';
 
 export async function GET(request: Request) {
     const authHeader = request.headers.get('authorization');
@@ -13,14 +13,13 @@ export async function GET(request: Request) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // 1. Cible uniquement les statuts 'trial' ou 'expired' dont la periodEnd est dépassée de plus de 30 jours
-        // Les statuts 'elite' et 'active' sont totalement ignorés et protégés.
+        // Cible absolument tous les comptes SAUF 'elite' dont la periodEnd est dépassée de plus de 30 jours
         const usersToClean = await db
             .select({ id: users.id, clerkId: users.clerkId })
             .from(users)
             .where(
                 and(
-                    inArray(users.status, ['trial', 'expired']),
+                    ne(users.status, 'elite'),
                     lt(users.periodEnd, thirtyDaysAgo)
                 )
             );
@@ -31,12 +30,12 @@ export async function GET(request: Request) {
         let deletedFoldersCount = 0;
 
         if (userIds.length > 0) {
-            // 2. Supprimer les liens rattachés au clerkId
+            // 1. Supprimer les liens rattachés au clerkId
             if (clerkIds.length > 0) {
                 await db.delete(links).where(inArray(links.clerkId, clerkIds));
             }
 
-            // 3. Récupérer et purger tous les dossiers et données pédagogiques associés
+            // 2. Récupérer et purger tous les dossiers et données pédagogiques associés
             const userFolders = await db
                 .select({ id: folders.id })
                 .from(folders)
@@ -65,9 +64,8 @@ export async function GET(request: Request) {
                 }
             }
 
-            // 4. Supprimer enfin l'utilisateur de la table users pour respecter le RGPD
+            // 3. Mettre à jour le statut des utilisateurs nettoyés à 'expired' (on conserve la ligne utilisateur)
             await db.update(users).set({ status: 'expired' }).where(inArray(users.id, userIds));
-
         }
 
         return NextResponse.json({ 
