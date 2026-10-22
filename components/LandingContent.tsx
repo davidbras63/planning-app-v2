@@ -70,6 +70,19 @@ export default function LandingPage() {
 
   const now = new Date();
   const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
+  const isPeriodExpired = periodEnd ? new Date(periodEnd) < now : true;
+
+  // Identification des statuts pour les boutons
+  const isElite = userStatus === 'elite';
+  const isTrial = userStatus === 'trial';
+  const isCancelled = userStatus === 'cancelled';
+  const isExpired = userStatus === 'expired';
+
+  // 1. Bouton "S'abonner" : dispo immédiatement pour trial, cancelled ou expired (sans attendre la fin de période)
+  const showSubscribeButton = isTrial || isCancelled || isExpired;
+
+  // 2. Bouton Orange "Gérer mon abonnement" : dispo si la période est expirée pour tout le reste (hors elite, trial, cancelled, expired)
+  const showPortalButton = isPeriodExpired && !isElite && !isTrial && !isCancelled && !isExpired;
 
   const showTrialBanner = !isSignedIn;
 
@@ -152,7 +165,7 @@ export default function LandingPage() {
                     Accéder à mon espace
                   </Button>
 
-                  {['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining ? (
+                  {showPortalButton ? (
                     <Button
                       size="lg"
                       color="orange"
@@ -177,7 +190,7 @@ export default function LandingPage() {
                     >
                       Gérer mon abonnement &amp; Reprendre
                     </Button>
-                  ) : userStatus === 'trial' ? (
+                  ) : showSubscribeButton ? (
                     <Button
                       size="lg"
                       variant="outline"
