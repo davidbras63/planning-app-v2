@@ -145,16 +145,6 @@ export default function LandingPage() {
                       Se connecter
                     </Button>
                   </SignInButton>
-
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    color="gray"
-                    leftSection={<CreditCard size={18} />}
-                    onClick={() => router.push('/subscription')}
-                  >
-                    Abonnement — 7,90 € / mois
-                  </Button>
                 </Group>
               ) : (
                 <Group gap="md" justify="center">
@@ -230,7 +220,7 @@ export default function LandingPage() {
               </ThemeIcon>
               <Title order={3} size="h4" mb="sm" c="white">3. Réintégration Intelligente</Title>
               <Text size="sm" c="white" style={{ lineHeight: 1.6, opacity: 0.9 }}>
-                Une note passe sous ton seuil ? Le chapitre bascule dans ton Dashboard. Un clic sur <b>"Réintégrer"</b> recase automatiquement la session de rattrapage en respectant strictement le seuil de cours maximum autorisé pour éviter toute surcharge.
+                Une note passe sous ton seuil ? Le chapitre bascule dans ton Dashboard. Un clic sur <b>"Réintégrer"</b> recase automatiquement la session de rattrapage en respectant strictly le seuil de cours maximum autorisé pour éviter toute surcharge.
               </Text>
             </Card>
           </Grid.Col>
