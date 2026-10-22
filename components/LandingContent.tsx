@@ -5,6 +5,7 @@ import { useUser, SignInButton, SignUpButton, SignOutButton } from '@clerk/nextj
 import { Container, Title, Text, Button, Stack, Grid, Card, Group, ThemeIcon } from '@mantine/core';
 import { Calendar, Brain, RefreshCw, BarChart3, ArrowRight, CreditCard, Sliders, HelpCircle, Gift } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { actionCreateStripePortal } from '@/app/actions/stripeActions';
 
 function AuthAlertHandler() {
   const searchParams = useSearchParams();
@@ -42,8 +43,8 @@ export default function LandingPage() {
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<string | null>(null);
   const [periodEnd, setPeriodEnd] = useState<string | null>(null);
-  const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -53,7 +54,6 @@ export default function LandingPage() {
           if (data) {
             setUserStatus(data.status);
             setPeriodEnd(data.periodEnd);
-            setCustomerPortalUrl(data.customerPortalUrl);
           }
           setIsDataLoaded(true);
         })
@@ -152,12 +152,28 @@ export default function LandingPage() {
                     Accéder à mon espace
                   </Button>
 
-                  {['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining && customerPortalUrl ? (
+                  {['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining ? (
                     <Button
                       size="lg"
                       color="orange"
                       leftSection={<CreditCard size={18} />}
-                      onClick={() => window.location.href = customerPortalUrl}
+                      loading={isLoadingPortal}
+                      onClick={async () => {
+                        setIsLoadingPortal(true);
+                        try {
+                          const url = await actionCreateStripePortal();
+                          if (url) {
+                            window.location.href = url;
+                          } else {
+                            setIsLoadingPortal(false);
+                            alert("Impossible d'accéder au portail client pour le moment.");
+                          }
+                        } catch (err) {
+                          console.error("Erreur génération portail", err);
+                          setIsLoadingPortal(false);
+                          alert("Impossible d'accéder au portail client pour le moment.");
+                        }
+                      }}
                     >
                       Gérer mon abonnement &amp; Reprendre
                     </Button>
@@ -220,7 +236,7 @@ export default function LandingPage() {
               </ThemeIcon>
               <Title order={3} size="h4" mb="sm" c="white">3. Réintégration Intelligente</Title>
               <Text size="sm" c="white" style={{ lineHeight: 1.6, opacity: 0.9 }}>
-                Une note passe sous ton seuil ? Le chapitre bascule dans ton Dashboard. Un clic sur <b>"Réintégrer"</b> recase automatiquement la session de rattrapage en respectant strictly le seuil de cours maximum autorisé pour éviter toute surcharge.
+                Une note passe sous ton seuil ? Le chapitre bascule dans ton Dashboard. Un clic sur <b>"Réintégrer"</b> recase automatiquement la session de rattrapage en respectant strictment le seuil de cours maximum autorisé pour éviter toute surcharge.
               </Text>
             </Card>
           </Grid.Col>
