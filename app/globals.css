@@ -27,7 +27,7 @@ body::before {
   background-repeat: no-repeat;
 }
 
-- {
+* {
   box-sizing: border-box;
 }
 
