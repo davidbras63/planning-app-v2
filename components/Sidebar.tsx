@@ -5,7 +5,7 @@ import { Box, Stack, ActionIcon, Flex, Divider, Text, Modal, TextInput, Select, 
 import { useParams, useRouter } from 'next/navigation';
 import {
     LayoutDashboard, Calendar, BarChart3, Settings, ExternalLink,
-    LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Plus, HelpCircle, Palette, Target
+    LogOut, FolderPlus, BookOpenCheck, Home, ChevronLeft, Plus, HelpCircle, Palette, Target, CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 import { useClerk } from '@clerk/nextjs';
@@ -20,6 +20,7 @@ import {
     actionSaveLink,
     actionCreateFolder    
 } from '@/app/actions/sidebarActions';
+import { actionCreateStripePortal } from '@/app/actions/stripeActions';
 
 export default function Sidebar() {
     const router = useRouter();
@@ -252,6 +253,22 @@ export default function Sidebar() {
                         <Palette size={20} /> {isOpen && "Personnalisation"}
                     </Box>
 
+                    {/* Bouton sécurisé Gérer mon abonnement (Stripe dynamique) */}
+                    <Box 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#4dabf7', textDecoration: 'none', borderRadius: '8px' }} 
+                        onClick={async () => {
+                            const url = await actionCreateStripePortal();
+                            if (url) {
+                                window.location.href = url;
+                            } else {
+                                alert("Impossible d'accéder au portail client pour le moment.");
+                            }
+                        }}
+                        className="hover:bg-slate-800 transition"
+                    >
+                        <CreditCard size={20} /> {isOpen && "Gérer mon abonnement"}
+                    </Box>
+
                     <Divider my="sm" />
                     <Box style={{ cursor: 'pointer', color: '#69db7c', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateFolder}><FolderPlus size={20} /> {isOpen && "Créer Dossier"}</Box>
                     <Box style={{ cursor: 'pointer', color: '#fab005', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleCreateSubject}><BookOpenCheck size={20} /> {isOpen && "Créer Matière"}</Box>
@@ -282,6 +299,11 @@ export default function Sidebar() {
                 </Box>
             </Stack>
             
+            {/* Modale de Personnalisation */}
+            <Modal opened={openedBackground} onClose={closeBackground} title="Personnalisation de l'arrière-plan" size="lg">
+                <BackgroundPicker onClose={closeBackground} />
+            </Modal>
+
             <Modal opened={openedFolder} onClose={() => setOpenedFolder(false)} title="Nouveau Dossier">
                 <Stack gap="md">
                     <TextInput 
