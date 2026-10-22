@@ -18,7 +18,7 @@ import {
     actionGetFolders,
     actionGetLinks,
     actionSaveLink,
-    actionCreateFolder  
+    actionCreateFolder    
 } from '@/app/actions/sidebarActions';
 
 export default function Sidebar() {
@@ -218,7 +218,7 @@ export default function Sidebar() {
     const handleAddLink = () => setOpenedLink(true);
 
     return (
-        <Box style={{ width: isOpen ? '250px' : '70px', height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', display: 'flex', flexDirection: 'column' }} p="md">
+        <Box style={{ width: isOpen ? '250px' : '70px', minWidth: isOpen ? '250px' : '70px', flexShrink: 0, height: '100%', backgroundColor: '#141517', transition: 'width 0.3s', display: 'flex', flexDirection: 'column' }} p="md">
             <Stack h="100%" justify="space-between" style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1 }} className="custom-scroll">
                 <Stack gap="xs">
                     <div style={{ padding: '0px', margin: '-30px 0px 0px -25px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
@@ -241,7 +241,7 @@ export default function Sidebar() {
                     >
                         <Target size={20} /> {isOpen && "Entraînement / Annales"}
                     </Box>
-                                            
+                                        
                     <Link href={currentFolderId ? `/protected/settings/${currentFolderId}` : "/protected/settings"} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#888286', textDecoration: 'none' }}><Settings size={20} />{isOpen && "Paramètres"}</Link>
 
                     <Box 
@@ -259,9 +259,9 @@ export default function Sidebar() {
                     <Divider my="sm" />
                     <Text size="xs" color="#5c5f66" p="xs">{isOpen && "MES LIENS"}</Text>
                     {links.map((link) => (
-                       <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
+                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', color: '#909296', textDecoration: 'none' }}>
                           <ExternalLink size={18} /> {isOpen && link.label}
-                       </a>
+                        </a>
                     ))}
                     <Box style={{ cursor: 'pointer', color: '#909296', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px' }} onClick={handleAddLink}><Plus size={20} /> {isOpen && "Ajouter Lien"}</Box>
 
@@ -581,18 +581,13 @@ export default function Sidebar() {
                                     }
                                 }
                             }
-
-                            alert("Entraînements enregistrés avec succès !");
                             closeTraining();
                         }}
                     >
-                        Enregistrer tous les entraînements
+                        Enregistrer les notes
                     </Button>
                 </Stack>
             </Modal>
-
-            {/* Modale de Personnalisation */}
-            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
         </Box>
     );
 }
