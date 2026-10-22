@@ -103,39 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, warning: 'No clerkId found' }, { status: 200 });
     }
 
-    // Fonction centralisée pour générer et enregistrer le lien du portail Stripe
-    const upsertPortalLink = async (customerRef: any) => {
-      if (!customerRef) return;
-      try {
-        const customerId = typeof customerRef === 'string' ? customerRef : customerRef.id;
-        const portalSession = await stripe.billingPortal.sessions.create({
-          customer: customerId,
-          return_url: 'https://nesis.fr/dashboard',
-        });
-
-        if (portalSession?.url) {
-          const customerPortalUrl = portalSession.url;
-          const existingSubLink = await db.execute(
-            sql`SELECT id FROM links WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement' LIMIT 1`
-          );
-
-          if (existingSubLink.rows.length === 0) {
-            await db.execute(
-              sql`INSERT INTO links (clerk_id, label, url) VALUES (${clerkId}, 'Gérer mon abonnement', ${customerPortalUrl})`
-            );
-            console.log("✅ [LIEN] Insertion unique du lien 'Gérer mon abonnement' effectuée.");
-          } else {
-            await db.execute(
-              sql`UPDATE links SET url = ${customerPortalUrl} WHERE clerk_id = ${clerkId} AND label = 'Gérer mon abonnement'`
-            );
-            console.log("✅ [LIEN] Mise à jour unique du lien 'Gérer mon abonnement' effectuée.");
-          }
-        }
-      } catch (portalError) {
-        console.error("❌ ERREUR SYNCHRO PORTAIL :", portalError);
-      }
-    };
-
     // --- 2. GESTION DES ÉVÉNEMENTS ---
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
       const subStatus = dataObject.status;
@@ -149,7 +116,6 @@ export async function POST(req: Request) {
       } else {
         console.log(`⚠️ Statut 'incomplete' ignoré.`);
       }
-      await upsertPortalLink(dataObject?.customer);
     }
     else if (event.type === 'customer.subscription.paused') {
       await db.execute(sql`
@@ -257,9 +223,6 @@ export async function POST(req: Request) {
       } catch (affilibeeErr) {
         console.error("❌ Erreur de communication avec Affilibee:", affilibeeErr);
       }
-
-      // --- GÉNÉRATION DU PORTAIL CLIENT STRIPE ---
-      await upsertPortalLink(dataObject?.customer);
 
       // --- ENVOI DE L'E-MAIL (Uniquement à la création initiale) ---
       if (dataObject?.billing_reason === 'subscription_create') {
