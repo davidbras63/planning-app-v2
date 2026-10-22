@@ -300,9 +300,7 @@ export default function Sidebar() {
             </Stack>
             
             {/* Modale de Personnalisation */}
-            <Modal opened={openedBackground} onClose={closeBackground} title="Personnalisation de l'arrière-plan" size="lg">
-                <BackgroundPicker onClose={closeBackground} />
-            </Modal>
+            <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
 
             <Modal opened={openedFolder} onClose={() => setOpenedFolder(false)} title="Nouveau Dossier">
                 <Stack gap="md">
