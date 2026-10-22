@@ -71,8 +71,6 @@ export default function LandingPage() {
   const now = new Date();
   const hasTimeRemaining = periodEnd ? new Date(periodEnd) > now : false;
 
-  const shouldHideSubscriptionButton = ['active', 'elite', 'paused'].includes(userStatus || '');
-  const isPausedAndExpired = userStatus === 'paused' && !hasTimeRemaining;
   const showTrialBanner = !isSignedIn;
 
   return (
@@ -164,7 +162,7 @@ export default function LandingPage() {
                     Accéder à mon espace
                   </Button>
 
-                  {isPausedAndExpired && customerPortalUrl && (
+                  {['active', 'elite'].includes(userStatus || '') && !hasTimeRemaining && customerPortalUrl ? (
                     <Button
                       size="lg"
                       color="orange"
@@ -173,9 +171,7 @@ export default function LandingPage() {
                     >
                       Gérer mon abonnement &amp; Reprendre
                     </Button>
-                  )}
-
-                  {!shouldHideSubscriptionButton && (
+                  ) : userStatus === 'trial' ? (
                     <Button
                       size="lg"
                       variant="outline"
@@ -185,7 +181,7 @@ export default function LandingPage() {
                     >
                       Abonnement — 7,90 € / mois
                     </Button>
-                  )}
+                  ) : null}
                 </Group>
               )}
             </div>
