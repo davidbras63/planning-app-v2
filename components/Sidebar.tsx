@@ -299,7 +299,7 @@ export default function Sidebar() {
                 </Box>
             </Stack>
             
-            {/* Modale de Personnalisation */}
+            {/* Appel propre de BackgroundPicker sans double modale */}
             <BackgroundPicker opened={openedBackground} onClose={closeBackground} />
 
             <Modal opened={openedFolder} onClose={() => setOpenedFolder(false)} title="Nouveau Dossier">

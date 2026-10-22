@@ -29,10 +29,8 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
   const handleColorChange = (color: string) => {
     setBgColor(color);
     localStorage.setItem('nesis_bg_color', color);
-
     setBgImage(null);
     localStorage.removeItem('nesis_bg_image');
-
     notifyBackgroundChange();
   };
 
@@ -55,7 +53,6 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
         img.src = event.target?.result as string;
 
         img.onload = () => {
-          // Redimensionnement et compression automatique (règle le problème des PNG lourds pour la BDD)
           const canvas = document.createElement('canvas');
           const MAX_WIDTH = 1920;
           let width = img.width;
@@ -73,13 +70,10 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
           if (!ctx) return;
 
           ctx.drawImage(img, 0, 0, width, height);
-
-          // Convertit proprement n'importe quel format (PNG/JPEG) en JPEG compressé (qualité 0.75)
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
           setBgColor('');
           localStorage.removeItem('nesis_bg_color');
-
           setBgImage(compressedBase64);
           localStorage.setItem('nesis_bg_image', compressedBase64);
           
@@ -113,7 +107,7 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
           <Text size="xs" fw={500} mb={4}>Couleur de fond unie :</Text>
           <ColorInput 
             value={bgColor || '#0f172a'} 
-            onChange={handleColorInput => handleColorChange(handleColorInput)}
+            onChange={handleColorChange}
             format="hex"
             swatches={['#0f172a', '#1e293b', '#0284c7', '#4c1d95', '#111827']}
           />
@@ -129,34 +123,14 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
         <div>
           <Text size="xs" fw={500} mb={4}>Cadrage & Zoom :</Text>
           <Group grow gap="xs">
-            <Button 
-              size="xs" 
-              variant={bgZoom === 'cover' ? 'filled' : 'light'} 
-              onClick={() => handleZoomChange('cover')}
-            >
-              Remplir
-            </Button>
-            <Button 
-              size="xs" 
-              variant={bgZoom === '80%' ? 'filled' : 'light'} 
-              onClick={() => handleZoomChange('80%')}
-            >
-              Dézoomer
-            </Button>
-            <Button 
-              size="xs" 
-              variant={bgZoom === 'contain' ? 'filled' : 'light'} 
-              onClick={() => handleZoomChange('contain')}
-            >
-              Entière
-            </Button>
+            <Button size="xs" variant={bgZoom === 'cover' ? 'filled' : 'light'} onClick={() => handleZoomChange('cover')}>Remplir</Button>
+            <Button size="xs" variant={bgZoom === '80%' ? 'filled' : 'light'} onClick={() => handleZoomChange('80%')}>Dézoomer</Button>
+            <Button size="xs" variant={bgZoom === 'contain' ? 'filled' : 'light'} onClick={() => handleZoomChange('contain')}>Entière</Button>
           </Group>
         </div>
 
         <Group justify="space-between" mt="md" pt="xs" style={{ borderTop: '1px solid #334155' }}>
-          <Button color="red" variant="subtle" size="xs" onClick={handleReset}>
-            Réinitialiser
-          </Button>
+          <Button color="red" variant="subtle" size="xs" onClick={handleReset}>Réinitialiser</Button>
           <Button 
             size="xs" 
             onClick={async () => {
