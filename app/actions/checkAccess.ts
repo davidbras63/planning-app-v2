@@ -30,9 +30,9 @@ export async function checkAccessAction() {
             if (affiliateCookie) {
                 const cleanCode = affiliateCookie.trim();
                 if (cleanCode && cleanCode !== clerkId) {
-                    await db.execute(
+                    db.execute(
                         sql`UPDATE users SET referred_by = ${cleanCode} WHERE clerk_id = ${clerkId}`
-                    );
+                    ).catch(err => console.error('Erreur lors de l’enregistrement du parrain :', err));
                 }
             }
         } catch (err) {
