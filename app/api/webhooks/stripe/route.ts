@@ -251,14 +251,33 @@ export async function POST(req: Request) {
     else if (event.type === 'invoice.payment_failed') {
       const userResult = await db.execute(sql`SELECT email FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
       const userEmail = (userResult.rows[0] as any)?.email || customerEmail;
+
+      // Passage du statut en 'past_due' (ou autre statut renvoyé par Stripe)
+      await db.execute(sql`
+        UPDATE users
+        SET status = 'past_due'
+        WHERE clerk_id = ${clerkId}
+      `);
+
       if (userEmail) {
+        const failedEmailBody =
+          "Bonjour,\n\n" +
+          "Nous t'informons qu'une anomalie est survenue lors du dernier prélèvement de ton abonnement Nesis (paiement refusé ou carte expirée).\n\n" +
+          "Afin d'éviter toute interruption de ton service :\n" +
+          "1. Connecte-toi à ton espace Nesis.\n" +
+          "2. Clique sur « Gérer mon abonnement » depuis le menu latéral ou directement depuis la page d'accueil.\n" +
+          "3. Mets à jour tes coordonnées bancaires pour régulariser la situation et reprendre immédiatement tes révisions.\n\n" +
+          "⚠️ IMPORTANT : Sans régularisation de ta part, l'accès à l'application reste restreint. Toutes tes données personnelles (dossiers, matières, chapitres et historique de révisions) seront définitivement supprimées sous 30 jours.\n\n" +
+          "Si tu as la moindre question, n'hésite pas à contacter notre support.\n\n" +
+          "L'équipe Nesis";
+
         await resend.emails.send({
           from: 'Nesis <contact@nesis.fr>',
           to: userEmail,
-          subject: 'Échec de votre paiement - Action requise',
-          text: 'Le prélèvement pour votre abonnement Nesis a échoué.'
+          subject: 'Action requise : Problème lors du renouvellement de ton abonnement Nesis',
+          text: failedEmailBody
         });
-        console.log("✅ E-mail d'échec de paiement envoyé.");
+        console.log("✅ E-mail d'échec de paiement envoyé et statut mis à jour.");
       }
     }
     else if (event.type === 'customer.subscription.deleted') {
