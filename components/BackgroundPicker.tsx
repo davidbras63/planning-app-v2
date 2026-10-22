@@ -44,23 +44,47 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
 
   const handleImageUpload = (file: File | null) => {
     if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        alert("Image trop lourde ! Choisis une image de moins de 3 Mo.");
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image trop lourde ! Choisis une image de moins de 5 Mo.");
         return;
       }
 
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        
-        setBgColor('');
-        localStorage.removeItem('nesis_bg_color');
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
 
-        localStorage.removeItem('nesis_bg_image');
-        setBgImage(base64String);
-        localStorage.setItem('nesis_bg_image', base64String);
-        
-        notifyBackgroundChange();
+        img.onload = () => {
+          // Redimensionnement et compression automatique (règle le problème des PNG lourds pour la BDD)
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1920;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convertit proprement n'importe quel format (PNG/JPEG) en JPEG compressé (qualité 0.75)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+          setBgColor('');
+          localStorage.removeItem('nesis_bg_color');
+
+          setBgImage(compressedBase64);
+          localStorage.setItem('nesis_bg_image', compressedBase64);
+          
+          notifyBackgroundChange();
+        };
       };
       reader.readAsDataURL(file);
     }
@@ -98,7 +122,7 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
         <div>
           <Text size="xs" fw={500} mb={4}>Image de fond :</Text>
           <FileButton onChange={handleImageUpload} accept="image/png,image/jpeg,image/webp">
-            {(props) => <Button {...props} variant="outline" fullWidth size="xs">Choisir une image (&lt; 3 Mo)</Button>}
+            {(props) => <Button {...props} variant="outline" fullWidth size="xs">Choisir une image</Button>}
           </FileButton>
         </div>
 
@@ -134,22 +158,22 @@ export default function BackgroundPicker({ opened, onClose }: BackgroundPickerPr
             Réinitialiser
           </Button>
           <Button 
-			  size="xs" 
-			  onClick={async () => {
-				try {
-				  await saveUserCustomization({
-					bgColor: localStorage.getItem('nesis_bg_color'),
-					bgImage: localStorage.getItem('nesis_bg_image'),
-					bgZoom: localStorage.getItem('nesis_bg_zoom') || 'cover',
-				  });
-				} catch (error) {
-				  console.error("Erreur lors de la sauvegarde BDD :", error);
-				}
-				onClose();
-			  }}
-			>
-			  Valider
-			</Button>
+            size="xs" 
+            onClick={async () => {
+              try {
+                await saveUserCustomization({
+                  bgColor: localStorage.getItem('nesis_bg_color'),
+                  bgImage: localStorage.getItem('nesis_bg_image'),
+                  bgZoom: localStorage.getItem('nesis_bg_zoom') || 'cover',
+                });
+              } catch (error) {
+                console.error("Erreur lors de la sauvegarde BDD :", error);
+              }
+              onClose();
+            }}
+          >
+            Valider
+          </Button>
         </Group>
       </Stack>
     </Modal>
