@@ -60,12 +60,11 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       <AppShell
         navbar={{
           width: 300,
-          breakpoint: 'sm',
-          collapsed: { mobile: !opened },
+          breakpoint: 0, // Désactive le masque automatique sur mobile
         }}
         padding="md"
       >
-        <AppShell.Navbar>
+        <AppShell.Navbar style={{ border: 'none', background: 'transparent' }}>
           <Sidebar />
         </AppShell.Navbar>
         
