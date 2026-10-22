@@ -7,24 +7,34 @@ body {
   min-height: 100vh;
   color: #c1c2c5;
   
-  /* Couleur de fond de secours */
+  /* Ton système de variables et d'upload sur le body refonctionne normalement */
   background-color: var(--nesis-bg-color, #1a1b1e);
-}
-
-/* Fond fixe ultra-stable sur mobile, tablette et Apple (évite le bug de background-attachment: fixed) */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  pointer-events: none;
   background-image: var(--nesis-bg-image, none);
   background-size: var(--nesis-bg-zoom, 100% 100%) !important;
   background-position: center center !important;
   background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Correctif spécifique iOS / Apple : bloque l'image en tactile sans casser le JS */
+@supports (-webkit-touch-callout: none) {
+  body {
+    background-attachment: scroll !important;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
+    background-image: inherit;
+    background-size: inherit;
+    background-position: inherit;
+    background-repeat: no-repeat;
+  }
 }
 
 * {
