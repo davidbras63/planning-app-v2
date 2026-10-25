@@ -201,9 +201,9 @@ export async function POST(req: Request) {
           }
         };
 
-        console.log(`🚀 Envoi de la commande à Affilibee (v2 - Sandbox) pour l'affilié : ${referralCode || 'aucun'}`);
+        console.log(`🚀 Envoi de la commande à Affilibee (v2 - live) pour l'affilié : ${referralCode || 'aucun'}`);
 
-        const affilibeeResponse = await fetch("https://affilibee.com/api/v2/sandbox/orders/create", {
+        const affilibeeResponse = await fetch("https://affilibee.com/api/v2/orders/create", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${process.env.AFFILIBEE_API_TOKEN}`,
