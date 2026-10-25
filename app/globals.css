@@ -20,14 +20,12 @@ body {
 @supports (-webkit-touch-callout: none) {
   body {
     background-attachment: scroll !important;
+    background-image: none !important; /* <--- On l'enlève du body pour éviter le doublon (le mille-feuille) */
   }
   body::before {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0; /* Remplace top/left/width/height pour s'adapter parfaitement au viewport mobile sans bug de barre d'adresse */
     z-index: -1;
     pointer-events: none;
     background-image: var(--nesis-bg-image, none);
