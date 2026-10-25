@@ -175,7 +175,7 @@ export async function POST(req: Request) {
         console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
       }
 
-      // --- REMONTÉE DE LA COMMANDE VERS AFFILIBEE (API v2 - Sandbox) ---
+      // --- REMONTÉE DE LA COMMANDE VERS AFFILIBEE (API v2 - live) ---
       try {
         const amount = dataObject?.amount_paid || dataObject?.total || 0;
         const orderId = dataObject?.id?.toString() || `order-${Date.now()}`;
