@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Container, Title, Card, TextInput, NumberInput, Button, Table, Group, Stack, Text, Slider } from '@mantine/core';
 import { Save } from 'lucide-react';
 import { saveSettingsAction } from '@/app/actions/settingsActions';
 import { actionRecalculerCadencierComplet } from "@/app/actions/recalculerCadencier";
 
 export default function SettingsView({ initialData, clerkId, folderId }: { initialData: any, clerkId: string, folderId: string }) {
- 
+  const router = useRouter();
+  
   const parseCadencier = (dataCadencier: any) => {
     if (Array.isArray(dataCadencier)) return dataCadencier.join(',');
     return dataCadencier || '0,1,3,7,14,30,60,90';
@@ -181,6 +183,15 @@ export default function SettingsView({ initialData, clerkId, folderId }: { initi
               >
                 Recalculer le cadencier
               </Button>
+			  
+			  {/* Le bouton Fermer propre */}
+            <Button
+              variant="subtle"
+              color="gray"
+              onClick={() => router.back()}
+            >
+              Fermer
+            </Button>
 
               <Button loading={loading} onClick={handleSave} leftSection={<Save size={16} />}>
                 Enregistrer
