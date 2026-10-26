@@ -20,14 +20,16 @@ body {
 @supports (-webkit-touch-callout: none) {
   body {
     background-attachment: scroll !important;
-    background-image: none !important; /* <--- On l'enlève du body pour éviter le doublon (le mille-feuille) */
+    background-image: none !important; 
+    background-color: transparent !important; /* <--- Indispensable pour ne pas masquer le fond */
   }
   body::before {
     content: "";
     position: fixed;
-    inset: 0; /* Remplace top/left/width/height pour s'adapter parfaitement au viewport mobile sans bug de barre d'adresse */
+    inset: 0;
     z-index: -1;
     pointer-events: none;
+    background-color: var(--nesis-bg-color, #1a1b1e); /* <--- On déplace la couleur de fond ici */
     background-image: var(--nesis-bg-image, none);
     background-size: var(--nesis-bg-zoom, 100% 100%) !important;
     background-position: center center !important;
