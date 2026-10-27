@@ -47,6 +47,7 @@ export async function POST() {
       payment_method_types: ['card'],
       mode: 'subscription',
       customer_email: userEmail,
+	  allow_promotion_codes: true,
       line_items: [
         {
           price: priceId,
