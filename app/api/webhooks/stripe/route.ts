@@ -175,7 +175,7 @@ export async function POST(req: Request) {
         console.error("❌ ERREUR SQL UPDATE USERS :", dbError);
       }
 
-      // --- REMONTÉE DE LA COMMANDE VERS AFFILIBEE (API v2 - live) ---
+      // --- REMONTÉE DE LA COMMANDE VERS AFFILIBEE (API v2 - Sandbox) ---
       try {
         const amount = dataObject?.amount_paid || dataObject?.total || 0;
         const orderId = dataObject?.id?.toString() || `order-${Date.now()}`;
@@ -201,7 +201,7 @@ export async function POST(req: Request) {
           }
         };
 
-        console.log(`🚀 Envoi de la commande à Affilibee (v2 - live) pour l'affilié : ${referralCode || 'aucun'}`);
+        console.log(`🚀 Envoi de la commande à Affilibee (v2 - Sandbox) pour l'affilié : ${referralCode || 'aucun'}`);
 
         const affilibeeResponse = await fetch("https://affilibee.com/api/v2/orders/create", {
           method: "POST",
@@ -249,6 +249,13 @@ export async function POST(req: Request) {
       }
     }
     else if (event.type === 'invoice.payment_failed') {
+      // 🛡️ SÉCURITÉ : Si c'est la facture de création initiale (ex: 3DS en cours), 
+      // on évite d'envoyer l'e-mail de panne et de paniquer le nouveau client.
+      if (dataObject?.billing_reason === 'subscription_create') {
+        console.log("⚠️ Échec sur la facture de création initiale (3DS / tentative en cours). Pas d'e-mail de past_due envoyé.");
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
       const userResult = await db.execute(sql`SELECT email FROM users WHERE clerk_id = ${clerkId} LIMIT 1`);
       const userEmail = (userResult.rows[0] as any)?.email || customerEmail;
 
